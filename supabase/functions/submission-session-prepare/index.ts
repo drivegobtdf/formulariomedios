@@ -48,7 +48,9 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Comprobar si ya existe una sesión activa para este submission_key
+    const providedToken = (req.headers.get('x-capability-token') || body.capability_token) as string | undefined;
+
+    // Comprobar si ya existe una sesión para este submission_key
     const { data: existingSession } = await supabase
       .from('submission_sessions')
       .select('*')
@@ -63,16 +65,25 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
 
-      // Si ya existe y está abierta, retornar información existente
+      // Si el cliente presenta la prueba de capacidad que ya poseía -> retry seguro
+      if (providedToken && verifyCapabilityToken(providedToken, existingSession.capability_hash)) {
+        return new Response(
+          JSON.stringify({
+            session_id: existingSession.id,
+            submission_key: existingSession.submission_key,
+            capability_token: providedToken,
+            expires_at: existingSession.expires_at,
+            max_files: MAX_FILES_PER_SUBMISSION,
+            max_file_size_bytes: MAX_FILE_SIZE_BYTES,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Si no presenta el capability token previo -> conflicto (no filtrar secretos ni tokens a terceros)
       return new Response(
-        JSON.stringify({
-          session_id: existingSession.id,
-          submission_key: existingSession.submission_key,
-          expires_at: existingSession.expires_at,
-          max_files: MAX_FILES_PER_SUBMISSION,
-          max_file_size_bytes: MAX_FILE_SIZE_BYTES,
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'SESSION_ALREADY_EXISTS', message: 'submission_key ya inicializada; se requiere x-capability-token para reanudar' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

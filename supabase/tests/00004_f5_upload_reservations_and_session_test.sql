@@ -114,37 +114,51 @@ INSERT INTO public.upload_reservations (
     now() + interval '2 hours'
 );
 
--- Test 9: Anon no puede leer submission_sessions
+-- Test 9: Anon no puede leer submission_sessions (throws 42501)
 SET ROLE anon;
 SET request.jwt.claim.role = 'anon';
-SELECT is_empty('SELECT * FROM public.submission_sessions', 'Anon no puede leer submission_sessions');
+SELECT throws_ok(
+    'SELECT * FROM public.submission_sessions',
+    '42501',
+    NULL,
+    'Anon no puede leer submission_sessions'
+);
 
--- Test 10: Usuario pendiente no puede leer submission_sessions
+-- Test 10: Usuario pendiente no puede leer submission_sessions (throws 42501)
 SET ROLE authenticated;
 SET request.jwt.claim.role = 'authenticated';
 SET request.jwt.claim.sub = 'a0000000-0000-0000-0000-000000000004';
-SELECT is_empty('SELECT * FROM public.submission_sessions', 'Usuario pendiente no puede leer submission_sessions');
+SELECT throws_ok(
+    'SELECT * FROM public.submission_sessions',
+    '42501',
+    NULL,
+    'Usuario pendiente no puede leer submission_sessions'
+);
 
--- Test 11: Usuario equipo sí puede leer submission_sessions
+-- Test 11: Usuario equipo no puede leer submission_sessions (tabla técnica backend-only, throws 42501)
 SET request.jwt.claim.sub = 'a0000000-0000-0000-0000-000000000002';
-SELECT results_eq(
-    'SELECT count(*)::integer FROM public.submission_sessions WHERE id = ''b0000000-0000-0000-0000-000000000001''',
-    ARRAY[1],
-    'Usuario equipo puede leer submission_sessions'
-);
-
--- Test 12: Usuario admin sí puede leer submission_sessions
-SET request.jwt.claim.sub = 'a0000000-0000-0000-0000-000000000001';
-SELECT results_eq(
-    'SELECT count(*)::integer FROM public.submission_sessions WHERE id = ''b0000000-0000-0000-0000-000000000001''',
-    ARRAY[1],
-    'Usuario admin puede leer submission_sessions'
-);
-
--- Test 13: Usuario observador NO puede leer submission_sessions (reservado a team/admin)
-SET request.jwt.claim.sub = 'a0000000-0000-0000-0000-000000000003';
-SELECT is_empty(
+SELECT throws_ok(
     'SELECT * FROM public.submission_sessions WHERE id = ''b0000000-0000-0000-0000-000000000001''',
+    '42501',
+    NULL,
+    'Usuario equipo no puede leer directamente submission_sessions técnicas'
+);
+
+-- Test 12: Usuario admin no puede leer submission_sessions directamente (tabla técnica backend-only, throws 42501)
+SET request.jwt.claim.sub = 'a0000000-0000-0000-0000-000000000001';
+SELECT throws_ok(
+    'SELECT * FROM public.submission_sessions WHERE id = ''b0000000-0000-0000-0000-000000000001''',
+    '42501',
+    NULL,
+    'Usuario admin no puede leer directamente submission_sessions técnicas'
+);
+
+-- Test 13: Usuario observador NO puede leer submission_sessions (tabla técnica backend-only, throws 42501)
+SET request.jwt.claim.sub = 'a0000000-0000-0000-0000-000000000003';
+SELECT throws_ok(
+    'SELECT * FROM public.submission_sessions WHERE id = ''b0000000-0000-0000-0000-000000000001''',
+    '42501',
+    NULL,
     'Usuario observador no puede leer submission_sessions técnicas'
 );
 
