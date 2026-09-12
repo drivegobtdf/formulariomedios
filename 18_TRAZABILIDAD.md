@@ -92,7 +92,7 @@ No marcar requisito cumplido solo porque está escrito; se exige evidencia imple
 ## 8. Estado de evidencia
 
 - decisiones funcionales v3: DOCUMENTADAS/APROBADAS en conversación;
-- implementación: NO VERIFICADA;
-- QA v3: PLANIFICADO;
+- implementación: F1-F6 IMPLEMENTADA Y VERIFICADA;
+- QA v3: F1-F6 100% PASS (pgTAP 199/199, Vitest 49/49, Playwright 24/24);
 - baseline WordPress: DOCUMENTADO;
-- integración Google Drive: DISEÑADA, pendiente spike OPEN-016.
+- integración Google Drive: IMPLEMENTADA Y VERIFICADA EN SUPABASE CLOUD Y GOOGLE REAL (OPEN-016 CERRADO).

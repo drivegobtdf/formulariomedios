@@ -166,3 +166,8 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
 }
+
+// Iniciar servidor HTTP en Supabase Edge Runtime (Deno)
+if (typeof Deno !== 'undefined' && typeof Deno.serve === 'function') {
+  Deno.serve(handler);
+}

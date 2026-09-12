@@ -2,6 +2,7 @@ declare const Deno: {
   env: {
     get(key: string): string | undefined;
   };
+  serve?(handler: (req: Request) => Promise<Response> | Response): void;
 } | undefined;
 
 /**
@@ -41,7 +42,24 @@ export function getSupabaseConfig(): SupabaseConfig {
   if (rawSecretKeys) {
     try {
       const parsed = JSON.parse(rawSecretKeys);
-      serviceRoleKey = parsed?.default || parsed?.service_role || (typeof parsed === 'string' ? parsed : '');
+      if (typeof parsed === 'string') {
+        serviceRoleKey = parsed;
+      } else if (typeof parsed === 'object' && parsed !== null) {
+        if (Array.isArray(parsed)) {
+          const found = parsed.find(
+            (k: Record<string, unknown>) => k?.name === 'service_role' || k?.name === 'default' || k?.type === 'service_role'
+          );
+          serviceRoleKey = (found?.api_key || found?.key || found?.value || parsed[0]?.api_key || parsed[0]?.key || parsed[0]?.value || '') as string;
+        } else {
+          const dict = parsed as Record<string, string>;
+          serviceRoleKey =
+            dict.default ||
+            dict.service_role ||
+            dict.secret ||
+            (Object.values(dict).find((val) => typeof val === 'string' && val.length > 0) as string) ||
+            '';
+        }
+      }
     } catch {
       serviceRoleKey = rawSecretKeys;
     }
@@ -56,7 +74,24 @@ export function getSupabaseConfig(): SupabaseConfig {
   if (rawPublishableKeys) {
     try {
       const parsed = JSON.parse(rawPublishableKeys);
-      publishableKey = parsed?.default || parsed?.anon || (typeof parsed === 'string' ? parsed : '');
+      if (typeof parsed === 'string') {
+        publishableKey = parsed;
+      } else if (typeof parsed === 'object' && parsed !== null) {
+        if (Array.isArray(parsed)) {
+          const found = parsed.find(
+            (k: Record<string, unknown>) => k?.name === 'anon' || k?.name === 'default' || k?.name === 'publishable'
+          );
+          publishableKey = (found?.api_key || found?.key || found?.value || parsed[0]?.api_key || parsed[0]?.key || parsed[0]?.value || '') as string;
+        } else {
+          const dict = parsed as Record<string, string>;
+          publishableKey =
+            dict.default ||
+            dict.anon ||
+            dict.publishable ||
+            (Object.values(dict).find((val) => typeof val === 'string' && val.length > 0) as string) ||
+            '';
+        }
+      }
     } catch {
       publishableKey = rawPublishableKeys;
     }

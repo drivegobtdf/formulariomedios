@@ -46,8 +46,16 @@ ON CONFLICT (user_id) DO UPDATE SET
     estado_acceso = EXCLUDED.estado_acceso,
     app_role = EXCLUDED.app_role;
 
--- Asegurar que el usuario 'sinperfil' no tiene fila en usuarios_acceso
-DELETE FROM public.usuarios_acceso WHERE user_id = '00000000-0000-0000-0000-000000000107';
+-- Asegurar aislamiento del test eliminando usuarios externos dentro de la transacción
+DELETE FROM public.usuarios_acceso WHERE user_id NOT IN (
+    '00000000-0000-0000-0000-000000000101',
+    '00000000-0000-0000-0000-000000000102',
+    '00000000-0000-0000-0000-000000000103',
+    '00000000-0000-0000-0000-000000000104',
+    '00000000-0000-0000-0000-000000000105',
+    '00000000-0000-0000-0000-000000000106',
+    '00000000-0000-0000-0000-000000000108'
+);
 
 -- Insertar datos de prueba en pedidos
 INSERT INTO public.envios_formulario (

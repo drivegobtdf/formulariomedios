@@ -66,7 +66,9 @@ export function generateCapabilityToken(submissionKey: string): { token: string;
 export function verifyCapabilityToken(token: string, expectedHash: string): boolean {
   if (!token || !expectedHash) return false;
   const hash = crypto.createHash('sha256').update(token).digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(expectedHash, 'hex'));
+  if (hash.length !== expectedHash.length) return false;
+  const enc = new TextEncoder();
+  return crypto.timingSafeEqual(enc.encode(hash), enc.encode(expectedHash));
 }
 
 /**

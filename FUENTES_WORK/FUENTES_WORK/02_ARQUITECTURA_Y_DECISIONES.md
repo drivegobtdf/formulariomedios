@@ -594,7 +594,7 @@ Cancelar requiere motivo. Finalizado no se cancela directamente. Cancelado puede
 | OPEN-013 | ABIERTO | migración de históricos multiservicio |
 | OPEN-014 | ABIERTO | MIME/extensiones audiovisuales adicionales |
 | OPEN-015 | ABIERTO | último Admin/recuperación |
-| OPEN-016 | ABIERTO | spike final upload/download Google Drive |
+| OPEN-016 | **CERRADO por F5** | Resumable Direct Upload a Drive + Verificación server-side en drive-upload-complete + Streaming RBAC en drive-download probado en Chromium/Firefox/WebKit y Cloud real |
 
 ## 14. Propuestas no adoptadas
 

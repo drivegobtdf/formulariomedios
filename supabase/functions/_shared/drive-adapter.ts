@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import crypto from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import { getEnv } from './env.ts';
 
 export interface GoogleDriveFile {
