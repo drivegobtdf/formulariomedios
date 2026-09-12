@@ -6,7 +6,7 @@
  * contra la base de datos local Supabase.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
@@ -37,6 +37,7 @@ function assertLocalEnvironment(urlStr: string): void {
 describe('F4 Concurrency, Sequence & Idempotency Integration Tests', () => {
   let serviceClient: SupabaseClient;
   let anonClient: SupabaseClient;
+  const createdEnvioIds: string[] = [];
 
   beforeAll(() => {
     assertLocalEnvironment(LOCAL_SUPABASE_URL);
@@ -48,6 +49,23 @@ describe('F4 Concurrency, Sequence & Idempotency Integration Tests', () => {
     anonClient = createClient(LOCAL_SUPABASE_URL, LOCAL_ANON_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+  });
+
+  afterAll(async () => {
+    if (serviceClient && createdEnvioIds.length > 0) {
+      for (const envioId of createdEnvioIds) {
+        const { data: peds } = await serviceClient.from('pedidos').select('id').eq('envio_id', envioId);
+        const pedIds = peds?.map((p) => p.id) || [];
+        if (pedIds.length > 0) {
+          await serviceClient.from('enlace_pedido').delete().in('pedido_id', pedIds);
+        }
+        await serviceClient.from('enlaces_material').delete().eq('envio_id', envioId);
+        await serviceClient.from('pedidos').delete().eq('envio_id', envioId);
+        await serviceClient.from('domain_events').delete().eq('aggregate_id', envioId);
+        await serviceClient.from('audit_log').delete().eq('recurso_id', envioId);
+        await serviceClient.from('envios_formulario').delete().eq('id', envioId);
+      }
+    }
   });
 
   it('Caso 1: 20 creaciones concurrentes con submission_keys distintas -> 60 PEDs atómicos únicos sin colisiones', async () => {
@@ -96,6 +114,9 @@ describe('F4 Concurrency, Sequence & Idempotency Integration Tests', () => {
       expect(res.data).toBeDefined();
       expect(res.data.idempotent_replay).toBe(false);
       expect(res.data.pedidos).toHaveLength(3);
+      if (res.data?.envio_id) {
+        createdEnvioIds.push(res.data.envio_id);
+      }
     }
 
     // Extraer todos los pedido_visible retornados (20 * 3 = 60)
@@ -181,6 +202,7 @@ describe('F4 Concurrency, Sequence & Idempotency Integration Tests', () => {
 
     // La creación inicial tiene tracking_token de 64 caracteres
     const initialEnvioId = creations[0].data.envio_id;
+    createdEnvioIds.push(initialEnvioId);
     for (const ped of creations[0].data.pedidos) {
       expect(ped.tracking_token).toHaveLength(64);
       expect(ped.tracking_recovery_required).toBe(false);
@@ -269,6 +291,9 @@ describe('F4 Concurrency, Sequence & Idempotency Integration Tests', () => {
     const res1 = await serviceClient.rpc('submission_create_core', { p_payload: originalPayload });
     expect(res1.error).toBeNull();
     expect(res1.data.idempotent_replay).toBe(false);
+    if (res1.data?.envio_id) {
+      createdEnvioIds.push(res1.data.envio_id);
+    }
 
     // 2. Envío conflictivo con misma key -> Error IDEMPOTENCY_CONFLICT
     const res2 = await serviceClient.rpc('submission_create_core', { p_payload: conflictingPayload });
@@ -332,6 +357,9 @@ describe('F4 Concurrency, Sequence & Idempotency Integration Tests', () => {
     const resA = await serviceClient.rpc('submission_create_core', { p_payload: payloadA });
     expect(resA.error).toBeNull();
     expect(resA.data.idempotent_replay).toBe(false);
+    if (resA.data?.envio_id) {
+      createdEnvioIds.push(resA.data.envio_id);
+    }
 
     const resB = await serviceClient.rpc('submission_create_core', { p_payload: payloadB });
     expect(resB.error).toBeNull();
@@ -339,13 +367,64 @@ describe('F4 Concurrency, Sequence & Idempotency Integration Tests', () => {
     expect(resB.data.envio_id).toBe(resA.data.envio_id);
   });
 
-  it('Caso 5: Browser roles (anon / public) tienen prohibido invocar submission_create_core (DENY)', async () => {
-    const res = await anonClient.rpc('submission_create_core', {
+  it('Caso 5: Todos los roles de browser (anon, observador, equipo, administrador) tienen DENY en submission_create_core', async () => {
+    // 1. Rol anon / public
+    const resAnon = await anonClient.rpc('submission_create_core', {
       p_payload: { schema_version: 3 },
     });
+    expect(resAnon.error).toBeDefined();
+    expect(resAnon.data).toBeNull();
 
-    expect(res.error).toBeDefined();
-    // PostgREST retorna 404 o 401/403/42501 cuando una función está revocada para el rol anon
-    expect(res.data).toBeNull();
+    // 2. Crear usuarios temporales para los 3 roles funcionales
+    const runId = Math.floor(100000 + Math.random() * 900000).toString();
+    const testPassword = 'TestSecurePassword2026!';
+    const roles = ['observador', 'equipo', 'administrador'] as const;
+    const createdUserIds: string[] = [];
+
+    try {
+      for (const role of roles) {
+        const email = `${role}.deny.${runId}@example.invalid`;
+        const { data: userData, error: createErr } = await serviceClient.auth.admin.createUser({
+          email,
+          password: testPassword,
+          email_confirm: true,
+          user_metadata: {
+            nombre: 'Test',
+            apellido: role,
+            nombre_usuario: `${role}.deny.${runId}`,
+          },
+        });
+        expect(createErr).toBeNull();
+        expect(userData.user).toBeDefined();
+        createdUserIds.push(userData.user!.id);
+
+        await serviceClient
+          .from('usuarios_acceso')
+          .update({ estado_acceso: 'aprobado', app_role: role })
+          .eq('user_id', userData.user!.id);
+
+        const roleClient = createClient(LOCAL_SUPABASE_URL, LOCAL_ANON_KEY, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+
+        const { error: loginErr } = await roleClient.auth.signInWithPassword({
+          email,
+          password: testPassword,
+        });
+        expect(loginErr).toBeNull();
+
+        const resRole = await roleClient.rpc('submission_create_core', {
+          p_payload: { schema_version: 3 },
+        });
+
+        expect(resRole.error).toBeDefined();
+        expect(resRole.data).toBeNull();
+      }
+    } finally {
+      // Limpieza de usuarios
+      for (const uid of createdUserIds) {
+        await serviceClient.auth.admin.deleteUser(uid);
+      }
+    }
   });
 });

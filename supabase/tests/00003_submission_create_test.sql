@@ -7,7 +7,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(40);
+SELECT plan(44);
 
 -- -----------------------------------------------------------------------------
 -- 1. Tests de private.ped_calendar_year (Zona Horaria America/Argentina/Ushuaia) [Tests 1..4]
@@ -541,7 +541,7 @@ SELECT is(
 );
 
 -- -----------------------------------------------------------------------------
--- 9. Tests de Permisos y Roles de Ejecución (Security Matrix) [Tests 38..40]
+-- 9. Tests de Permisos y Roles de Ejecución (Security Matrix) [Tests 38..44]
 -- -----------------------------------------------------------------------------
 
 -- Helper para setear auth context
@@ -559,19 +559,37 @@ SELECT throws_ok(
     $$SELECT public.submission_create_core('{"schema_version": 3}'::jsonb)$$,
     '42501',
     NULL,
-    'Rol anon no debe tener permiso de ejecución sobre submission_create_core'
+    'Rol anon no debe tener permiso de ejecución sobre submission_create_core (DENY)'
 );
 
--- Test 39: authenticated no tiene permiso EXECUTE en submission_create_core (DENY)
+-- Test 39: observador (authenticated) no tiene permiso EXECUTE en submission_create_core (DENY)
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid, 'authenticated');
+SELECT throws_ok(
+    $$SELECT public.submission_create_core('{"schema_version": 3}'::jsonb)$$,
+    '42501',
+    NULL,
+    'Rol observador no debe tener permiso de ejecución sobre submission_create_core (DENY)'
+);
+
+-- Test 40: equipo (authenticated) no tiene permiso EXECUTE en submission_create_core (DENY)
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000102'::uuid, 'authenticated');
 SELECT throws_ok(
     $$SELECT public.submission_create_core('{"schema_version": 3}'::jsonb)$$,
     '42501',
     NULL,
-    'Rol authenticated no debe tener permiso de ejecución sobre submission_create_core'
+    'Rol equipo no debe tener permiso de ejecución sobre submission_create_core (DENY)'
 );
 
--- Test 40: service_role sí tiene permiso EXECUTE (ALLOW)
+-- Test 41: administrador (authenticated) no tiene permiso EXECUTE en submission_create_core (DENY)
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid, 'authenticated');
+SELECT throws_ok(
+    $$SELECT public.submission_create_core('{"schema_version": 3}'::jsonb)$$,
+    '42501',
+    NULL,
+    'Rol administrador funcional no debe tener permiso de ejecución sobre submission_create_core (DENY)'
+);
+
+-- Test 42: service_role sí tiene permiso EXECUTE en submission_create_core (ALLOW)
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000000'::uuid, 'service_role');
 SELECT lives_ok(
     $$SELECT public.submission_create_core('{
@@ -591,7 +609,23 @@ SELECT lives_ok(
             }
         ]
     }'::jsonb)$$,
-    'Rol service_role debe tener permiso de ejecución sobre submission_create_core'
+    'Rol service_role debe tener permiso de ejecución sobre submission_create_core (ALLOW)'
+);
+
+-- Test 43: authenticated no tiene permiso EXECUTE directo sobre private.reserve_ped_numbers (DENY)
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid, 'authenticated');
+SELECT throws_ok(
+    $$SELECT * FROM private.reserve_ped_numbers(1)$$,
+    '42501',
+    NULL,
+    'Rol authenticated no debe tener permiso de ejecución sobre private.reserve_ped_numbers (DENY)'
+);
+
+-- Test 44: service_role sí tiene permiso EXECUTE sobre private.reserve_ped_numbers (ALLOW)
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000000'::uuid, 'service_role');
+SELECT lives_ok(
+    $$SELECT * FROM private.reserve_ped_numbers(1)$$,
+    'Rol service_role debe tener permiso de ejecución sobre private.reserve_ped_numbers (ALLOW)'
 );
 
 SELECT * FROM finish();
