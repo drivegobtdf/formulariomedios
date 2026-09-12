@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0';
 import { getEnv, getSupabaseConfig } from './env.ts';
 
 export { getEnv, getSupabaseConfig };

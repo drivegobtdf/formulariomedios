@@ -17,6 +17,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './pedidos-medios/frontend/src'),
+      'npm:@supabase/supabase-js@2.116.0': '@supabase/supabase-js',
     },
   },
 });

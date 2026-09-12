@@ -21,7 +21,7 @@ port = 54359
 enabled = true
 port = 54353
 
-[inbucket]
+[local_smtp]
 enabled = true
 port = 54354
 

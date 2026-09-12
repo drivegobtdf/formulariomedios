@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
 import { getCorsHeaders, getSupabaseConfig } from '../_shared/security.ts';
 
 export default async function handler(req: Request): Promise<Response> {
