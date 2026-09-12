@@ -62,6 +62,8 @@ SELECT results_eq(
 -- -----------------------------------------------------------------------------
 
 -- Preparar datos de prueba para envíos
+DELETE FROM public.pedidos;
+DELETE FROM public.envios_formulario;
 INSERT INTO public.envios_formulario (
     id, submission_key, request_fingerprint, nombre_apellido, telefono, correo, area_solicitante, form_schema_version
 ) VALUES (
@@ -122,6 +124,7 @@ SELECT throws_ok(
 -- -----------------------------------------------------------------------------
 
 -- Insertar un pedido base válido de prueba
+DELETE FROM public.pedidos WHERE id = 'a0000000-0000-0000-0000-000000000001' OR (anio = 2026 AND numero = 1);
 INSERT INTO public.pedidos (
     id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
     estado, informacion_especifica, form_schema_version, version, tracking_token_version,

@@ -117,12 +117,13 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
     const mockResult = {
       success: true,
       envio_id: 'e0000000-0000-0000-0000-000000000001',
+      submission_key: 's0000000-0000-0000-0000-000000000001',
       pedidos: [
         {
           pedido_id: 'p0000000-0000-0000-0000-000000000001',
           codigo_ped: 'PED-2026-D000101',
           client_request_ref: 'c1',
-          categoria_slug: 'diseno_grafico',
+          categoria_slug: 'diseno_grafico' as const,
           tipo_slug: 'flyer_rrss',
           tracking_token: 'raw_secret_tracking_token_do_not_expose_123',
         },
@@ -136,7 +137,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
         client_request_ref: 'c1',
         categoria_slug: 'diseno_grafico' as const,
         tipo_slug: 'flyer_rrss',
-        codigo_ped_prefijo: 'D',
+        codigo_ped_prefijo: 'D' as const,
         piece_title: 'Flyer para Redes',
         data: {},
       },

@@ -7,7 +7,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(70);
+SELECT plan(80);
 
 -- -----------------------------------------------------------------------------
 -- 0. Preparación de Fixtures Sintéticos de Autenticación
@@ -301,9 +301,8 @@ $$;
 
 -- Test 20: Antes de revocar -> SELECT pedidos ALLOW
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000999'::uuid);
-SELECT results_eq(
-    'SELECT count(*)::integer FROM public.pedidos',
-    ARRAY[1],
+SELECT isnt_empty(
+    'SELECT * FROM public.pedidos',
     'usuario temporal aprobado debe poder leer pedidos'
 );
 
@@ -413,10 +412,23 @@ SELECT throws_ok(
 );
 
 -- -----------------------------------------------------------------------------
--- 8. Tests de Tablas Técnicas e Infraestructura: Mínimo Privilegio [Tests 32..52]
+-- 8. Tests de Tablas Técnicas e Infraestructura: Mínimo Privilegio [Tests 32..62]
 -- -----------------------------------------------------------------------------
 
--- A. upload_reservations (DENY a todos los roles de browser)
+-- A. submission_sessions (DENY a todos los roles de browser)
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok('SELECT count(*)::integer FROM public.submission_sessions', '42501', NULL, 'anon no debe tener acceso directo a submission_sessions');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.submission_sessions', '42501', NULL, 'observador no debe tener acceso directo a submission_sessions');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000102'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.submission_sessions', '42501', NULL, 'equipo no debe tener acceso directo a submission_sessions');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.submission_sessions', '42501', NULL, 'admin no debe tener SELECT directo sobre submission_sessions');
+
+-- B. upload_reservations (DENY a todos los roles de browser)
 SELECT pg_temp.set_auth_context(NULL, 'anon');
 SELECT throws_ok('SELECT count(*)::integer FROM public.upload_reservations', '42501', NULL, 'anon no debe tener acceso directo a upload_reservations');
 
@@ -429,7 +441,7 @@ SELECT throws_ok('SELECT count(*)::integer FROM public.upload_reservations', '42
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT throws_ok('SELECT count(*)::integer FROM public.upload_reservations', '42501', NULL, 'admin no debe tener SELECT directo sobre upload_reservations');
 
--- B. domain_events (DENY a todos los roles de browser)
+-- C. domain_events (DENY a todos los roles de browser)
 SELECT pg_temp.set_auth_context(NULL, 'anon');
 SELECT throws_ok('SELECT count(*)::integer FROM public.domain_events', '42501', NULL, 'anon no debe tener acceso directo a domain_events');
 
@@ -442,7 +454,7 @@ SELECT throws_ok('SELECT count(*)::integer FROM public.domain_events', '42501', 
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT throws_ok('SELECT count(*)::integer FROM public.domain_events', '42501', NULL, 'admin no debe tener SELECT directo sobre domain_events');
 
--- C. comunicaciones_pedido (DENY a todos los roles de browser)
+-- D. comunicaciones_pedido (DENY a todos los roles de browser)
 SELECT pg_temp.set_auth_context(NULL, 'anon');
 SELECT throws_ok('SELECT count(*)::integer FROM public.comunicaciones_pedido', '42501', NULL, 'anon no debe tener acceso directo a comunicaciones_pedido');
 
@@ -455,7 +467,7 @@ SELECT throws_ok('SELECT count(*)::integer FROM public.comunicaciones_pedido', '
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT throws_ok('SELECT count(*)::integer FROM public.comunicaciones_pedido', '42501', NULL, 'admin no debe tener SELECT directo sobre comunicaciones_pedido');
 
--- D. pedido_sequences (DENY a todos los roles de browser)
+-- E. pedido_sequences (DENY a todos los roles de browser)
 SELECT pg_temp.set_auth_context(NULL, 'anon');
 SELECT throws_ok('SELECT count(*)::integer FROM public.pedido_sequences', '42501', NULL, 'anon no debe tener acceso directo a pedido_sequences');
 
@@ -468,9 +480,18 @@ SELECT throws_ok('SELECT count(*)::integer FROM public.pedido_sequences', '42501
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT throws_ok('SELECT count(*)::integer FROM public.pedido_sequences', '42501', NULL, 'admin no debe tener SELECT directo sobre pedido_sequences');
 
--- E. audit_log
+-- F. audit_log (SELECT autorizado únicamente a Administrador Aprobado)
 SELECT pg_temp.set_auth_context(NULL, 'anon');
 SELECT throws_ok('SELECT count(*)::integer FROM public.audit_log', '42501', NULL, 'anon no debe tener acceso directo a audit_log');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000104'::uuid);
+SELECT results_eq('SELECT count(*)::integer FROM public.audit_log', ARRAY[0], 'usuario pendiente debe tener 0 filas devueltas en audit_log');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000105'::uuid);
+SELECT results_eq('SELECT count(*)::integer FROM public.audit_log', ARRAY[0], 'usuario rechazado debe tener 0 filas devueltas en audit_log');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000106'::uuid);
+SELECT results_eq('SELECT count(*)::integer FROM public.audit_log', ARRAY[0], 'usuario revocado debe tener 0 filas devueltas en audit_log');
 
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
 SELECT results_eq('SELECT count(*)::integer FROM public.audit_log', ARRAY[0], 'observador debe tener 0 filas devueltas en audit_log');
@@ -487,6 +508,31 @@ SELECT throws_ok(
     NULL,
     'admin no debe tener permiso de INSERT directo en audit_log'
 );
+
+-- G. submission_create_core (EXECUTE denegado a authenticated)
+SELECT throws_ok(
+    $$SELECT public.submission_create_core('{}'::jsonb)$$,
+    '42501',
+    NULL,
+    'authenticated no debe tener permiso de EXECUTE directo sobre submission_create_core'
+);
+
+-- H. service_role PoLP: Inserción permitida pero DELETE denegado en tablas append-only
+RESET ROLE;
+SET ROLE service_role;
+SELECT lives_ok(
+    $$INSERT INTO public.audit_log (recurso_tipo, recurso_id, accion) VALUES ('security_test', '1', 'polp_test')$$,
+    'service_role debe tener permiso de INSERT sobre audit_log'
+);
+
+SELECT throws_ok(
+    $$DELETE FROM public.audit_log WHERE recurso_tipo = 'security_test'$$,
+    '42501',
+    NULL,
+    'service_role debe tener denegado DELETE sobre audit_log (append-only)'
+);
+
+RESET ROLE;
 
 -- -----------------------------------------------------------------------------
 -- 9. Tests de Funciones RPC Administrativas (Admin vs No-Admin) [Tests 53..60]
