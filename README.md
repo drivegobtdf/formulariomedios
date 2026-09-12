@@ -1,7 +1,7 @@
 # PEDIDOS — Documentación de desarrollo · revisión 3.0
 
 **Revisión documental:** 3.0 · 2026-09-11  
-**Estado de implementación:** FASE F1 COMPLETADA (Skeleton del repositorio y toolchain reproducible).  
+**Estado de implementación:** FASE F2 COMPLETADA (Supabase schema v3: PostgreSQL, migrations, constraints, índices, seeds y DB tests).  
 **Autoridad:** decisiones funcionales aprobadas por el propietario el 2026-09-11, ADR vigentes y requisitos de esta revisión.  
 **Arquitectura:** `PEDIDOS-WSN-GD-v2` — WordPress.org + Supabase + n8n + Google Drive, con Supabase como fuente de verdad de negocio.  
 **Repositorio oficial del desarrollo:** `https://github.com/drivegobtdf/formulariomedios`  
@@ -33,18 +33,18 @@ PED-2026-C000103 — Cobertura
 - **Supabase**: PostgreSQL, Auth, RLS, RPC, Edge, Queue, auditoría y metadata.
 - **Google Drive**: Almacenamiento físico de binarios.
 - **n8n**: Comunicaciones y automatizaciones asíncronas.
-- **Testing**: Vitest (Unit) + Playwright (E2E) + ESLint + Prettier.
+- **Testing**: pgTAP (DB) + Vitest (Unit) + Playwright (E2E) + ESLint + Prettier.
 
 ---
 
-## Guía de Desarrollo Local (Toolchain F1)
+## Guía de Desarrollo Local (Toolchain & Supabase)
 
 ### Requisitos previos
 - **Node.js**: 24 LTS (o compatible `>= 20.x`).
 - **npm**: `>= 10.x`.
 - **Git**.
-- **Supabase CLI**: Incluido como devDependency del monorepo (`npx supabase`).
-- **Docker**: Requerido para levantar el stack local de Supabase (Fase F2 en adelante).
+- **Supabase CLI**: Incluido como devDependency del monorepo (`npx supabase` / `npm run test:db`).
+- **Docker**: Requerido para levantar el stack local de Supabase.
 
 ### Instalación
 ```bash
@@ -59,6 +59,18 @@ npm install
 cp .env.example .env
 ```
 
+### Puertos Locales de Supabase (Aislamiento Multi-instancia)
+
+| Servicio | Puerto Local | Descripción |
+|---|---|---|
+| **API REST / PostgREST** | `54351` | `http://127.0.0.1:54351` |
+| **PostgreSQL DB** | `54352` | `postgresql://postgres:postgres@127.0.0.1:54352/postgres` |
+| **Studio Web UI** | `54353` | `http://127.0.0.1:54353` |
+| **Inbucket / Mailpit** | `54354` | `http://127.0.0.1:54354` |
+| **Edge Functions** | `54355` | `http://127.0.0.1:54355` |
+| **Analytics** | `54357` | `http://127.0.0.1:54357` |
+| **Shadow DB (diff)** | `54350` | Puerto interno de shadow DB |
+
 ### Scripts disponibles
 
 | Comando | Descripción |
@@ -71,8 +83,12 @@ cp .env.example .env
 | `npm run format` | Formatea el código con Prettier |
 | `npm run test:unit` | Ejecuta pruebas unitarias con Vitest |
 | `npm run test:e2e` | Ejecuta pruebas de humo E2E con Playwright |
-| `npm run test` | Ejecuta suite completa (Unit + E2E) |
-| `npm run supabase:status` | Consulta el estado del stack local de Supabase |
+| `npm run test:php` | Valida sintaxis PHP 8.2 en todos los archivos del plugin |
+| `npm run test:db` | Ejecuta la suite de pruebas pgTAP de PostgreSQL en Supabase |
+| `npm run db:start` | Inicia el stack local de Supabase (`supabase start`) |
+| `npm run db:stop` | Detiene el stack local de Supabase (`supabase stop`) |
+| `npm run db:reset` | Resetea la base local, reaplica migraciones y ejecuta `seed.sql` |
+| `npm run test` | Ejecuta suite completa de pruebas (Unit + E2E) |
 
 ### Integración en WordPress (Plugin `pedidos-medios`)
 
@@ -96,7 +112,7 @@ cp .env.example .env
 |---|---|---|
 | **F0** | Congelar revisión 3.0 y OPENs | COMPLETADO |
 | **F1** | Skeleton del repositorio y toolchain reproducible | **COMPLETADO** |
-| **F2** | Supabase schema v3 (tablas, restricciones, índices) | Pendiente |
+| **F2** | Supabase schema v3 (PostgreSQL, migraciones, constraints, índices, seed, pgTAP) | **COMPLETADO** |
 | **F3** | Auth / RBAC / RLS | Pendiente |
 | **F4** | Secuencia + creación multi-PED | Pendiente |
 | **F5** | Google OAuth / Drive spike | Pendiente |
@@ -110,7 +126,7 @@ cp .env.example .env
 | **F13** | Release / Cutover | Pendiente |
 
 > [!NOTE]
-> En la Fase F1 actual, todas las páginas y rutas del frontend (`/formulariomedios/*`) contienen vistas **placeholder** preparadas para conectar con los módulos de negocio a partir de F2. No se han implementado tablas de base de datos ni lógica de negocio del dominio.
+> En la Fase F2 actual, el esquema PostgreSQL v3 está completamente implementado y verificado en Supabase local con 7 migraciones declarativas, seed determinista oficial y suite pgTAP automatizada. Todas las tablas tienen RLS habilitado (fail-closed, 0 políticas). Las políticas de acceso Auth/RLS y RPCs transaccionales se implementarán en F3 y F4 respectivamente.
 
 ---
 

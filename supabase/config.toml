@@ -1,21 +1,29 @@
-# Project configuration for Supabase CLI (Fase F1 Skeleton)
+# Project configuration for Supabase CLI (PEDIDOS - WSN-GD-v2)
 project_id = "pedidos-medios"
 
 [api]
 enabled = true
-port = 54321
-schemas = ["public", "storage", "graphql_public"]
+port = 54351
+schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
-port = 54322
-shadow_port = 54320
+port = 54352
+shadow_port = 54350
 major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54359
 
 [studio]
 enabled = true
-port = 54323
+port = 54353
+
+[inbucket]
+enabled = true
+port = 54354
 
 [auth]
 enabled = true
@@ -25,9 +33,12 @@ jwt_expiry = 3600
 enable_signup = true
 
 [storage]
-enabled = true
-file_size_limit = "50MiB"
+enabled = false
 
 [edge_runtime]
 enabled = true
-port = 54324
+port = 54355
+
+[analytics]
+enabled = false
+port = 54357

@@ -143,7 +143,7 @@ Cancelar requiere motivo. Finalizado no se cancela directamente. Cancelado puede
 | OPEN-007 | **CERRADO funcionalmente** | proveedor/preferencias finas quedan OPEN-009/011 |
 | OPEN-008 | ABIERTO | staging receptor |
 | OPEN-009 | ABIERTO | proveedor email/idempotencia |
-| OPEN-010 | ABIERTO | framework UI/versiones |
+| OPEN-010 | **CERRADO por baseline F1** | React 19 + TypeScript + Vite + React Router + Vitest + Playwright |
 | OPEN-011 | ABIERTO | volumen/SLO/RPO/RTO/umbrales restantes |
 | OPEN-012 | ABIERTO | TTL/cooldown/antiabuso |
 | OPEN-013 | ABIERTO | migración de históricos multiservicio |

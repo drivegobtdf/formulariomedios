@@ -214,7 +214,7 @@ Seguridad por RLS/RPC/Edge, secretos server-side, OAuth Drive protegido, auditor
 - `OPEN-003`: retención/borrado institucional.
 - `OPEN-008`: staging receptor e instalación.
 - `OPEN-009`: proveedor de email e idempotencia externa.
-- `OPEN-010`: framework UI y versiones.
+- `OPEN-010`: CERRADO por baseline F1 (React 19 + TypeScript + Vite + React Router + Vitest + Playwright).
 - `OPEN-011`: objetivos de volumen/latencia/RPO/RTO y algunos umbrales.
 - `OPEN-012`: TTL exactos de tokens/capacidades y antiabuso.
 - `OPEN-013`: estrategia de migración histórica de PED multiservicio de la revisión 2.0.
