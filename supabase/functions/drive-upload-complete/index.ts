@@ -28,13 +28,13 @@ export default async function handler(req: Request): Promise<Response> {
     });
 
     const body = await req.json();
-    const { session_id, capability_token, reservation_id, client_file_ref, drive_file_id } = body;
+    const { session_id, capability_token, reservation_id } = body;
 
-    if (!session_id || !capability_token || !reservation_id || !client_file_ref || !drive_file_id) {
+    if (!session_id || !capability_token || !reservation_id) {
       return new Response(
         JSON.stringify({
           error: 'BAD_REQUEST',
-          message: 'session_id, capability_token, reservation_id, client_file_ref y drive_file_id son obligatorios',
+          message: 'session_id, capability_token y reservation_id son obligatorios',
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -83,7 +83,17 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    if (reservation.client_file_ref !== client_file_ref) {
+    const client_file_ref = body.client_file_ref || reservation.client_file_ref;
+    const drive_file_id = body.drive_file_id || reservation.drive_file_id;
+
+    if (!drive_file_id) {
+      return new Response(
+        JSON.stringify({ error: 'DRIVE_FILE_MISSING', message: 'No se encontró drive_file_id en la reserva' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (body.client_file_ref && reservation.client_file_ref && reservation.client_file_ref !== body.client_file_ref) {
       return new Response(
         JSON.stringify({ error: 'CLIENT_REF_MISMATCH', message: 'client_file_ref no coincide con la reserva' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

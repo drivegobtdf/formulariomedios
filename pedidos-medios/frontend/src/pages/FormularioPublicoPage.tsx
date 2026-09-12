@@ -434,6 +434,7 @@ export const FormularioPublicoPage: React.FC = () => {
                       ...a,
                       status: 'verified',
                       progress: 100,
+                      client_file_ref: res.client_file_ref || a.client_file_ref,
                       archivo_id: res.archivo_id,
                       drive_file_id: res.drive_file_id,
                       reservation_id: res.reservation_id,
@@ -559,6 +560,8 @@ export const FormularioPublicoPage: React.FC = () => {
       const payload: SubmissionPayload = {
         schema_version: 3,
         submission_key: state.submission_key,
+        session_id: state.session_id,
+        capability_token: state.capability_token,
         contacto: state.contacto,
         pedidos: availablePieces.map((p) => ({
           client_request_ref: p.client_request_ref,

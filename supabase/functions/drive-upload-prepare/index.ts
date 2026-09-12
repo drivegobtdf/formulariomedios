@@ -16,7 +16,7 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  if (req.method !== 'POST') {
+  if (req.method !== 'POST' && req.method !== 'PUT') {
     return new Response(
       JSON.stringify({ error: 'METHOD_NOT_ALLOWED', message: 'Método no permitido' }),
       { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -29,6 +29,98 @@ export default async function handler(req: Request): Promise<Response> {
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    // -------------------------------------------------------------------------
+    // MODO RELAY: PUT directo desde el navegador hacia Google Drive en streaming
+    // -------------------------------------------------------------------------
+    if (req.method === 'PUT') {
+      const url = new URL(req.url);
+      const reservationId = url.searchParams.get('reservation_id') || req.headers.get('x-reservation-id');
+      const capabilityToken = req.headers.get('x-capability-token');
+
+      if (!reservationId || !capabilityToken) {
+        return new Response(
+          JSON.stringify({ error: 'UNAUTHORIZED', message: 'reservation_id y capability_token son obligatorios' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: resData, error: resErr } = await supabase
+        .from('upload_reservations')
+        .select('*, submission_sessions(*)')
+        .eq('id', reservationId)
+        .maybeSingle();
+
+      if (resErr || !resData) {
+        return new Response(
+          JSON.stringify({ error: 'RESERVATION_NOT_FOUND', message: 'Reserva de carga no encontrada' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const session = resData.submission_sessions;
+      if (!session || session.estado !== 'abierta' || new Date(session.expires_at).getTime() <= Date.now()) {
+        return new Response(
+          JSON.stringify({ error: 'SESSION_EXPIRED', message: 'La sesión ha expirado o no está abierta' }),
+          { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!verifyCapabilityToken(capabilityToken, session.capability_hash)) {
+        return new Response(
+          JSON.stringify({ error: 'INVALID_CAPABILITY', message: 'capability_token inválido' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!resData.drive_session_ref) {
+        return new Response(
+          JSON.stringify({ error: 'DRIVE_SESSION_MISSING', message: 'URI de sesión de almacenamiento no disponible' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Relay en streaming directo hacia Google Drive
+      const driveHeaders: Record<string, string> = {
+        'Content-Type': resData.expected_mime || req.headers.get('content-type') || 'application/octet-stream',
+      };
+      if (resData.expected_size) {
+        driveHeaders['Content-Length'] = resData.expected_size.toString();
+      }
+
+      const driveRes = await fetch(resData.drive_session_ref, {
+        method: 'PUT',
+        headers: driveHeaders,
+        body: req.body,
+      });
+
+      if (!driveRes.ok) {
+        const errText = await driveRes.text();
+        return new Response(
+          JSON.stringify({ error: 'DRIVE_UPLOAD_FAILED', message: `Fallo en almacenamiento Google Drive (${driveRes.status}): ${errText}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const driveData = await driveRes.json().catch(() => ({}));
+      const driveFileId = driveData.id || resData.drive_file_id || '';
+
+      await supabase.from('upload_reservations').update({ drive_file_id: driveFileId, state: 'uploading' }).eq('id', reservationId);
+      if (resData.archivo_id && driveFileId) {
+        await supabase.from('archivos').update({ drive_file_id: driveFileId }).eq('id', resData.archivo_id);
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          reservation_id: reservationId,
+          client_file_ref: resData.client_file_ref,
+          archivo_id: resData.archivo_id,
+          drive_file_id: driveFileId,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const body = await req.json();
     const { session_id, capability_token, expected_name, expected_size, mime_type, targets } = body;
@@ -108,7 +200,7 @@ export default async function handler(req: Request): Promise<Response> {
     const stagingFolderId = await adapter.ensureStagingFolder(rootFolderId);
 
     const reservationId = crypto.randomUUID();
-    const clientFileRef = crypto.randomUUID();
+    const clientFileRef = (body.client_file_ref && typeof body.client_file_ref === 'string') ? body.client_file_ref : crypto.randomUUID();
     const archivoId = crypto.randomUUID();
 
     const resumableSession = await adapter.createResumableUploadSession({
@@ -165,12 +257,15 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
+    const relayUrl = `${supabaseUrl}/functions/v1/drive-upload-prepare?reservation_id=${reservationId}`;
+
     return new Response(
       JSON.stringify({
         reservation_id: reservationId,
         client_file_ref: clientFileRef,
         archivo_id: archivoId,
         upload_url: resumableSession.uploadUrl,
+        relay_url: relayUrl,
         expires_at: session.expires_at,
       }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

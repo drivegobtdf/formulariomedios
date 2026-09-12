@@ -314,6 +314,8 @@ export interface FormWizardState {
 export interface SubmissionPayload {
   schema_version: number;
   submission_key: string;
+  session_id?: string;
+  capability_token?: string;
   contacto: ContactoFormState;
   pedidos: Array<{
     client_request_ref: string;

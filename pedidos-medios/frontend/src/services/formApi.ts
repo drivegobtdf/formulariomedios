@@ -35,6 +35,7 @@ export async function prepareSubmissionSession(submissionKey: string): Promise<S
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
+      'apikey': config.supabaseAnonKey,
       'Authorization': `Bearer ${config.supabaseAnonKey}`,
       'Content-Type': 'application/json',
     },
@@ -64,7 +65,7 @@ export async function uploadFileToDrive(
   clientFileRef: string,
   file: File,
   onProgress?: (progressPct: number) => void
-): Promise<{ archivo_id: string; drive_file_id: string; reservation_id: string }> {
+): Promise<{ archivo_id: string; drive_file_id: string; reservation_id: string; client_file_ref: string }> {
   const config = getPublicConfig();
 
   // Paso 1: Preparar reserva de subida
@@ -72,16 +73,19 @@ export async function uploadFileToDrive(
   const prepRes = await fetch(prepareUrl, {
     method: 'POST',
     headers: {
+      'apikey': config.supabaseAnonKey,
       'Authorization': `Bearer ${config.supabaseAnonKey}`,
       'x-capability-token': capabilityToken,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       session_id: sessionId,
+      capability_token: capabilityToken,
       client_file_ref: clientFileRef,
-      file_name: file.name,
-      file_size: file.size,
+      expected_name: file.name,
+      expected_size: file.size,
       mime_type: file.type || 'application/octet-stream',
+      targets: 'all',
     }),
   });
 
@@ -90,14 +94,21 @@ export async function uploadFileToDrive(
     throw new Error(prepErr.error || `Error preparando subida (${prepRes.status})`);
   }
 
-  const prepData: UploadPrepareResponse = await prepRes.json();
+  const prepData = await prepRes.json();
   if (onProgress) onProgress(20);
 
-  // Paso 2: Subida de bytes
-  // Usamos XMLHttpRequest para rastrear progreso de subida real en navegadores
+  // Paso 2: Subida de bytes hacia almacenamiento (vía relay en streaming con CORS seguro o URL directa)
+  let driveFileId = prepData.drive_file_id || '';
+  const targetUploadUrl = prepData.relay_url || prepData.upload_url;
+
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('PUT', prepData.upload_url);
+    xhr.open('PUT', targetUploadUrl);
+    if (prepData.relay_url) {
+      xhr.setRequestHeader('apikey', config.supabaseAnonKey);
+      xhr.setRequestHeader('Authorization', `Bearer ${config.supabaseAnonKey}`);
+      xhr.setRequestHeader('x-capability-token', capabilityToken);
+    }
     xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
 
     xhr.upload.onprogress = (event) => {
@@ -110,6 +121,12 @@ export async function uploadFileToDrive(
     xhr.onload = () => {
       // Google resumable upload devuelve 200 o 201 al completar
       if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const parsed = JSON.parse(xhr.responseText || '{}');
+          if (parsed.id) driveFileId = parsed.id;
+        } catch {
+          void 0;
+        }
         resolve();
       } else {
         reject(new Error(`Fallo en transferencia a almacenamiento (${xhr.status})`));
@@ -130,13 +147,17 @@ export async function uploadFileToDrive(
   const compRes = await fetch(completeUrl, {
     method: 'POST',
     headers: {
+      'apikey': config.supabaseAnonKey,
       'Authorization': `Bearer ${config.supabaseAnonKey}`,
       'x-capability-token': capabilityToken,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       session_id: sessionId,
+      capability_token: capabilityToken,
       reservation_id: prepData.reservation_id,
+      client_file_ref: prepData.client_file_ref || clientFileRef,
+      drive_file_id: driveFileId,
     }),
   });
 
@@ -150,8 +171,9 @@ export async function uploadFileToDrive(
 
   return {
     archivo_id: compData.archivo_id,
-    drive_file_id: compData.drive_file_id,
+    drive_file_id: compData.drive_file_id || driveFileId,
     reservation_id: prepData.reservation_id,
+    client_file_ref: prepData.client_file_ref || clientFileRef,
   };
 }
 
@@ -166,6 +188,7 @@ export async function submitMultiPedFormulario(
   const endpoint = `${config.supabaseUrl}/functions/v1/submission-create`;
 
   const headers: Record<string, string> = {
+    'apikey': config.supabaseAnonKey,
     'Authorization': `Bearer ${config.supabaseAnonKey}`,
     'Content-Type': 'application/json',
   };

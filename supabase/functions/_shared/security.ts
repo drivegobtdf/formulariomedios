@@ -46,6 +46,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
     'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0] || 'http://localhost:5173',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-capability-token',
+    'Access-Control-Expose-Headers': 'Content-Disposition, Content-Type, Content-Length, Cache-Control, X-Content-Type-Options',
     'Access-Control-Max-Age': '86400',
   };
 }
