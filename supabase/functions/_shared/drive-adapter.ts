@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import crypto from 'node:crypto';
+import { getEnv } from './env.ts';
 
 export interface GoogleDriveFile {
   id: string;
@@ -73,10 +74,10 @@ export class GoogleDriveAdapter implements DriveAdapter {
     refreshToken?: string;
     rootFolderId?: string;
   }) {
-    this.clientId = options?.clientId || process.env.GOOGLE_CLIENT_ID || '';
-    this.clientSecret = options?.clientSecret || process.env.GOOGLE_CLIENT_SECRET || '';
-    this.refreshToken = options?.refreshToken || process.env.GOOGLE_REFRESH_TOKEN || '';
-    this.rootFolderId = options?.rootFolderId || process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || null;
+    this.clientId = options?.clientId || getEnv('GOOGLE_CLIENT_ID') || '';
+    this.clientSecret = options?.clientSecret || getEnv('GOOGLE_CLIENT_SECRET') || '';
+    this.refreshToken = options?.refreshToken || getEnv('GOOGLE_REFRESH_TOKEN') || '';
+    this.rootFolderId = options?.rootFolderId || getEnv('GOOGLE_DRIVE_ROOT_FOLDER_ID') || null;
   }
 
   /**
@@ -408,7 +409,7 @@ export class MockDriveAdapter implements DriveAdapter {
     });
 
     // Simular URL de sesión resumible
-    const baseUrl = process.env.MOCK_DRIVE_SERVER_URL || 'http://127.0.0.1:54351/mock-drive-upload';
+    const baseUrl = getEnv('MOCK_DRIVE_SERVER_URL') || 'http://127.0.0.1:54351/mock-drive-upload';
     const uploadUrl = `${baseUrl}?session_id=${sessionId}&file_id=${driveFileId}`;
 
     return { uploadUrl, driveFileId };
@@ -528,10 +529,10 @@ let defaultAdapterInstance: DriveAdapter | null = null;
 export function getDriveAdapter(): DriveAdapter {
   if (defaultAdapterInstance) return defaultAdapterInstance;
 
-  const useMock = process.env.USE_DRIVE_MOCK === 'true' ||
-    !process.env.GOOGLE_CLIENT_ID ||
-    !process.env.GOOGLE_CLIENT_SECRET ||
-    !process.env.GOOGLE_REFRESH_TOKEN;
+  const useMock = getEnv('USE_DRIVE_MOCK') === 'true' ||
+    !getEnv('GOOGLE_CLIENT_ID') ||
+    !getEnv('GOOGLE_CLIENT_SECRET') ||
+    !getEnv('GOOGLE_REFRESH_TOKEN');
 
   if (useMock) {
     defaultAdapterInstance = new MockDriveAdapter();

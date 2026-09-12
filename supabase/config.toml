@@ -42,3 +42,18 @@ port = 54355
 [analytics]
 enabled = false
 port = 54357
+
+[functions.submission-session-prepare]
+verify_jwt = false
+
+[functions.drive-upload-prepare]
+verify_jwt = false
+
+[functions.drive-upload-complete]
+verify_jwt = false
+
+[functions.submission-create]
+verify_jwt = false
+
+[functions.drive-download]
+verify_jwt = true

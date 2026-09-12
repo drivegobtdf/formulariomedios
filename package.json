@@ -32,7 +32,8 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "supabase": "supabase",
-    "supabase:status": "supabase status"
+    "supabase:status": "supabase status",
+    "google:bootstrap": "node scripts/google-drive-oauth-bootstrap.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

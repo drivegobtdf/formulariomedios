@@ -3,6 +3,7 @@ import {
   getCorsHeaders,
   sanitizeFileName,
   verifyUserRole,
+  getSupabaseConfig,
 } from '../_shared/security.ts';
 import { getDriveAdapter } from '../_shared/drive-adapter.ts';
 
@@ -21,9 +22,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const supabaseUrl = process.env.SUPABASE_URL || 'http://127.0.0.1:54351';
-    const anonKey = process.env.SUPABASE_ANON_KEY || '';
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    const { supabaseUrl, publishableKey, serviceRoleKey } = getSupabaseConfig();
 
     // 1. Extraer y verificar Token JWT de autenticación
     const authHeader = req.headers.get('authorization') || '';
@@ -37,7 +36,7 @@ export default async function handler(req: Request): Promise<Response> {
     const jwt = authHeader.replace('Bearer ', '').trim();
 
     // Cliente con contexto de usuario para verificar identidad
-    const userClient = createClient(supabaseUrl, anonKey, {
+    const userClient = createClient(supabaseUrl, publishableKey, {
       global: { headers: { Authorization: `Bearer ${jwt}` } },
       auth: { persistSession: false, autoRefreshToken: false },
     });

@@ -1,5 +1,9 @@
 import crypto from 'node:crypto';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { getEnv, getSupabaseConfig } from './env.ts';
+
+export { getEnv, getSupabaseConfig };
+export type { SupabaseConfig } from './env.ts';
 
 // Constantes contractuales vigentes (Revisión 3.0)
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB = 10,485,760 bytes
@@ -31,7 +35,8 @@ export const ALLOWED_EXTENSIONS = new Set<string>([
  */
 export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || '';
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080')
+  const rawAllowed = getEnv('ALLOWED_ORIGINS') || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080';
+  const allowedOrigins = rawAllowed
     .split(',')
     .map((o) => o.trim().toLowerCase());
 

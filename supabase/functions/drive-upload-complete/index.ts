@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   getCorsHeaders,
   verifyCapabilityToken,
+  getSupabaseConfig,
 } from '../_shared/security.ts';
 import { getDriveAdapter } from '../_shared/drive-adapter.ts';
 
@@ -20,8 +21,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const supabaseUrl = process.env.SUPABASE_URL || 'http://127.0.0.1:54351';
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    const { supabaseUrl, serviceRoleKey } = getSupabaseConfig();
 
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },

@@ -28,7 +28,9 @@ supabase/.branches/
 *credentials*.json
 *client_secret*.json
 *service_account*.json
-token.json
+*token*.json
+.credentials/
+.pedidos/
 
 # n8n secrets & workflows exports with credentials
 n8n/.env
