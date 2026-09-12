@@ -127,9 +127,9 @@ Casos:
 ## 8. Información faltante
 
 - crear no muta estado;
-- 15 días;
+- 48 horas corridas (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas);
 - respuesta;
-- vencimiento;
+- vencimiento (now >= expires_at rechazado);
 - archivo/link;
 - idempotencia;
 - email.

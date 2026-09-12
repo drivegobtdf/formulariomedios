@@ -167,7 +167,7 @@ Accesos rápidos:
 Alertas ejemplos:
 - `Sin responsable hace 2 días`.
 - `Fecha límite mañana`.
-- `Esperando respuesta hace 6 días`.
+- `Esperando información (vence en < 24h)` / `Solicitud de información vencida` (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas).
 
 No depender solo de color.
 

@@ -58,7 +58,7 @@ Reglas:
 
 - mensaje;
 - token seguro;
-- 15 días;
+- 48 horas corridas (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas);
 - respuesta texto + archivos permitidos + link opcional;
 - estado propio pendiente/respondida/vencida;
 - no muta PED automáticamente.

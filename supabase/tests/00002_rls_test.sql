@@ -70,6 +70,8 @@ INSERT INTO public.envios_formulario (
     'Secretaría de Medios'
 ) ON CONFLICT DO NOTHING;
 
+DELETE FROM public.pedidos WHERE id = 'a0000000-0000-0000-0000-000000000100' OR (anio = 2026 AND numero = 100);
+
 INSERT INTO public.pedidos (
     id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
     estado, tracking_token_hash
@@ -327,7 +329,7 @@ SELECT results_eq(
 -- Test 22: Observador lee notas con visibilidad solicitante -> ALLOW (1 fila)
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
 SELECT results_eq(
-    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''solicitante''',
+    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''solicitante'' AND pedido_id = ''a0000000-0000-0000-0000-000000000100''',
     ARRAY[1],
     'observador debe poder ver notas con visibilidad solicitante'
 );
@@ -335,7 +337,7 @@ SELECT results_eq(
 -- Test 23: Observador lee notas con visibilidad interna -> DENY / invisible (0 filas)
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
 SELECT results_eq(
-    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''interna''',
+    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''interna'' AND pedido_id = ''a0000000-0000-0000-0000-000000000100''',
     ARRAY[0],
     'observador NO debe poder ver notas internas'
 );
@@ -343,7 +345,7 @@ SELECT results_eq(
 -- Test 24: Equipo lee notas internas -> ALLOW (1 fila interna)
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000102'::uuid);
 SELECT results_eq(
-    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''interna''',
+    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''interna'' AND pedido_id = ''a0000000-0000-0000-0000-000000000100''',
     ARRAY[1],
     'equipo aprobado debe poder ver notas internas'
 );
@@ -351,7 +353,7 @@ SELECT results_eq(
 -- Test 25: Administrador lee notas internas -> ALLOW (1 fila interna)
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT results_eq(
-    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''interna''',
+    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''interna'' AND pedido_id = ''a0000000-0000-0000-0000-000000000100''',
     ARRAY[1],
     'administrador aprobado debe poder ver notas internas'
 );

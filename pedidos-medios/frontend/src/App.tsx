@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppRouter } from './router';
+import { AuthProvider } from './auth/AuthContext';
 import './styles/app.css';
 
 interface ErrorBoundaryProps {
@@ -48,7 +49,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 export const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <AppRouter />
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
     </ErrorBoundary>
   );
 };

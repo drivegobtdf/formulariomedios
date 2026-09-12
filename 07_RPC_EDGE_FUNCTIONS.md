@@ -177,7 +177,7 @@ Solo Finalizado/Cancelado. Modifica campos de archivado, no `estado`.
 `info_request_create`:
 - PED;
 - mensaje;
-- vigencia 15 días;
+- vigencia 48 horas corridas (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas);
 - token hash;
 - evento.
 No cambia estado.

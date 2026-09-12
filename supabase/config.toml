@@ -57,3 +57,15 @@ verify_jwt = false
 
 [functions.drive-download]
 verify_jwt = true
+
+[functions.tracking-get]
+verify_jwt = false
+
+[functions.tracking-recover]
+verify_jwt = false
+
+[functions.info-token-validate]
+verify_jwt = false
+
+[functions.info-response-submit]
+verify_jwt = false

@@ -187,10 +187,10 @@ Roles: administrador, equipo, observador.
 - solicitada_por uuid;
 - mensaje;
 - token_hash UNIQUE;
-- estado;
-- expires_at;
+- estado (pendiente, respondida, vencida);
+- expires_at (created_at + interval '48 hours', Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas);
 - respuesta_texto;
-- responded_at;
+- respondida_at;
 - created_at.
 
 No necesita `servicio_id` en v3.

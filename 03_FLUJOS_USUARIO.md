@@ -86,7 +86,7 @@ Equipo/Admin
 → PED conserva estado salvo acción explícita
 ```
 
-A los 15 días una solicitud pendiente puede marcarse vencida.
+A las 48 horas corridas una solicitud pendiente se marca vencida (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas). A partir de now >= expires_at, una nueva respuesta debe rechazarse.
 
 ## 7. Solicitar acceso
 
