@@ -85,6 +85,7 @@ cp .env.example .env
 | `npm run test:e2e` | Ejecuta pruebas de humo E2E con Playwright |
 | `npm run test:php` | Valida sintaxis PHP 8.2 en todos los archivos del plugin |
 | `npm run test:db` | Ejecuta la suite de pruebas pgTAP de PostgreSQL en Supabase |
+| `npm run test:auth-integration` | Ejecuta pruebas de integración real contra Supabase Auth y PostgREST local |
 | `npm run db:start` | Inicia el stack local de Supabase (`supabase start`) |
 | `npm run db:stop` | Detiene el stack local de Supabase (`supabase stop`) |
 | `npm run db:reset` | Resetea la base local, reaplica migraciones y ejecuta `seed.sql` |
@@ -113,7 +114,7 @@ cp .env.example .env
 | **F0** | Congelar revisión 3.0 y OPENs | COMPLETADO |
 | **F1** | Skeleton del repositorio y toolchain reproducible | **COMPLETADO** |
 | **F2** | Supabase schema v3 (PostgreSQL, migraciones, constraints, índices, seed, pgTAP) | **COMPLETADO** |
-| **F3** | Auth / RBAC / RLS (Esquema private, triggers, policies fail-closed, RPCs admin, allow/deny pgTAP) | **COMPLETADO** |
+| **F3** | Auth / RBAC / RLS (Esquema private, triggers, policies fail-closed, RPCs admin, allow/deny pgTAP & integration) | **COMPLETADO** |
 | **F4** | Secuencia + creación multi-PED | Pendiente |
 | **F5** | Google OAuth / Drive spike | Pendiente |
 | **F6** | Formulario público 8 categorías | Pendiente |
@@ -126,13 +127,15 @@ cp .env.example .env
 | **F13** | Release / Cutover | Pendiente |
 
 > [!NOTE]
-> En la Fase F3 actual, la seguridad de autenticación, autorización y RLS está completamente implementada y verificada:
-> 1. Principio de mínimo privilegio con revocación masiva de privilegios directos a roles de browser (`anon`, `authenticated`).
-> 2. Esquema no expuesto `private` con funciones `SECURITY DEFINER` para evaluación segura de roles en tiempo real (`private.is_approved()`, `private.is_admin()`, etc.).
-> 3. Matriz de políticas RLS restrictivas sobre las 18 tablas (fail-closed, 0 mutaciones directas de browser).
-> 4. Trigger de signup seguro sobre `auth.users` validando metadata requerida (`nombre`, `apellido`, `nombre_usuario` con regex `^[a-z0-9._-]{2,30}$`).
-> 5. RPCs administrativas auditadas en `public.audit_log` (`admin_approve_user`, `admin_reject_user`, `admin_revoke_user`, `admin_change_user_role`, `admin_change_username`).
-> 6. Suite completa pgTAP (85 tests: 47 schema + 38 RLS) y suite Vitest frontend (17 tests).
+> En la Fase F3 actual, la seguridad de autenticación, autorización y RLS está completamente implementada, endurecida y verificada:
+> 1. **Principio de Mínimo Privilegio**: Tablas técnicas e infraestructura (`upload_reservations`, `domain_events`, `comunicaciones_pedido`, `pedido_sequences`) tienen denegado el acceso directo de SELECT desde cualquier rol de browser (`anon`, `authenticated`).
+> 2. **Visibilidad Estricta de Notas**: Observador solo puede leer notas con visibilidad `solicitante`; las notas `interna` quedan reservadas exclusivamente a `equipo` y `administrador`.
+> 3. **Aislamiento de Perfiles**: Usuarios en estado `pendiente`, `rechazado` o `revocado` solo pueden consultar su propio perfil; el acceso a datos de pedidos está completamente bloqueado.
+> 4. **Revocación Inmediata con el Mismo JWT**: Verificada tanto en pgTAP como en integration tests reales con `@supabase/supabase-js`.
+> 5. **Protección contra Lockout (`LAST_ADMIN_PROTECTED`)**: Ninguna RPC administrativa permite revocar, degradar o rechazar al único administrador aprobado restante.
+> 6. **OPEN-015 Permanece ABIERTO**: El bootstrap productivo del primer administrador y los procedimientos de recuperación de emergencia continúan documentados como punto abierto formal.
+> 7. **Suites de Pruebas**: 117 tests pgTAP (47 schema + 70 RLS), 6 tests de integración real Auth/RLS, 17 tests unitarios frontend y 2 tests E2E.
+
 
 
 ---

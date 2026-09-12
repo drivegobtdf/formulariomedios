@@ -1,5 +1,5 @@
 -- ==============================================================================
--- DATABASE TESTS (pgTAP): Supabase Auth, RBAC & RLS Test Suite
+-- DATABASE TESTS (pgTAP): Supabase Auth, RBAC, RLS & Hardened Security Suite
 -- Proyecto: PEDIDOS — Secretaría de Medios (Revisión 3.0)
 -- ==============================================================================
 
@@ -7,20 +7,21 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(38);
+SELECT plan(70);
 
 -- -----------------------------------------------------------------------------
 -- 0. Preparación de Fixtures Sintéticos de Autenticación
 -- -----------------------------------------------------------------------------
 
 -- IDs sintéticos fijos (UUIDv4 válidos)
--- Admin:      00000000-0000-0000-0000-000000000101
--- Equipo:     00000000-0000-0000-0000-000000000102
--- Observador: 00000000-0000-0000-0000-000000000103
--- Pendiente:  00000000-0000-0000-0000-000000000104
--- Rechazado:  00000000-0000-0000-0000-000000000105
--- Revocado:   00000000-0000-0000-0000-000000000106
--- Sin Perfil: 00000000-0000-0000-0000-000000000107
+-- Admin 1:     00000000-0000-0000-0000-000000000101
+-- Equipo:      00000000-0000-0000-0000-000000000102
+-- Observador:  00000000-0000-0000-0000-000000000103
+-- Pendiente:   00000000-0000-0000-0000-000000000104
+-- Rechazado:   00000000-0000-0000-0000-000000000105
+-- Revocado:    00000000-0000-0000-0000-000000000106
+-- Sin Perfil:  00000000-0000-0000-0000-000000000107
+-- Admin 2:     00000000-0000-0000-0000-000000000108
 
 INSERT INTO auth.users (id, email) VALUES
     ('00000000-0000-0000-0000-000000000101', 'admin.test@example.invalid'),
@@ -29,7 +30,8 @@ INSERT INTO auth.users (id, email) VALUES
     ('00000000-0000-0000-0000-000000000104', 'pendiente.test@example.invalid'),
     ('00000000-0000-0000-0000-000000000105', 'rechazado.test@example.invalid'),
     ('00000000-0000-0000-0000-000000000106', 'revocado.test@example.invalid'),
-    ('00000000-0000-0000-0000-000000000107', 'sinperfil.test@example.invalid')
+    ('00000000-0000-0000-0000-000000000107', 'sinperfil.test@example.invalid'),
+    ('00000000-0000-0000-0000-000000000108', 'admin2.test@example.invalid')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.usuarios_acceso (user_id, nombre, apellido, nombre_usuario, estado_acceso, app_role) VALUES
@@ -38,7 +40,8 @@ INSERT INTO public.usuarios_acceso (user_id, nombre, apellido, nombre_usuario, e
     ('00000000-0000-0000-0000-000000000103', 'Observador', 'Test', 'observador.test', 'aprobado', 'observador'),
     ('00000000-0000-0000-0000-000000000104', 'Pendiente', 'Test', 'pendiente.test', 'pendiente', 'observador'),
     ('00000000-0000-0000-0000-000000000105', 'Rechazado', 'Test', 'rechazado.test', 'rechazado', 'observador'),
-    ('00000000-0000-0000-0000-000000000106', 'Revocado', 'Test', 'revocado.test', 'revocado', 'equipo')
+    ('00000000-0000-0000-0000-000000000106', 'Revocado', 'Test', 'revocado.test', 'revocado', 'equipo'),
+    ('00000000-0000-0000-0000-000000000108', 'Admin2', 'Test', 'admin2.test', 'aprobado', 'administrador')
 ON CONFLICT (user_id) DO UPDATE SET
     estado_acceso = EXCLUDED.estado_acceso,
     app_role = EXCLUDED.app_role;
@@ -75,10 +78,17 @@ INSERT INTO public.pedidos (
     'token_h_rls_100'
 ) ON CONFLICT DO NOTHING;
 
+-- Insertar notas de prueba: una para solicitante y una interna
+INSERT INTO public.notas_pedido (id, pedido_id, autor_user_id, visibilidad, texto) VALUES
+    ('d0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000100', '00000000-0000-0000-0000-000000000102', 'solicitante', 'Nota publica para el solicitante'),
+    ('d0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000100', '00000000-0000-0000-0000-000000000102', 'interna', 'Nota estrictamente interna de equipo')
+ON CONFLICT DO NOTHING;
+
 -- -----------------------------------------------------------------------------
 -- Helper PL/pgSQL para simular contexto de sesión Supabase Auth
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION pg_temp.set_auth_context(p_user_id uuid, p_role text DEFAULT 'authenticated')
+-- Note: set search_path to public so pgtap functions remain accessible
 RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
     IF p_user_id IS NULL THEN
@@ -94,7 +104,7 @@ END;
 $$;
 
 -- -----------------------------------------------------------------------------
--- 1. Tests de Catálogos (anon vs authenticated)
+-- 1. Tests de Catálogos (anon vs authenticated) [Tests 1..3]
 -- -----------------------------------------------------------------------------
 
 -- Test 1: anon puede leer categorías activas
@@ -123,7 +133,7 @@ SELECT throws_ok(
 );
 
 -- -----------------------------------------------------------------------------
--- 2. Tests de Dominio Pedidos: Matriz RLS por Actor
+-- 2. Tests de Dominio Pedidos: Matriz RLS por Actor [Tests 4..11]
 -- -----------------------------------------------------------------------------
 
 -- Test 4: anon -> SELECT pedidos DENY (error 42501 por falta de GRANT)
@@ -189,7 +199,7 @@ SELECT isnt_empty(
 );
 
 -- -----------------------------------------------------------------------------
--- 3. Tests de Mutaciones Directas sobre Pedidos (Denegadas a Todos los Browser Roles)
+-- 3. Tests de Mutaciones Directas sobre Pedidos (Denegadas a Todos los Browser Roles) [Tests 12..14]
 -- -----------------------------------------------------------------------------
 
 -- Test 12: observador INSERT pedidos DENY
@@ -221,7 +231,7 @@ SELECT throws_ok(
 );
 
 -- -----------------------------------------------------------------------------
--- 4. Tests de Perfiles y usuarios_acceso (Self vs Admin vs Otros)
+-- 4. Tests de Perfiles y usuarios_acceso (Self vs Admin vs Otros) [Tests 15..19]
 -- -----------------------------------------------------------------------------
 
 -- Test 15: pendiente puede leer ÚNICAMENTE su propio perfil (count = 1)
@@ -265,7 +275,7 @@ SELECT throws_ok(
 );
 
 -- -----------------------------------------------------------------------------
--- 5. Test de Revocación Inmediata (SRS-AUTH-010)
+-- 5. Test de Revocación Inmediata (SRS-AUTH-010) [Tests 20..21]
 -- -----------------------------------------------------------------------------
 
 RESET ROLE;
@@ -303,12 +313,57 @@ SELECT results_eq(
 );
 
 -- -----------------------------------------------------------------------------
--- 6. Tests de Observador Write Deny en Tablas Operativas
+-- 6. Tests de Visibilidad de Notas de Pedido (Observador vs Equipo vs Admin) [Tests 22..26]
+-- -----------------------------------------------------------------------------
+
+-- Test 22: Observador lee notas con visibilidad solicitante -> ALLOW (1 fila)
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
+SELECT results_eq(
+    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''solicitante''',
+    ARRAY[1],
+    'observador debe poder ver notas con visibilidad solicitante'
+);
+
+-- Test 23: Observador lee notas con visibilidad interna -> DENY / invisible (0 filas)
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
+SELECT results_eq(
+    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''interna''',
+    ARRAY[0],
+    'observador NO debe poder ver notas internas'
+);
+
+-- Test 24: Equipo lee notas internas -> ALLOW (1 fila interna)
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000102'::uuid);
+SELECT results_eq(
+    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''interna''',
+    ARRAY[1],
+    'equipo aprobado debe poder ver notas internas'
+);
+
+-- Test 25: Administrador lee notas internas -> ALLOW (1 fila interna)
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT results_eq(
+    'SELECT count(*)::integer FROM public.notas_pedido WHERE visibilidad = ''interna''',
+    ARRAY[1],
+    'administrador aprobado debe poder ver notas internas'
+);
+
+-- Test 26: anon no tiene grant para leer notas_pedido -> throws 42501
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok(
+    'SELECT count(*)::integer FROM public.notas_pedido',
+    '42501',
+    NULL,
+    'anon debe tener denegado el acceso a notas_pedido (42501)'
+);
+
+-- -----------------------------------------------------------------------------
+-- 7. Tests de Observador Write Deny en Tablas Operativas [Tests 27..31]
 -- -----------------------------------------------------------------------------
 
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
 
--- Test 22: Observador no puede escribir notas
+-- Test 27: Observador no puede escribir notas
 SELECT throws_ok(
     $$INSERT INTO public.notas_pedido (pedido_id, autor_user_id, visibilidad, texto) VALUES ('a0000000-0000-0000-0000-000000000100', '00000000-0000-0000-0000-000000000103', 'interna', 'Nota obs')$$,
     '42501',
@@ -316,7 +371,7 @@ SELECT throws_ok(
     'observador debe tener denegado INSERT sobre notas_pedido'
 );
 
--- Test 23: Observador no puede escribir asignaciones
+-- Test 28: Observador no puede escribir asignaciones
 SELECT throws_ok(
     $$INSERT INTO public.pedido_asignaciones (pedido_id, responsable_nuevo, asignado_por) VALUES ('a0000000-0000-0000-0000-000000000100', '00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000103')$$,
     '42501',
@@ -324,7 +379,7 @@ SELECT throws_ok(
     'observador debe tener denegado INSERT sobre pedido_asignaciones'
 );
 
--- Test 24: Observador no puede escribir archivos
+-- Test 29: Observador no puede escribir archivos
 SELECT throws_ok(
     $$INSERT INTO public.archivos (nombre_original, mime_type, size_bytes, contexto, estado) VALUES ('doc.pdf', 'application/pdf', 100, 'solicitud', 'uploaded')$$,
     '42501',
@@ -332,7 +387,7 @@ SELECT throws_ok(
     'observador debe tener denegado INSERT sobre archivos'
 );
 
--- Test 25: Observador no puede escribir entregas
+-- Test 30: Observador no puede escribir entregas
 SELECT throws_ok(
     $$INSERT INTO public.entregas_pedido (pedido_id, enlace_externo, entregado_por) VALUES ('a0000000-0000-0000-0000-000000000100', 'https://drive.google.com/test', '00000000-0000-0000-0000-000000000103')$$,
     '42501',
@@ -340,7 +395,7 @@ SELECT throws_ok(
     'observador debe tener denegado INSERT sobre entregas_pedido'
 );
 
--- Test 26: Observador no puede escribir solicitudes de información
+-- Test 31: Observador no puede escribir solicitudes de información
 SELECT throws_ok(
     $$INSERT INTO public.solicitudes_informacion (pedido_id, solicitada_por, mensaje, token_hash, estado, expires_at) VALUES ('a0000000-0000-0000-0000-000000000100', '00000000-0000-0000-0000-000000000103', 'Falta logo', 'tok_obs', 'pendiente', now() + interval '3 days')$$,
     '42501',
@@ -349,10 +404,86 @@ SELECT throws_ok(
 );
 
 -- -----------------------------------------------------------------------------
--- 7. Tests de Funciones RPC Administrativas (Admin vs No-Admin)
+-- 8. Tests de Tablas Técnicas e Infraestructura: Mínimo Privilegio [Tests 32..52]
 -- -----------------------------------------------------------------------------
 
--- Test 27: No-Admin (Equipo) no puede aprobar usuarios
+-- A. upload_reservations (DENY a todos los roles de browser)
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok('SELECT count(*)::integer FROM public.upload_reservations', '42501', NULL, 'anon no debe tener acceso directo a upload_reservations');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.upload_reservations', '42501', NULL, 'observador no debe tener acceso directo a upload_reservations');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000102'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.upload_reservations', '42501', NULL, 'equipo no debe tener acceso directo a upload_reservations');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.upload_reservations', '42501', NULL, 'admin no debe tener SELECT directo sobre upload_reservations');
+
+-- B. domain_events (DENY a todos los roles de browser)
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok('SELECT count(*)::integer FROM public.domain_events', '42501', NULL, 'anon no debe tener acceso directo a domain_events');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.domain_events', '42501', NULL, 'observador no debe tener acceso directo a domain_events');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000102'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.domain_events', '42501', NULL, 'equipo no debe tener acceso directo a domain_events');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.domain_events', '42501', NULL, 'admin no debe tener SELECT directo sobre domain_events');
+
+-- C. comunicaciones_pedido (DENY a todos los roles de browser)
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok('SELECT count(*)::integer FROM public.comunicaciones_pedido', '42501', NULL, 'anon no debe tener acceso directo a comunicaciones_pedido');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.comunicaciones_pedido', '42501', NULL, 'observador no debe tener acceso directo a comunicaciones_pedido');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000102'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.comunicaciones_pedido', '42501', NULL, 'equipo no debe tener acceso directo a comunicaciones_pedido');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.comunicaciones_pedido', '42501', NULL, 'admin no debe tener SELECT directo sobre comunicaciones_pedido');
+
+-- D. pedido_sequences (DENY a todos los roles de browser)
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok('SELECT count(*)::integer FROM public.pedido_sequences', '42501', NULL, 'anon no debe tener acceso directo a pedido_sequences');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.pedido_sequences', '42501', NULL, 'observador no debe tener acceso directo a pedido_sequences');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000102'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.pedido_sequences', '42501', NULL, 'equipo no debe tener acceso directo a pedido_sequences');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT throws_ok('SELECT count(*)::integer FROM public.pedido_sequences', '42501', NULL, 'admin no debe tener SELECT directo sobre pedido_sequences');
+
+-- E. audit_log
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok('SELECT count(*)::integer FROM public.audit_log', '42501', NULL, 'anon no debe tener acceso directo a audit_log');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
+SELECT results_eq('SELECT count(*)::integer FROM public.audit_log', ARRAY[0], 'observador debe tener 0 filas devueltas en audit_log');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000102'::uuid);
+SELECT results_eq('SELECT count(*)::integer FROM public.audit_log', ARRAY[0], 'equipo debe tener 0 filas devueltas en audit_log');
+
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT lives_ok('SELECT count(*)::integer FROM public.audit_log', 'admin debe poder consultar audit_log');
+
+SELECT throws_ok(
+    $$INSERT INTO public.audit_log (recurso_tipo, recurso_id, accion) VALUES ('test', '1', 'test')$$,
+    '42501',
+    NULL,
+    'admin no debe tener permiso de INSERT directo en audit_log'
+);
+
+-- -----------------------------------------------------------------------------
+-- 9. Tests de Funciones RPC Administrativas (Admin vs No-Admin) [Tests 53..60]
+-- -----------------------------------------------------------------------------
+
+-- Test 53: No-Admin (Equipo) no puede aprobar usuarios
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000102'::uuid);
 SELECT throws_ok(
     $$SELECT public.admin_approve_user('00000000-0000-0000-0000-000000000104', 'equipo')$$,
@@ -361,14 +492,14 @@ SELECT throws_ok(
     'usuario no-admin no puede ejecutar admin_approve_user'
 );
 
--- Test 28: Administrador puede aprobar usuario y asignar rol
+-- Test 54: Administrador puede aprobar usuario y asignar rol
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT lives_ok(
     $$SELECT public.admin_approve_user('00000000-0000-0000-0000-000000000104', 'equipo')$$,
     'administrador debe poder aprobar usuario y asignar rol'
 );
 
--- Test 29: Verificar que el usuario quedó aprobado con el rol asignado
+-- Test 55: Verificar que el usuario quedó aprobado con el rol asignado
 RESET ROLE;
 SELECT results_eq(
     'SELECT estado_acceso, app_role FROM public.usuarios_acceso WHERE user_id = ''00000000-0000-0000-0000-000000000104''',
@@ -376,44 +507,35 @@ SELECT results_eq(
     'usuario debe registrar estado aprobado y rol equipo tras admin_approve_user'
 );
 
--- Test 30: Administrador puede cambiar rol de usuario
+-- Test 56: Administrador puede cambiar rol de usuario
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT lives_ok(
     $$SELECT public.admin_change_user_role('00000000-0000-0000-0000-000000000104', 'observador')$$,
     'administrador debe poder cambiar rol de usuario'
 );
 
--- Test 31: Administrador puede cambiar nombre de usuario
+-- Test 57: Administrador puede cambiar nombre de usuario
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT lives_ok(
     $$SELECT public.admin_change_username('00000000-0000-0000-0000-000000000104', 'pendiente.renombrado')$$,
     'administrador debe poder cambiar nombre_usuario'
 );
 
--- Test 32: Administrador puede rechazar usuario
+-- Test 58: Administrador puede rechazar usuario
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT lives_ok(
     $$SELECT public.admin_reject_user('00000000-0000-0000-0000-000000000105', 'No cumple requisitos')$$,
     'administrador debe poder rechazar usuario'
 );
 
--- Test 33: Administrador puede revocar usuario con motivo
+-- Test 59: Administrador puede revocar usuario con motivo
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT lives_ok(
     $$SELECT public.admin_revoke_user('00000000-0000-0000-0000-000000000104', 'Fin de funciones en el área')$$,
     'administrador debe poder revocar usuario con motivo'
 );
 
--- Test 34: Administrador no puede auto-revocarse (protección básica lockout)
-SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
-SELECT throws_ok(
-    $$SELECT public.admin_revoke_user('00000000-0000-0000-0000-000000000101', 'Auto-revocacion')$$,
-    '42501',
-    NULL,
-    'administrador no debe poder auto-revocarse directamente'
-);
-
--- Test 35: Verificar que las operaciones administrativas registraron auditoría
+-- Test 60: Verificar que las operaciones administrativas registraron auditoría
 RESET ROLE;
 SELECT isnt_empty(
     'SELECT * FROM public.audit_log WHERE accion = ''user.approved''',
@@ -421,10 +543,81 @@ SELECT isnt_empty(
 );
 
 -- -----------------------------------------------------------------------------
--- 8. Tests de Trigger de Signup en auth.users
+-- 10. Tests de Protección del Último Administrador (LAST_ADMIN_PROTECTED / OPEN-015) [Tests 61..64]
 -- -----------------------------------------------------------------------------
 
--- Test 36: Signup válido crea perfil pendiente en usuarios_acceso
+-- Test 61: Con 2 administradores aprobados (Admin 1 y Admin 2), Admin 1 puede cambiar rol de Admin 2
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT lives_ok(
+    $$SELECT public.admin_change_user_role('00000000-0000-0000-0000-000000000108', 'equipo')$$,
+    'con 2 administradores, se permite cambiar el rol de uno si persiste al menos 1 administrador aprobado'
+);
+
+-- Test 62: Ahora queda un único Administrador aprobado (Admin 1). Intentar auto-degradarse debe ser RECHAZADO
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT throws_ok(
+    $$SELECT public.admin_change_user_role('00000000-0000-0000-0000-000000000101', 'equipo')$$,
+    '42501',
+    NULL,
+    'LAST_ADMIN_PROTECTED: no se debe permitir degradar al único administrador aprobado del sistema'
+);
+
+-- Test 63: Intentar auto-revocarse como único Administrador debe ser RECHAZADO
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT throws_ok(
+    $$SELECT public.admin_revoke_user('00000000-0000-0000-0000-000000000101', 'Auto-revocacion')$$,
+    '42501',
+    NULL,
+    'LAST_ADMIN_PROTECTED: un administrador no puede auto-revocarse directamente'
+);
+
+-- Test 64: Intentar rechazar al único Administrador debe ser RECHAZADO
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT throws_ok(
+    $$SELECT public.admin_reject_user('00000000-0000-0000-0000-000000000101', 'Rechazo lockout')$$,
+    '42501',
+    NULL,
+    'LAST_ADMIN_PROTECTED: no se debe permitir rechazar/desactivar al único administrador aprobado'
+);
+
+-- -----------------------------------------------------------------------------
+-- 11. Tests de Seguridad sobre Definición de Funciones y Grants EXECUTE [Tests 65..67]
+-- -----------------------------------------------------------------------------
+
+-- Test 65: handle_new_user_signup NO debe ser ejecutable por anon ni authenticated
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok(
+    $$SELECT public.handle_new_user_signup()$$,
+    '42501',
+    NULL,
+    'handle_new_user_signup no debe ser ejecutable directamente por anon'
+);
+
+-- Test 66: admin_approve_user no debe ser ejecutable por anon
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok(
+    $$SELECT public.admin_approve_user('00000000-0000-0000-0000-000000000104', 'equipo')$$,
+    '42501',
+    NULL,
+    'admin_approve_user no debe ser ejecutable por anon'
+);
+
+-- Test 67: private.is_admin no debe ser ejecutable por anon
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok(
+    $$SELECT private.is_admin()$$,
+    '42501',
+    NULL,
+    'funciones de esquema private no deben ser accesibles directamente por anon'
+);
+
+-- -----------------------------------------------------------------------------
+-- 12. Tests de Trigger de Signup en auth.users [Tests 68..70]
+-- -----------------------------------------------------------------------------
+
+RESET ROLE;
+
+-- Test 68: Signup válido crea perfil pendiente en usuarios_acceso
 DO $$
 DECLARE
     v_new_id uuid := '00000000-0000-0000-0000-000000000201';
@@ -444,7 +637,7 @@ SELECT results_eq(
     'Signup debe crear automáticamente un perfil en estado pendiente con rol observador base'
 );
 
--- Test 37: Signup con username inválido debe abortar la transacción
+-- Test 69: Signup con username inválido debe abortar la transacción
 SELECT throws_ok(
     $$INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES (gen_random_uuid(), 'bad@example.invalid', '{"nombre": "A", "apellido": "B", "nombre_usuario": "USER_CON_MAYUSCULAS"}'::jsonb)$$,
     '23514',
@@ -452,7 +645,7 @@ SELECT throws_ok(
     'Signup con nombre_usuario con formato inválido debe ser rechazado'
 );
 
--- Test 38: Signup con username duplicado debe abortar la transacción
+-- Test 70: Signup con username duplicado debe abortar la transacción
 SELECT throws_ok(
     $$INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES (gen_random_uuid(), 'dup@example.invalid', '{"nombre": "Otro", "apellido": "Usuario", "nombre_usuario": "laura.fernandez"}'::jsonb)$$,
     '23505',
@@ -463,4 +656,3 @@ SELECT throws_ok(
 SELECT * FROM finish();
 
 ROLLBACK;
-

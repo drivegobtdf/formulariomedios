@@ -8,7 +8,10 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./pedidos-medios/frontend/src/__tests__/setup.ts'],
-    include: ['pedidos-medios/frontend/src/**/*.{test,spec}.{ts,tsx}'],
+    include: [
+      'pedidos-medios/frontend/src/**/*.{test,spec}.{ts,tsx}',
+      'tests/integration/**/*.{test,spec}.{ts,tsx}',
+    ],
   },
   resolve: {
     alias: {
