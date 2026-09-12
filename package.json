@@ -27,6 +27,7 @@
     "test:db": "supabase test db",
     "test:auth-integration": "vitest run tests/integration/auth-local.test.ts",
     "test:submission-concurrency": "vitest run tests/integration/submission-concurrency-local.test.ts",
+    "test:drive-integration": "vitest run tests/integration/drive-upload-local.test.ts",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
