@@ -12,7 +12,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './pedidos-medios/frontend/src'),
+      '@': path.resolve(import.meta.dirname, './pedidos-medios/frontend/src'),
     },
   },
 });

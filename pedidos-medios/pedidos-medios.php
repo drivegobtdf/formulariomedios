@@ -4,7 +4,7 @@
  * Plugin URI:        https://github.com/drivegobtdf/formulariomedios
  * Description:       App frontend y host de integración institucional para el sistema de PEDIDOS (Secretaría de Medios - Gobierno de Tierra del Fuego AIAS).
  * Version:           0.1.0-alpha
- * Requires at least: 6.0
+ * Requires at least: 7.0
  * Requires PHP:      8.2
  * Author:            Secretaría de Medios — Gobierno de Tierra del Fuego AIAS
  * Author URI:        https://www.tierradelfuego.gob.ar

@@ -1,7 +1,7 @@
 === Pedidos — Secretaría de Medios ===
 Contributors: drivegobtdf
 Tags: pedidos, medios, gobierno, forms, supabase
-Requires at least: 6.0
+Requires at least: 7.0
 Tested up to: 7.0.2
 Requires PHP: 8.2
 Stable tag: 0.1.0-alpha
@@ -19,6 +19,12 @@ Arquitectura: WSN-GD-v2 (WordPress + Supabase + n8n + Google Drive).
 - Google Drive: almacenamiento de binarios.
 - n8n: notificaciones por correo y flujos asíncronos.
 
+Baseline de compatibilidad objetivo auditado en producción:
+- WordPress: 7.0.2 (Requires at least: 7.0; Tested up to indica paridad de baseline institucional)
+- PHP: 8.2.31 / 8.2.x
+- Betheme: 28.5.7
+- Elementor: 4.2.3 / Elementor Pro 3.33.1
+
 == Installation ==
 
 1. Subir la carpeta `pedidos-medios` al directorio `/wp-content/plugins/` o instalar el archivo ZIP desde el panel de WordPress.
@@ -28,4 +34,4 @@ Arquitectura: WSN-GD-v2 (WordPress + Supabase + n8n + Google Drive).
 == Changelog ==
 
 = 0.1.0-alpha =
-* Versión inicial: Fase F1 (skeleton de repositorio, app shell, shortcode y toolchain Vite/React/TypeScript).
+* Versión inicial: Fase F1 (skeleton de repositorio, app shell, shortcode y toolchain Vite 8 / React 19.3 / TypeScript).

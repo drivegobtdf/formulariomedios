@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Sistema PEDIDOS — Secretaría de Medios (Gobierno de Tierra del Fuego AIAS) - Monorepo & Toolchain",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "workspaces": [
     "pedidos-medios/frontend"
   ],
@@ -20,6 +23,7 @@
     "test:unit:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:php": "node scripts/lint-php.js",
     "supabase": "supabase",
     "supabase:status": "supabase status"
   },
@@ -29,6 +33,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^22.13.9",
+    "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9.21.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.1.0",
@@ -38,6 +43,6 @@
     "supabase": "^2.15.8",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.25.0",
-    "vitest": "^3.0.7"
+    "vitest": "^5.0.0"
   }
 }
