@@ -1,0 +1,130 @@
+{
+  "project": "PEDIDOS — Secretaría de Medios",
+  "revision": "3.0",
+  "date": "2026-09-11",
+  "architecture": "PEDIDOS-WSN-GD-v2",
+  "status": "documentación actualizada; implementación no verificada",
+  "source_baseline": {
+    "canonical_archive": "DOCUMENTOS_CANONICOS.rar",
+    "work_archive": "FUENTES_WORK.rar",
+    "baseline_revision": "2.0",
+    "uploaded_and_inspected": true
+  },
+  "files": [
+    {
+      "name": "00A_SRS.md",
+      "sha256": "664ec2f650a8970d177aac718a5711a737f19d6b4a09cbc0c4bdd46bb5119fa4",
+      "bytes": 17142
+    },
+    {
+      "name": "00_PRD.md",
+      "sha256": "70488c2744f8151349d585cbc4c4716cccd71030d50d63a5c9b80db7feca7ba9",
+      "bytes": 7979
+    },
+    {
+      "name": "01_ARQUITECTURA_OFICIAL.md",
+      "sha256": "3513407559106cb7b06621fd04f166366f106de71adbef529233526e2000ccd3",
+      "bytes": 7236
+    },
+    {
+      "name": "02_REQUISITOS_FUNCIONALES.md",
+      "sha256": "e11ed21e4ebd33b7da31983729e9354b383a3b9a7f6e412def2bcd523985358a",
+      "bytes": 4442
+    },
+    {
+      "name": "03_FLUJOS_USUARIO.md",
+      "sha256": "4c206fc5f57a4759464313ec431e6b8357cdfe803c12774b2e6d2b77d035e8e0",
+      "bytes": 5119
+    },
+    {
+      "name": "04_UI_UX_Y_PANTALLAS.md",
+      "sha256": "64265ee0764fa0cc5c1aad1ac5fdc41460d803d71f53d8d2505ed376cff48053",
+      "bytes": 5288
+    },
+    {
+      "name": "05_MODELO_DATOS_SUPABASE.md",
+      "sha256": "4833fa66ae59a384dfa0b05805dc16c8b7e2c6bba1e1d50874687d06f31e16e1",
+      "bytes": 9097
+    },
+    {
+      "name": "06_AUTENTICACION_RBAC_RLS.md",
+      "sha256": "1aa8cd31e735214bddbdf709b4adff3c71742bb23db56a93c69f711dc8d486c3",
+      "bytes": 4539
+    },
+    {
+      "name": "07_RPC_EDGE_FUNCTIONS.md",
+      "sha256": "6db098a2ff809d67937abff1e04f0c8b55c978857b70797b24a79e6d3dc40495",
+      "bytes": 6698
+    },
+    {
+      "name": "08_STORAGE_ARCHIVOS.md",
+      "sha256": "37775eebd1fc67d7ec573406743952285312aa0dcd98cef8f940a794145fc65e",
+      "bytes": 4683
+    },
+    {
+      "name": "09_EVENTOS_QUEUES_N8N.md",
+      "sha256": "3cc63ed33b99e7cf320a3a84b0ec942bf035507a758501c02346b8762a6908d2",
+      "bytes": 4035
+    },
+    {
+      "name": "10_PLUGIN_WORDPRESS.md",
+      "sha256": "22e49130aa1f1a1c3651c2750c610d6334c471d4708ad55938a1164bf59ab746",
+      "bytes": 3479
+    },
+    {
+      "name": "11_API_Y_CONTRATOS.md",
+      "sha256": "82c9fd0bf338b72cb81ba92d3efabd1f814177b0926cf54496c8c25621a3911c",
+      "bytes": 4152
+    },
+    {
+      "name": "12_SEGURIDAD.md",
+      "sha256": "a105e737847cc0f4ba2b2dc3dbd3df51e3b6721cbd31088a5e62ee4e5de27a72",
+      "bytes": 4258
+    },
+    {
+      "name": "13_ENTORNOS_SECRETOS_DESPLIEGUE.md",
+      "sha256": "e19eb340a0102875bcd8d3315bfb96cb852a18e971ed7d621f878f77420680cb",
+      "bytes": 3636
+    },
+    {
+      "name": "14_PRUEBAS_QA_ACEPTACION.md",
+      "sha256": "e8dc96704d884d90388272eb73b148161b3867fc3ca70e0b86117d0381408127",
+      "bytes": 5983
+    },
+    {
+      "name": "15_PLAN_IMPLEMENTACION.md",
+      "sha256": "abf55c393e463daa4f3cc9b0f0f2d10054c1d48e2516f41eaba6e3d6fb90490f",
+      "bytes": 2664
+    },
+    {
+      "name": "16_MIGRACION_WEWEB.md",
+      "sha256": "c6b3b1bc2675427031e1fde46ffe36405c71e3f28f683d076afefcfce574fd56",
+      "bytes": 3476
+    },
+    {
+      "name": "17_DECISIONES_ARQUITECTURA_ADR.md",
+      "sha256": "228161a2748c0b8fb403285ed1e3d7fca7256f3b1ffea6598087fb6624152793",
+      "bytes": 7522
+    },
+    {
+      "name": "18_TRAZABILIDAD.md",
+      "sha256": "8df5399df9cc655523bc534e80302d05582bec64ad31aef94755d2ea74f20d01",
+      "bytes": 3901
+    },
+    {
+      "name": "19_ESPECIFICACION_FORMULARIO_SERVICIOS.md",
+      "sha256": "9c797be8d4c643848c089d1a9133827c1a544e7914d278644e84616b51e58319",
+      "bytes": 6557
+    },
+    {
+      "name": "20_BASELINE_COMPATIBILIDAD_WORDPRESS_PRODUCCION.md",
+      "sha256": "15a9587dea0a41beaa67f66cd9fa954e420fd77bdea72a655f9b3b24f9e03b1d",
+      "bytes": 2601
+    },
+    {
+      "name": "README.md",
+      "sha256": "1110416d9bb4ea7f727db8a4d905f360a3692beaa2f5ea4d811d99bd6695a88b",
+      "bytes": 3718
+    }
+  ]
+}

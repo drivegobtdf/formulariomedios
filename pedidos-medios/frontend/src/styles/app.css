@@ -1,0 +1,95 @@
+/**
+ * Estilos base del sistema PEDIDOS.
+ * Todos los estilos deben mantenerse estrictamente bajo el namespace .pedidos-app
+ * para evitar cualquier colisión con WordPress, Betheme, Elementor y plugins activos.
+ */
+
+.pedidos-app {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+  line-height: 1.5;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.pedidos-app *,
+.pedidos-app *::before,
+.pedidos-app *::after {
+  box-sizing: border-box;
+}
+
+.pedidos-app .pedidos-header {
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.pedidos-app .pedidos-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.5rem 0;
+}
+
+.pedidos-app .pedidos-nav {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.pedidos-app .pedidos-nav a {
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.375rem;
+  background-color: #f1f5f9;
+  color: #334155;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+
+.pedidos-app .pedidos-nav a:hover,
+.pedidos-app .pedidos-nav a.active {
+  background-color: #0284c7;
+  color: #ffffff;
+}
+
+.pedidos-app .pedidos-placeholder-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  margin-top: 1rem;
+}
+
+.pedidos-app .pedidos-placeholder-card h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.pedidos-app .pedidos-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0.25rem;
+  background-color: #e0f2fe;
+  color: #0369a1;
+  margin-bottom: 1rem;
+}
+
+.pedidos-app .pedidos-meta-info {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #cbd5e1;
+  font-size: 0.75rem;
+  color: #64748b;
+}

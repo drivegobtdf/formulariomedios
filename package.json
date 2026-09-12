@@ -1,0 +1,43 @@
+{
+  "name": "formulariomedios-root",
+  "version": "0.1.0-alpha",
+  "private": true,
+  "type": "module",
+  "description": "Sistema PEDIDOS — Secretaría de Medios (Gobierno de Tierra del Fuego AIAS) - Monorepo & Toolchain",
+  "workspaces": [
+    "pedidos-medios/frontend"
+  ],
+  "scripts": {
+    "dev": "npm --workspace=pedidos-medios-frontend run dev",
+    "build": "npm --workspace=pedidos-medios-frontend run build",
+    "typecheck": "npm --workspace=pedidos-medios-frontend run typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "supabase": "supabase",
+    "supabase:status": "supabase status"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@playwright/test": "^1.50.1",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@types/node": "^22.13.9",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^16.0.0",
+    "jsdom": "^26.0.0",
+    "prettier": "^3.5.3",
+    "supabase": "^2.15.8",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.25.0",
+    "vitest": "^3.0.7"
+  }
+}

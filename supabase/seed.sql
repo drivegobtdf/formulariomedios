@@ -1,0 +1,4 @@
+-- ==============================================================================
+-- PEDIDOS — Secretaría de Medios (Revisión 3.0)
+-- seed.sql — Datos semilla iniciales (F1: Skeleton - sin datos de negocio)
+-- ==============================================================================
