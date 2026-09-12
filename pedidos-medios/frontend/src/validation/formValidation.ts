@@ -1,0 +1,379 @@
+/**
+ * Módulo de validación para el Formulario Público (Revisión 3.0)
+ * Proyecto: PEDIDOS — Secretaría de Medios
+ */
+
+import {
+  FormWizardState,
+  ContactoFormState,
+  CategoriaSlug,
+  FormUploadedFile,
+  FormLinkItem,
+} from '../types/form';
+
+export interface ValidationErrors {
+  [key: string]: string;
+}
+
+export const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+export const URL_REGEX = /^https?:\/\/[^\s$.?#].[^\s]*$/i;
+
+export const MAX_FILES_LIMIT = 10;
+export const MAX_FILE_SIZE_LIMIT = 10 * 1024 * 1024; // 10,485,760 bytes
+
+export const ALLOWED_MIME_TYPES: string[] = [
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/zip',
+];
+
+export const ALLOWED_EXTENSIONS: string[] = ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.zip'];
+
+export function validateFileMetadata(file: { name: string; size: number; type: string }): string | null {
+  if (file.size > MAX_FILE_SIZE_LIMIT) {
+    return `El archivo supera el tamaño máximo permitido de 10 MB (${(file.size / (1024 * 1024)).toFixed(2)} MB).`;
+  }
+
+  const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+  const isAllowedExt = ALLOWED_EXTENSIONS.includes(ext);
+  const isAllowedMime = ALLOWED_MIME_TYPES.includes(file.type.toLowerCase()) || isAllowedExt;
+
+  if (!isAllowedMime && !isAllowedExt) {
+    return `Tipo de archivo no permitido (.${ext.replace('.', '')}). Formatos permitidos: PDF, PNG, JPG, DOCX, ZIP.`;
+  }
+
+  return null;
+}
+
+// -----------------------------------------------------------------------------
+// Paso 1: Contacto y Categorías
+// -----------------------------------------------------------------------------
+
+export function validateStep1(contacto: ContactoFormState, selected_categorias: CategoriaSlug[]): ValidationErrors {
+  const errors: ValidationErrors = {};
+
+  if (!contacto.nombre_apellido || contacto.nombre_apellido.trim().length < 2) {
+    errors.nombre_apellido = 'Ingresá tu nombre y apellido.';
+  }
+
+  if (!contacto.telefono || contacto.telefono.trim().length < 5) {
+    errors.telefono = 'Ingresá un número de teléfono o WhatsApp de contacto válido.';
+  }
+
+  if (!contacto.correo || !EMAIL_REGEX.test(contacto.correo.trim())) {
+    errors.correo = 'Ingresá una dirección de correo electrónico válida.';
+  }
+
+  if (!contacto.area_solicitante || contacto.area_solicitante.trim().length < 2) {
+    errors.area_solicitante = 'Ingresá el área, dirección o dependencia solicitante.';
+  }
+
+  if (!selected_categorias || selected_categorias.length === 0) {
+    errors.selected_categorias = 'Seleccioná al menos un servicio o categoría para solicitar.';
+  }
+
+  return errors;
+}
+
+// -----------------------------------------------------------------------------
+// Paso 2: Detalles específicos de servicios
+// -----------------------------------------------------------------------------
+
+export function validateStep2(state: FormWizardState): ValidationErrors {
+  const errors: ValidationErrors = {};
+
+  for (const cat of state.selected_categorias) {
+    switch (cat) {
+      case 'diseno_grafico': {
+        if (!state.diseno_piezas || state.diseno_piezas.length === 0) {
+          errors['diseno_piezas'] = 'Seleccioná al menos una pieza gráfica a solicitar.';
+          break;
+        }
+
+        for (const pieza of state.diseno_piezas) {
+          switch (pieza) {
+            case 'flyer_rrss': {
+              const data = state.diseno_data?.flyer_rrss;
+              if (!data?.formato || data.formato.trim() === '') {
+                errors['flyer_rrss.formato'] = 'Seleccioná el formato del flyer.';
+              }
+              if (!data?.texto || data.texto.trim().length < 5) {
+                errors['flyer_rrss.texto'] = 'Ingresá el texto o contenido que debe llevar el flyer.';
+              }
+              if (!data?.fecha_limite || data.fecha_limite.trim() === '') {
+                errors['flyer_rrss.fecha_limite'] = 'Indicá la fecha límite o requerida de entrega.';
+              }
+              break;
+            }
+            case 'invitacion_digital': {
+              const data = state.diseno_data?.invitacion_digital;
+              if (!data?.nombre_evento || data.nombre_evento.trim().length < 2) {
+                errors['invitacion_digital.nombre_evento'] = 'Ingresá el nombre del evento.';
+              }
+              if (!data?.fecha || data.fecha.trim() === '') {
+                errors['invitacion_digital.fecha'] = 'Indicá la fecha del evento.';
+              }
+              if (!data?.hora || data.hora.trim() === '') {
+                errors['invitacion_digital.hora'] = 'Indicá el horario del evento.';
+              }
+              if (!data?.lugar || data.lugar.trim().length < 2) {
+                errors['invitacion_digital.lugar'] = 'Indicá el lugar del evento.';
+              }
+              if (!data?.modalidad) {
+                errors['invitacion_digital.modalidad'] = 'Seleccioná la modalidad (Presencial / Virtual / Híbrida).';
+              }
+              if (!data?.programa || data.programa.trim().length < 3) {
+                errors['invitacion_digital.programa'] = 'Ingresá el programa o descripción de la invitación.';
+              }
+              break;
+            }
+            case 'certificado': {
+              const data = state.diseno_data?.certificado;
+              if (!data?.nombre_actividad || data.nombre_actividad.trim().length < 2) {
+                errors['certificado.nombre_actividad'] = 'Ingresá el nombre de la actividad o curso.';
+              }
+              if (!data?.firmantes || data.firmantes.trim().length < 2) {
+                errors['certificado.firmantes'] = 'Ingresá las autoridades o personas firmantes.';
+              }
+              if (!data?.destinatarios || data.destinatarios.trim().length < 2) {
+                errors['certificado.destinatarios'] = 'Ingresá o detallá los destinatarios del certificado.';
+              }
+              break;
+            }
+            case 'otros_diseno': {
+              const data = state.diseno_data?.otros_diseno;
+              if (!data?.descripcion || data.descripcion.trim().length < 5) {
+                errors['otros_diseno.descripcion'] = 'Describí la pieza gráfica que necesitás.';
+              }
+              if (!data?.medidas_soporte || data.medidas_soporte.trim().length < 2) {
+                errors['otros_diseno.medidas_soporte'] = 'Indicá las medidas o soporte técnico (ej: 1x2m, banner, lona, folleto).';
+              }
+              break;
+            }
+          }
+        }
+        break;
+      }
+
+      case 'cobertura_eventos': {
+        const data = state.cobertura_data;
+        if (!data?.fecha || data.fecha.trim() === '') {
+          errors['cobertura.fecha'] = 'Indicá la fecha de la cobertura.';
+        }
+        if (!data?.hora_inicio || data.hora_inicio.trim() === '') {
+          errors['cobertura.hora_inicio'] = 'Indicá la hora de inicio del evento.';
+        }
+        if (!data?.lugar || data.lugar.trim().length < 2) {
+          errors['cobertura.lugar'] = 'Indicá el lugar o dirección donde se realizará.';
+        }
+        if (!data?.ciudad) {
+          errors['cobertura.ciudad'] = 'Seleccioná la ciudad (Ushuaia, Río Grande o Tolhuin).';
+        }
+        if (!data?.autoridades || data.autoridades.trim().length < 2) {
+          errors['cobertura.autoridades'] = 'Indicá las autoridades asistentes o protagonistas.';
+        }
+        if (!data?.requerimientos || data.requerimientos.trim().length < 5) {
+          errors['cobertura.requerimientos'] = 'Detallá los requerimientos de cobertura (fotos, video, testimonios, etc.).';
+        }
+        break;
+      }
+
+      case 'gacetilla': {
+        const data = state.gacetilla_data;
+        if (!data?.referente_contacto || data.referente_contacto.trim().length < 2) {
+          errors['gacetilla.referente_contacto'] = 'Indicá el referente o vocero de contacto para la prensa.';
+        }
+        if (!data?.telefono_contacto || data.telefono_contacto.trim().length < 5) {
+          errors['gacetilla.telefono_contacto'] = 'Indicá el teléfono directo del referente.';
+        }
+        if (!data?.informacion_base || data.informacion_base.trim().length < 10) {
+          errors['gacetilla.informacion_base'] = 'Ingresá la información base o datos del hecho noticioso.';
+        }
+        break;
+      }
+
+      case 'redes_sociales': {
+        const data = state.redes_data;
+        if (!data?.fecha_sugerida || data.fecha_sugerida.trim() === '') {
+          errors['redes.fecha_sugerida'] = 'Indicá la fecha sugerida de publicación.';
+        }
+        if (!data?.texto_copy || data.texto_copy.trim().length < 5) {
+          errors['redes.texto_copy'] = 'Ingresá el texto o copy propuesto para la publicación.';
+        }
+        break;
+      }
+
+      case 'produccion_audiovisual': {
+        const data = state.audiovisual_data;
+        if (data?.requiere_asesoramiento) {
+          if (!data.objetivo_asesoramiento || data.objetivo_asesoramiento.trim().length < 5) {
+            errors['audiovisual.objetivo_asesoramiento'] = 'Describí brevemente qué necesitás para que el equipo te asesore.';
+          }
+        } else {
+          if (!data?.tipo_produccion || data.tipo_produccion.trim() === '') {
+            errors['audiovisual.tipo_produccion'] = 'Seleccioná el tipo de producción audiovisual.';
+          }
+          if (!data?.descripcion_objetivo || data.descripcion_objetivo.trim().length < 5) {
+            errors['audiovisual.descripcion_objetivo'] = 'Ingresá la descripción y objetivo del video.';
+          }
+          if (!data?.formato || data.formato.trim() === '') {
+            errors['audiovisual.formato'] = 'Seleccioná el formato de video.';
+          }
+          if (!data?.fecha_limite || data.fecha_limite.trim() === '') {
+            errors['audiovisual.fecha_limite'] = 'Indicá la fecha límite de entrega requerida.';
+          }
+          if (data?.requiere_grabacion) {
+            if (!data.grabacion_fecha || data.grabacion_fecha.trim() === '') {
+              errors['audiovisual.grabacion_fecha'] = 'Indicá la fecha prevista para la grabación.';
+            }
+            if (!data.grabacion_hora || data.grabacion_hora.trim() === '') {
+              errors['audiovisual.grabacion_hora'] = 'Indicá el horario previsto.';
+            }
+            if (!data.grabacion_lugar || data.grabacion_lugar.trim().length < 2) {
+              errors['audiovisual.grabacion_lugar'] = 'Indicá el lugar de grabación.';
+            }
+            if (!data.grabacion_ciudad) {
+              errors['audiovisual.grabacion_ciudad'] = 'Seleccioná la ciudad de grabación.';
+            }
+          }
+        }
+        break;
+      }
+
+      case 'motion_graphics': {
+        const data = state.motion_data;
+        if (data?.requiere_asesoramiento) {
+          if (!data.objetivo_asesoramiento || data.objetivo_asesoramiento.trim().length < 5) {
+            errors['motion.objetivo_asesoramiento'] = 'Describí brevemente qué necesitás para que el equipo te asesore.';
+          }
+        } else {
+          if (!data?.tipo_motion || data.tipo_motion.trim() === '') {
+            errors['motion.tipo_motion'] = 'Seleccioná el tipo de animación.';
+          }
+          if (!data?.texto_contenido || data.texto_contenido.trim().length < 3) {
+            errors['motion.texto_contenido'] = 'Ingresá el texto o títulos a animar.';
+          }
+          if (!data?.descripcion || data.descripcion.trim().length < 5) {
+            errors['motion.descripcion'] = 'Describí lo que necesitás comunicar.';
+          }
+          if (!data?.formato || data.formato.trim() === '') {
+            errors['motion.formato'] = 'Seleccioná el formato visual.';
+          }
+          if (!data?.fecha_limite || data.fecha_limite.trim() === '') {
+            errors['motion.fecha_limite'] = 'Indicá la fecha límite de entrega.';
+          }
+        }
+        break;
+      }
+
+      case 'streaming': {
+        const data = state.streaming_data;
+        if (data?.requiere_asesoramiento) {
+          if (!data.objetivo_asesoramiento || data.objetivo_asesoramiento.trim().length < 5) {
+            errors['streaming.objetivo_asesoramiento'] = 'Describí brevemente qué necesitás para que el equipo te asesore.';
+          }
+        } else {
+          if (!data?.tipo_streaming || data.tipo_streaming.trim() === '') {
+            errors['streaming.tipo_streaming'] = 'Seleccioná el tipo de transmisión o sala.';
+          }
+          if (!data?.nombre_evento || data.nombre_evento.trim().length < 2) {
+            errors['streaming.nombre_evento'] = 'Ingresá el nombre del evento o actividad.';
+          }
+          if (!data?.fecha || data.fecha.trim() === '') {
+            errors['streaming.fecha'] = 'Indicá la fecha de la transmisión.';
+          }
+          if (!data?.hora_inicio || data.hora_inicio.trim() === '') {
+            errors['streaming.hora_inicio'] = 'Indicá el horario de inicio.';
+          }
+          if (!data?.modalidad) {
+            errors['streaming.modalidad'] = 'Seleccioná la modalidad (Presencial / Virtual / Híbrida).';
+          }
+          if (!data?.descripcion_requerimientos || data.descripcion_requerimientos.trim().length < 5) {
+            errors['streaming.descripcion_requerimientos'] = 'Detallá los requerimientos técnicos y descripción.';
+          }
+          if (data?.modalidad === 'Presencial' || data?.modalidad === 'Híbrida') {
+            if (!data.lugar || data.lugar.trim().length < 2) {
+              errors['streaming.lugar'] = 'Indicá el lugar físico de la transmisión.';
+            }
+            if (!data.ciudad) {
+              errors['streaming.ciudad'] = 'Seleccioná la ciudad.';
+            }
+          }
+        }
+        break;
+      }
+
+      case 'sitios_web': {
+        const data = state.web_data;
+        if (data?.requiere_asesoramiento) {
+          if (!data.objetivo_asesoramiento || data.objetivo_asesoramiento.trim().length < 5) {
+            errors['web.objetivo_asesoramiento'] = 'Describí brevemente qué necesitás para que el equipo te asesore.';
+          }
+        } else {
+          if (!data?.tipo_web || data.tipo_web.trim() === '') {
+            errors['web.tipo_web'] = 'Seleccioná el tipo de requerimiento web.';
+          }
+          if (!data?.descripcion_objetivo || data.descripcion_objetivo.trim().length < 5) {
+            errors['web.descripcion_objetivo'] = 'Ingresá la descripción y objetivo de la página o cambio.';
+          }
+          if (data?.pagina_existente && (!data.url_pagina || !URL_REGEX.test(data.url_pagina.trim()))) {
+            errors['web.url_pagina'] = 'Ingresá una URL válida de la página existente (ej: https://tierradelfuego.gob.ar/ejemplo).';
+          }
+          if (!data?.contenido_cambios || data.contenido_cambios.trim().length < 5) {
+            errors['web.contenido_cambios'] = 'Detallá los contenidos, secciones o cambios solicitados.';
+          }
+          if (!data?.fecha_limite || data.fecha_limite.trim() === '') {
+            errors['web.fecha_limite'] = 'Indicá la fecha límite de publicación o puesta en línea.';
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  return errors;
+}
+
+// -----------------------------------------------------------------------------
+// Paso 3: Adjuntos y Enlaces
+// -----------------------------------------------------------------------------
+
+export function validateStep3(archivos: FormUploadedFile[], links: FormLinkItem[]): ValidationErrors {
+  const errors: ValidationErrors = {};
+
+  if (archivos.length > MAX_FILES_LIMIT) {
+    errors['archivos'] = `Podés adjuntar como máximo ${MAX_FILES_LIMIT} archivos por presentación (actualmente: ${archivos.length}).`;
+  }
+
+  for (let i = 0; i < archivos.length; i++) {
+    const arch = archivos[i];
+    if (arch.status === 'uploading') {
+      errors[`archivo_${i}`] = `El archivo "${arch.name}" todavía se está subiendo. Esperá a que finalice.`;
+    } else if (arch.status === 'error') {
+      errors[`archivo_${i}`] = `El archivo "${arch.name}" falló al subirse: ${arch.error_message || 'Error desconocido'}.`;
+    }
+  }
+
+  for (let i = 0; i < links.length; i++) {
+    const link = links[i];
+    if (!link.url || !URL_REGEX.test(link.url.trim())) {
+      errors[`link_${i}`] = `El enlace "${link.url}" no tiene un formato URL válido (ej: https://drive.google.com/...).`;
+    }
+  }
+
+  return errors;
+}
+
+// -----------------------------------------------------------------------------
+// Paso 4: Confirmación
+// -----------------------------------------------------------------------------
+
+export function validateStep4(confirmado: boolean): ValidationErrors {
+  const errors: ValidationErrors = {};
+  if (!confirmado) {
+    errors.confirmado = 'Debés confirmar que revisaste los datos antes de enviar las solicitudes.';
+  }
+  return errors;
+}

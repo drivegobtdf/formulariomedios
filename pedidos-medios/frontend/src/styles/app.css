@@ -1,7 +1,7 @@
 /**
- * Estilos base del sistema PEDIDOS.
- * Todos los estilos deben mantenerse estrictamente bajo el namespace .pedidos-app
- * para evitar cualquier colisión con WordPress, Betheme, Elementor y plugins activos.
+ * Estilos base del sistema PEDIDOS (Revisión 3.0).
+ * Todos los estilos se mantienen estrictamente bajo el namespace .pedidos-app
+ * para evitar colisiones con temas de WordPress, Elementor u otros plugins.
  */
 
 .pedidos-app {
@@ -10,9 +10,9 @@
   line-height: 1.5;
   box-sizing: border-box;
   width: 100%;
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1.5rem 1rem;
 }
 
 .pedidos-app *,
@@ -21,6 +21,7 @@
   box-sizing: border-box;
 }
 
+/* Header & Nav */
 .pedidos-app .pedidos-header {
   border-bottom: 2px solid #e2e8f0;
   padding-bottom: 1rem;
@@ -58,38 +59,1002 @@
   color: #ffffff;
 }
 
-.pedidos-app .pedidos-placeholder-card {
+/* Step Indicator */
+.pedidos-app .pedidos-step-indicator {
+  margin-bottom: 2rem;
+}
+
+.pedidos-app .pedidos-step-list {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 0.5rem;
+}
+
+.pedidos-app .pedidos-step-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.pedidos-app .pedidos-step-btn,
+.pedidos-app .pedidos-step-static {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  transition: all 0.15s ease-in-out;
+}
+
+.pedidos-app .pedidos-step-btn {
+  cursor: pointer;
+}
+
+.pedidos-app .pedidos-step-btn:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.pedidos-app .pedidos-step-item.current .pedidos-step-static,
+.pedidos-app .pedidos-step-item.current .pedidos-step-btn {
+  background-color: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25);
+}
+
+.pedidos-app .pedidos-step-item.completed .pedidos-step-static,
+.pedidos-app .pedidos-step-item.completed .pedidos-step-btn {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.pedidos-app .pedidos-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.08);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pedidos-app .pedidos-step-item.current .pedidos-step-num {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.pedidos-app .pedidos-step-item.completed .pedidos-step-num {
+  background-color: #22c55e;
+  color: #ffffff;
+}
+
+/* Step Container & Headers */
+.pedidos-app .pedidos-step-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.pedidos-app .pedidos-step-header h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.25rem 0;
+}
+
+.pedidos-app .pedidos-step-header p {
+  color: #64748b;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* Cards & Sections */
+.pedidos-app .pedidos-card {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
-  padding: 2rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-  margin-top: 1rem;
+  border-radius: 0.625rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.pedidos-app .pedidos-placeholder-card h2 {
-  font-size: 1.25rem;
+.pedidos-app .pedidos-card-title {
+  font-size: 1.1rem;
   font-weight: 600;
-  color: #1e293b;
-  margin-top: 0;
-  margin-bottom: 0.75rem;
+  color: #0f172a;
+  margin: 0 0 1rem 0;
 }
 
-.pedidos-app .pedidos-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 0.25rem;
-  background-color: #e0f2fe;
+.pedidos-app .pedidos-category-section {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  margin-bottom: 1.5rem;
+}
+
+.pedidos-app .pedidos-section-header {
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.pedidos-app .pedidos-section-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
   color: #0369a1;
+  margin: 0 0 0.25rem 0;
+}
+
+.pedidos-app .pedidos-section-desc {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.pedidos-app .pedidos-subform-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background-color: #f8fafc;
+  padding: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.pedidos-app .pedidos-subform-card legend {
+  padding: 0 0.5rem;
+}
+
+/* Form Controls & Layout */
+.pedidos-app .pedidos-form-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.pedidos-app .pedidos-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  flex: 1;
+  min-width: 240px;
+}
+
+.pedidos-app .pedidos-form-row .col-4 {
+  flex: 0 0 calc(33.333% - 0.67rem);
+}
+
+.pedidos-app .pedidos-form-row .col-5 {
+  flex: 0 0 calc(41.666% - 0.5rem);
+}
+
+.pedidos-app .pedidos-form-row .col-6 {
+  flex: 0 0 calc(50% - 0.5rem);
+}
+
+.pedidos-app .pedidos-form-row .col-7 {
+  flex: 0 0 calc(58.333% - 0.5rem);
+}
+
+.pedidos-app .pedidos-form-row .col-8 {
+  flex: 0 0 calc(66.666% - 0.67rem);
+}
+
+.pedidos-app .pedidos-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.pedidos-app .pedidos-label.required::after,
+.pedidos-app .required-label::after {
+  content: ' *';
+  color: #dc2626;
+}
+
+.pedidos-app .pedidos-input,
+.pedidos-app .pedidos-select,
+.pedidos-app .pedidos-textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  font-size: 0.925rem;
+  color: #1e293b;
+  background-color: #ffffff;
+  font-family: inherit;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.pedidos-app .pedidos-input:focus,
+.pedidos-app .pedidos-select:focus,
+.pedidos-app .pedidos-textarea:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.pedidos-app .pedidos-input.error,
+.pedidos-app .pedidos-select.error,
+.pedidos-app .pedidos-textarea.error {
+  border-color: #dc2626;
+  background-color: #fffaf0;
+}
+
+.pedidos-app .pedidos-select-sm {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.25rem;
+  font-size: 0.825rem;
+  background-color: #ffffff;
+}
+
+.pedidos-app .pedidos-hint-text {
+  font-size: 0.825rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.pedidos-app .pedidos-error-text {
+  font-size: 0.8rem;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.pedidos-app .pedidos-error-banner {
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
   margin-bottom: 1rem;
 }
 
-.pedidos-app .pedidos-meta-info {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px dashed #cbd5e1;
+/* Category Grid (Paso 1) */
+.pedidos-app .pedidos-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.pedidos-app .pedidos-category-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.pedidos-app .pedidos-category-card:hover {
+  border-color: #93c5fd;
+  background-color: #f8fafc;
+}
+
+.pedidos-app .pedidos-category-card.selected {
+  border-color: #0284c7;
+  background-color: #f0f9ff;
+}
+
+.pedidos-app .pedidos-cat-checkbox input {
+  margin-top: 0.2rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: #0284c7;
+}
+
+.pedidos-app .pedidos-cat-content {
+  flex: 1;
+}
+
+.pedidos-app .pedidos-cat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.pedidos-app .pedidos-cat-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.25rem;
+  background-color: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pedidos-app .pedidos-cat-title {
+  font-size: 0.925rem;
+  color: #0f172a;
+}
+
+.pedidos-app .pedidos-cat-desc {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.35;
+}
+
+/* Piezas Grid (Diseño) */
+.pedidos-app .pedidos-pieza-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.pedidos-app .pedidos-pieza-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app .pedidos-pieza-card.selected {
+  border-color: #0284c7;
+  background-color: #f0f9ff;
+}
+
+.pedidos-app .pedidos-pieza-info strong {
+  display: block;
+  font-size: 0.875rem;
+  color: #0f172a;
+}
+
+.pedidos-app .pedidos-pieza-info span {
+  display: block;
   font-size: 0.75rem;
   color: #64748b;
+  margin-top: 0.15rem;
+}
+
+/* Asesoramiento Card */
+.pedidos-app .pedidos-asesoramiento-card {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.pedidos-app .pedidos-field-label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.75rem;
+}
+
+.pedidos-app .pedidos-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pedidos-app .pedidos-radio-inline {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.pedidos-app .pedidos-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #334155;
+  cursor: pointer;
+}
+
+.pedidos-app .pedidos-asesoramiento-body {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.pedidos-app .pedidos-alert {
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.pedidos-app .pedidos-alert-info {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+}
+
+.pedidos-app .pedidos-alert-info p {
+  margin: 0;
+}
+
+/* File Dropzone & Files */
+.pedidos-app .pedidos-dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 0.5rem;
+  background-color: #f8fafc;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.pedidos-app .pedidos-dropzone:hover,
+.pedidos-app .pedidos-dropzone.drag-active {
+  border-color: #0284c7;
+  background-color: #f0f9ff;
+}
+
+.pedidos-app .pedidos-dropzone-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.pedidos-app .pedidos-dropzone-text {
+  font-size: 0.95rem;
+  color: #1e293b;
+}
+
+.pedidos-app .pedidos-dropzone-hint {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.pedidos-app .pedidos-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pedidos-app .pedidos-file-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+}
+
+.pedidos-app .pedidos-file-row.verified {
+  border-left: 4px solid #22c55e;
+}
+
+.pedidos-app .pedidos-file-row.uploading {
+  border-left: 4px solid #0284c7;
+}
+
+.pedidos-app .pedidos-file-row.error {
+  border-left: 4px solid #dc2626;
+  background-color: #fffaf0;
+}
+
+.pedidos-app .pedidos-file-info {
+  flex: 1;
+}
+
+.pedidos-app .pedidos-file-name {
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.pedidos-app .pedidos-file-size {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-left: 0.5rem;
+}
+
+.pedidos-app .pedidos-status-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.pedidos-app .pedidos-status-badge.uploading {
+  color: #0284c7;
+}
+
+.pedidos-app .pedidos-status-badge.verified {
+  color: #166534;
+}
+
+.pedidos-app .pedidos-status-badge.error {
+  color: #dc2626;
+}
+
+.pedidos-app .pedidos-progress-bar {
+  width: 100%;
+  max-width: 300px;
+  height: 6px;
+  background-color: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+
+.pedidos-app .pedidos-progress-fill {
+  height: 100%;
+  background-color: #0284c7;
+  transition: width 0.2s ease;
+}
+
+.pedidos-app .pedidos-btn-icon-danger {
+  background: none;
+  border: none;
+  color: #dc2626;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.pedidos-app .pedidos-btn-icon-danger:hover {
+  background-color: #fee2e2;
+}
+
+/* Links List */
+.pedidos-app .pedidos-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.pedidos-app .pedidos-link-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+}
+
+/* Summary Blocks (Paso 4) */
+.pedidos-app .pedidos-summary-block {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.pedidos-app .pedidos-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.pedidos-app .pedidos-summary-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.pedidos-app .pedidos-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.pedidos-app .pedidos-summary-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.pedidos-app .pedidos-summary-item .label {
+  font-size: 0.775rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.pedidos-app .pedidos-summary-item strong {
+  font-size: 0.95rem;
+  color: #1e293b;
+  margin-top: 0.15rem;
+}
+
+.pedidos-app .pedidos-summary-pieces-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pedidos-app .pedidos-summary-piece-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background-color: #f8fafc;
+  padding: 1rem 1.25rem;
+}
+
+.pedidos-app .pedidos-summary-piece-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.pedidos-app .pedidos-piece-number {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.pedidos-app .pedidos-cat-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.25rem;
+  background-color: #0284c7;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pedidos-app .pedidos-piece-title {
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.pedidos-app .pedidos-piece-fields-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.5rem;
+}
+
+.pedidos-app .pedidos-piece-fields-list li {
+  font-size: 0.85rem;
+}
+
+.pedidos-app .pedidos-piece-fields-list .field-name {
+  color: #64748b;
+  text-transform: capitalize;
+  margin-right: 0.35rem;
+}
+
+.pedidos-app .pedidos-piece-fields-list .field-val {
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.pedidos-app .pedidos-summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.pedidos-app .pedidos-confirm-card {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+}
+
+.pedidos-app .pedidos-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.pedidos-app .pedidos-checkbox-label input {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: #166534;
+}
+
+/* Actions & Buttons */
+.pedidos-app .pedidos-step-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pedidos-app .pedidos-btn {
+  padding: 0.65rem 1.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.925rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease-in-out;
+  font-family: inherit;
+}
+
+.pedidos-app .pedidos-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pedidos-app .pedidos-btn-primary {
+  background-color: #0284c7;
+  color: #ffffff;
+}
+
+.pedidos-app .pedidos-btn-primary:hover:not(:disabled) {
+  background-color: #0369a1;
+}
+
+.pedidos-app .pedidos-btn-secondary {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.pedidos-app .pedidos-btn-secondary:hover:not(:disabled) {
+  background-color: #e2e8f0;
+}
+
+.pedidos-app .pedidos-btn-success {
+  background-color: #16a34a;
+  color: #ffffff;
+}
+
+.pedidos-app .pedidos-btn-success:hover:not(:disabled) {
+  background-color: #15803d;
+}
+
+.pedidos-app .pedidos-btn-link {
+  background: none;
+  border: none;
+  color: #0284c7;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.pedidos-app .pedidos-badge-pill {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 1rem;
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.pedidos-app .pedidos-badge-pill.highlight {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+/* Result Receipt Screen (Paso 5) */
+.pedidos-app .pedidos-result-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.pedidos-app .pedidos-result-header {
+  text-align: center;
+  padding: 1.5rem;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.625rem;
+}
+
+.pedidos-app .pedidos-result-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background-color: #22c55e;
+  color: #ffffff;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.pedidos-app .pedidos-result-header h2 {
+  font-size: 1.5rem;
+  color: #166534;
+  margin: 0 0 0.5rem 0;
+}
+
+.pedidos-app .pedidos-result-subtitle {
+  color: #334155;
+  font-size: 0.95rem;
+  max-width: 650px;
+  margin: 0 auto;
+}
+
+.pedidos-app .pedidos-result-peds-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  padding: 1.5rem;
+}
+
+.pedidos-app .pedidos-result-card-title {
+  font-size: 1.15rem;
+  color: #0f172a;
+  margin: 0 0 1rem 0;
+}
+
+.pedidos-app .pedidos-peds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.pedidos-app .pedidos-ped-receipt-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background-color: #f8fafc;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pedidos-app .pedidos-ped-receipt-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pedidos-app .pedidos-ped-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  background-color: #0284c7;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.pedidos-app .pedidos-ped-title-block h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.pedidos-app .pedidos-ped-cat {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.pedidos-app .pedidos-ped-code-box {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pedidos-app .pedidos-ped-code-box .code-label {
+  font-size: 0.775rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.pedidos-app .pedidos-ped-code-box .code-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0369a1;
+}
+
+.pedidos-app .pedidos-ped-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.825rem;
+}
+
+.pedidos-app .pedidos-status-pill {
+  padding: 0.2rem 0.5rem;
+  border-radius: 1rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.pedidos-app .pedidos-status-pill.nuevo {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.pedidos-app .pedidos-result-info-box {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+}
+
+.pedidos-app .pedidos-result-info-icon {
+  font-size: 1.75rem;
+}
+
+.pedidos-app .pedidos-result-info-box h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.pedidos-app .pedidos-result-info-box p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.pedidos-app .pedidos-result-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pedidos-app .pedidos-step-list {
+    flex-direction: column;
+  }
+  .pedidos-app .pedidos-form-row .col-4,
+  .pedidos-app .pedidos-form-row .col-5,
+  .pedidos-app .pedidos-form-row .col-6,
+  .pedidos-app .pedidos-form-row .col-7,
+  .pedidos-app .pedidos-form-row .col-8 {
+    flex: 0 0 100%;
+  }
 }

@@ -14,7 +14,7 @@ test.describe('PEDIDOS — Smoke Tests F1 Toolchain & App Shell', () => {
 
     // Verificar vista inicial de formulario
     const cardTitle = page.locator('h2');
-    await expect(cardTitle).toContainText('Formulario Público de Solicitud de Servicios');
+    await expect(cardTitle).toContainText('1. Datos de Contacto y Servicios Requeridos');
   });
 
   test('debe navegar correctamente a las diferentes vistas placeholder', async ({ page }) => {

@@ -13,11 +13,20 @@ describe('App Component', () => {
     expect(screen.getByRole('navigation', { name: /Navegación principal/i })).toBeInTheDocument();
   });
 
-  it('debe renderizar la vista del Formulario Público en la ruta inicial', () => {
+  it('debe renderizar el paso 1 del Formulario Público en la ruta inicial con las 8 categorías', () => {
     render(<App />);
 
     expect(
-      screen.getByRole('heading', { level: 2, name: /Formulario Público de Solicitud de Servicios/i })
+      screen.getByRole('heading', { level: 2, name: /1\. Datos de Contacto y Servicios Requeridos/i })
     ).toBeInTheDocument();
+
+    expect(screen.getByLabelText(/Diseño gráfico/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Cobertura de eventos/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Gacetilla de prensa/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Publicaciones en redes sociales/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Producción audiovisual/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Animación y motion graphics/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Transmisión en vivo \/ streaming/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Sitios y contenidos web/i)).toBeInTheDocument();
   });
 });
