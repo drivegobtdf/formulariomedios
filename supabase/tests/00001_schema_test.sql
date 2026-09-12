@@ -1,14 +1,13 @@
--- ==============================================================================
--- DATABASE TESTS (pgTAP): Supabase Schema v3
+﻿-- ==============================================================================
+-- DATABASE TESTS (pgTAP): Supabase Schema v3 Contractual Suite
 -- Proyecto: PEDIDOS — Secretaría de Medios (Revisión 3.0)
 -- ==============================================================================
 
 BEGIN;
 
--- Instalar pgTAP si no está presente en la base de tests
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(28);
+SELECT plan(47);
 
 -- -----------------------------------------------------------------------------
 -- 1. Tests de Catálogos (Categorías y Tipos de Servicio)
@@ -28,14 +27,30 @@ SELECT set_eq(
     'Los códigos de categoría deben ser exactamente D, C, G, R, P, M, S, W'
 );
 
--- Test 3: Verificar que existen 11 tipos de servicio en total
+-- Test 3: Verificar los 8 nombres visibles contractuales exactos de las categorías
+SELECT set_eq(
+    'SELECT slug, codigo_ped, nombre FROM public.categorias_servicio',
+    $$VALUES 
+        ('diseno_grafico', 'D'::bpchar, 'Diseño gráfico'),
+        ('cobertura_eventos', 'C'::bpchar, 'Cobertura de eventos'),
+        ('gacetilla', 'G'::bpchar, 'Gacetilla de prensa'),
+        ('redes_sociales', 'R'::bpchar, 'Publicaciones en redes sociales'),
+        ('produccion_audiovisual', 'P'::bpchar, 'Producción audiovisual'),
+        ('motion_graphics', 'M'::bpchar, 'Animación y motion graphics'),
+        ('streaming', 'S'::bpchar, 'Transmisión en vivo / streaming'),
+        ('sitios_web', 'W'::bpchar, 'Sitios y contenidos web')
+    $$,
+    'Las 8 categorías deben tener exactamente sus slugs, códigos y nombres visibles contractuales'
+);
+
+-- Test 4: Verificar que existen 11 tipos de servicio en total
 SELECT results_eq(
     'SELECT count(*)::integer FROM public.tipos_servicio WHERE activo = true',
     ARRAY[11],
     'Deben existir exactamente 11 tipos de servicio activos'
 );
 
--- Test 4: Verificar que Diseño Gráfico tiene exactamente 4 tipos de servicio
+-- Test 5: Verificar que Diseño Gráfico tiene exactamente 4 tipos de servicio
 SELECT results_eq(
     'SELECT count(*)::integer FROM public.tipos_servicio t JOIN public.categorias_servicio c ON t.categoria_id = c.id WHERE c.codigo_ped = ''D''',
     ARRAY[4],
@@ -60,7 +75,7 @@ INSERT INTO public.envios_formulario (
     1
 );
 
--- Test 5: Rechazar submission_key duplicado en envios_formulario
+-- Test 6: Rechazar submission_key duplicado en envios_formulario
 SELECT throws_ok(
     $$
     INSERT INTO public.envios_formulario (
@@ -81,7 +96,7 @@ SELECT throws_ok(
     'Debe rechazar submission_key duplicado en envios_formulario'
 );
 
--- Test 6: Rechazar correo con formato inválido
+-- Test 7: Rechazar correo con formato inválido
 SELECT throws_ok(
     $$
     INSERT INTO public.envios_formulario (
@@ -103,10 +118,10 @@ SELECT throws_ok(
 );
 
 -- -----------------------------------------------------------------------------
--- 3. Tests de pedidos
+-- 3. Tests de pedidos: Unicidad, Estados Contractuales y FK Compuesta
 -- -----------------------------------------------------------------------------
 
--- Insertar un pedido válido de prueba
+-- Insertar un pedido base válido de prueba
 INSERT INTO public.pedidos (
     id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
     estado, informacion_especifica, form_schema_version, version, tracking_token_version,
@@ -129,7 +144,7 @@ INSERT INTO public.pedidos (
     now()
 );
 
--- Test 7: Rechazar pedido_visible duplicado
+-- Test 8: Rechazar pedido_visible duplicado
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
@@ -159,7 +174,7 @@ SELECT throws_ok(
     'Debe rechazar pedido_visible duplicado'
 );
 
--- Test 8: Rechazar par (anio, numero) duplicado
+-- Test 9: Rechazar par (anio, numero) duplicado
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
@@ -189,59 +204,217 @@ SELECT throws_ok(
     'Debe rechazar par (anio, numero) duplicado'
 );
 
--- Test 9: Rechazar estado inválido en pedidos
+-- Tests 10-15: Aceptar los 6 Estados Contractuales de PED
+-- Test 10: Estado 'Nuevo'
+SELECT lives_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000010',
+        2026, 10, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'Nuevo', 'token_h_10'
+    );
+    $$,
+    'PED debe aceptar estado contractual: Nuevo'
+);
+
+-- Test 11: Estado 'En revisión'
+SELECT lives_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000011', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000011',
+        2026, 11, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'En revisión', 'token_h_11'
+    );
+    $$,
+    'PED debe aceptar estado contractual: En revisión'
+);
+
+-- Test 12: Estado 'En proceso'
+SELECT lives_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000012',
+        2026, 12, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'En proceso', 'token_h_12'
+    );
+    $$,
+    'PED debe aceptar estado contractual: En proceso'
+);
+
+-- Test 13: Estado 'Esperando información'
+SELECT lives_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000013', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000013',
+        2026, 13, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'Esperando información', 'token_h_13'
+    );
+    $$,
+    'PED debe aceptar estado contractual: Esperando información'
+);
+
+-- Test 14: Estado 'Finalizado'
+SELECT lives_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000014', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000014',
+        2026, 14, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'Finalizado', 'token_h_14'
+    );
+    $$,
+    'PED debe aceptar estado contractual: Finalizado'
+);
+
+-- Test 15: Estado 'Cancelado'
+SELECT lives_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000015', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000015',
+        2026, 15, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'Cancelado', 'token_h_15'
+    );
+    $$,
+    'PED debe aceptar estado contractual: Cancelado'
+);
+
+-- Tests 16-21: Rechazar Estados Inválidos/Antiguos de PED
+-- Test 16: Rechazar 'En Gestión'
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
         id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
-        estado, informacion_especifica, form_schema_version, version, tracking_token_version,
-        tracking_token_hash, tracking_token_created_at
+        estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000004',
-        'e0000000-0000-0000-0000-000000000001',
-        'PED-2026-D000004',
-        2026,
-        4,
-        'a0000001-0000-0000-0000-000000000001',
-        'b0000001-0000-0000-0000-000000000001',
-        'D',
-        'EstadoInvalido',
-        '{}'::jsonb,
-        1,
-        1,
-        1,
-        'hash_token_test_4',
-        now()
+        'a0000000-0000-0000-0000-000000000016', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000016',
+        2026, 16, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'En Gestión', 'token_h_16'
     );
     $$,
     '23514',
     NULL,
-    'Debe rechazar estado no permitido en pedidos'
+    'Debe rechazar estado no contractual: En Gestión'
 );
 
--- Test 10: Rechazar tipo de servicio que no pertenece a la categoría (FK compuesta)
+-- Test 17: Rechazar 'Esperando Respuesta'
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
         id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
-        estado, informacion_especifica, form_schema_version, version, tracking_token_version,
-        tracking_token_hash, tracking_token_created_at
+        estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000005',
+        'a0000000-0000-0000-0000-000000000017', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000017',
+        2026, 17, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'Esperando Respuesta', 'token_h_17'
+    );
+    $$,
+    '23514',
+    NULL,
+    'Debe rechazar estado no contractual: Esperando Respuesta'
+);
+
+-- Test 18: Rechazar 'Listo para Retirar'
+SELECT throws_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000018', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000018',
+        2026, 18, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'Listo para Retirar', 'token_h_18'
+    );
+    $$,
+    '23514',
+    NULL,
+    'Debe rechazar estado no contractual: Listo para Retirar'
+);
+
+-- Test 19: Rechazar 'Asignado'
+SELECT throws_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000019', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000019',
+        2026, 19, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'Asignado', 'token_h_19'
+    );
+    $$,
+    '23514',
+    NULL,
+    'Debe rechazar estado no contractual: Asignado'
+);
+
+-- Test 20: Rechazar 'Correcciones'
+SELECT throws_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000020', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000020',
+        2026, 20, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'Correcciones', 'token_h_20'
+    );
+    $$,
+    '23514',
+    NULL,
+    'Debe rechazar estado no contractual: Correcciones'
+);
+
+-- Test 21: Rechazar 'cualquier_otro'
+SELECT throws_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000021', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000021',
+        2026, 21, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
+        'cualquier_otro', 'token_h_21'
+    );
+    $$,
+    '23514',
+    NULL,
+    'Debe rechazar estado no contractual genérico'
+);
+
+-- Test 22: Rechazar tipo de servicio que no pertenece a la categoría (FK compuesta)
+SELECT throws_ok(
+    $$
+    INSERT INTO public.pedidos (
+        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        estado, tracking_token_hash
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000022',
         'e0000000-0000-0000-0000-000000000001',
-        'PED-2026-C000005',
+        'PED-2026-C000022',
         2026,
-        5,
-        'a0000001-0000-0000-0000-000000000002', -- Cobertura de Eventos
-        'b0000001-0000-0000-0000-000000000001', -- Tipo perteneciente a Diseño Gráfico!
+        22,
+        'a0000001-0000-0000-0000-000000000002', -- Cobertura de eventos
+        'b0000001-0000-0000-0000-000000000001', -- Tipo perteneciente a Diseño gráfico!
         'C',
         'Nuevo',
-        '{}'::jsonb,
-        1,
-        1,
-        1,
-        'hash_token_test_5',
-        now()
+        'token_h_22'
     );
     $$,
     '23503',
@@ -258,7 +431,7 @@ INSERT INTO auth.users (id, email)
 VALUES ('00000000-0000-0000-0000-000000000011', 'agente1@tierradelfuego.gob.ar')
 ON CONFLICT (id) DO NOTHING;
 
--- Test 11: Aceptar username válido en formato lowercase
+-- Test 23: Aceptar username válido en formato lowercase
 SELECT lives_ok(
     $$
     INSERT INTO public.usuarios_acceso (
@@ -280,7 +453,7 @@ INSERT INTO auth.users (id, email)
 VALUES ('00000000-0000-0000-0000-000000000012', 'agente2@tierradelfuego.gob.ar')
 ON CONFLICT (id) DO NOTHING;
 
--- Test 12: Rechazar username con mayúsculas
+-- Test 24: Rechazar username con mayúsculas
 SELECT throws_ok(
     $$
     INSERT INTO public.usuarios_acceso (
@@ -299,7 +472,7 @@ SELECT throws_ok(
     'Debe rechazar nombre_usuario con mayúsculas'
 );
 
--- Test 13: Rechazar username con espacios
+-- Test 25: Rechazar username con espacios
 SELECT throws_ok(
     $$
     INSERT INTO public.usuarios_acceso (
@@ -318,7 +491,7 @@ SELECT throws_ok(
     'Debe rechazar nombre_usuario con espacios'
 );
 
--- Test 14: Rechazar username con longitud menor a 2 caracteres
+-- Test 26: Rechazar username con longitud menor a 2 caracteres
 SELECT throws_ok(
     $$
     INSERT INTO public.usuarios_acceso (
@@ -337,7 +510,7 @@ SELECT throws_ok(
     'Debe rechazar nombre_usuario menor a 2 caracteres'
 );
 
--- Test 15: Rechazar username con longitud mayor a 30 caracteres
+-- Test 27: Rechazar username con longitud mayor a 30 caracteres
 SELECT throws_ok(
     $$
     INSERT INTO public.usuarios_acceso (
@@ -356,7 +529,7 @@ SELECT throws_ok(
     'Debe rechazar nombre_usuario mayor a 30 caracteres'
 );
 
--- Test 16: Rechazar app_role inválido
+-- Test 28: Rechazar app_role inválido
 SELECT throws_ok(
     $$
     INSERT INTO public.usuarios_acceso (
@@ -375,7 +548,7 @@ SELECT throws_ok(
     'Debe rechazar rol de aplicación no documentado'
 );
 
--- Test 17: Rechazar estado_acceso inválido
+-- Test 29: Rechazar estado_acceso inválido
 SELECT throws_ok(
     $$
     INSERT INTO public.usuarios_acceso (
@@ -395,7 +568,153 @@ SELECT throws_ok(
 );
 
 -- -----------------------------------------------------------------------------
--- 5. Tests de Archivos Google Drive y Relaciones N:M
+-- 5. Tests de pedido_asignaciones (Estructura Contractual y Registro)
+-- -----------------------------------------------------------------------------
+
+-- Test 30: Verificar columnas exactas de pedido_asignaciones
+SELECT columns_are(
+    'public',
+    'pedido_asignaciones',
+    ARRAY['id', 'pedido_id', 'responsable_anterior', 'responsable_nuevo', 'asignado_por', 'motivo', 'created_at'],
+    'pedido_asignaciones debe contener exactamente las columnas contractuales v3'
+);
+
+-- Test 31: Permitir insertar asignación válida
+SELECT lives_ok(
+    $$
+    INSERT INTO public.pedido_asignaciones (
+        pedido_id, responsable_anterior, responsable_nuevo, asignado_por, motivo
+    ) VALUES (
+        'a0000000-0000-0000-0000-000000000001',
+        NULL,
+        '00000000-0000-0000-0000-000000000011',
+        '00000000-0000-0000-0000-000000000011',
+        'Asignación inicial de diseño'
+    );
+    $$,
+    'Debe permitir registrar una asignación contractual'
+);
+
+-- -----------------------------------------------------------------------------
+-- 6. Tests de Solicitudes de Información (3 Estados Permitidos, 'cancelada' Rechazada)
+-- -----------------------------------------------------------------------------
+
+-- Test 32: Aceptar estado 'pendiente'
+SELECT lives_ok(
+    $$
+    INSERT INTO public.solicitudes_informacion (
+        id, pedido_id, solicitada_por, mensaje, token_hash, estado, expires_at
+    ) VALUES (
+        '00000000-0000-0000-0000-000000000031',
+        'a0000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000011',
+        'Adjuntar archivo vector',
+        'token_info_h_31',
+        'pendiente',
+        now() + interval '3 days'
+    );
+    $$,
+    'solicitudes_informacion debe aceptar estado: pendiente'
+);
+
+-- Test 33: Aceptar estado 'respondida'
+SELECT lives_ok(
+    $$
+    INSERT INTO public.solicitudes_informacion (
+        id, pedido_id, solicitada_por, mensaje, token_hash, estado, expires_at
+    ) VALUES (
+        '00000000-0000-0000-0000-000000000032',
+        'a0000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000011',
+        'Adjuntar texto final',
+        'token_info_h_32',
+        'respondida',
+        now() + interval '3 days'
+    );
+    $$,
+    'solicitudes_informacion debe aceptar estado: respondida'
+);
+
+-- Test 34: Aceptar estado 'vencida'
+SELECT lives_ok(
+    $$
+    INSERT INTO public.solicitudes_informacion (
+        id, pedido_id, solicitada_por, mensaje, token_hash, estado, expires_at
+    ) VALUES (
+        '00000000-0000-0000-0000-000000000033',
+        'a0000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000011',
+        'Aclarar sede del evento',
+        'token_info_h_33',
+        'vencida',
+        now() + interval '3 days'
+    );
+    $$,
+    'solicitudes_informacion debe aceptar estado: vencida'
+);
+
+-- Test 35: Rechazar estado 'cancelada'
+SELECT throws_ok(
+    $$
+    INSERT INTO public.solicitudes_informacion (
+        id, pedido_id, solicitada_por, mensaje, token_hash, estado, expires_at
+    ) VALUES (
+        '00000000-0000-0000-0000-000000000034',
+        'a0000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000011',
+        'Mensaje prueba',
+        'token_info_h_34',
+        'cancelada',
+        now() + interval '3 days'
+    );
+    $$,
+    '23514',
+    NULL,
+    'Debe rechazar estado no contractual: cancelada en solicitudes_informacion'
+);
+
+-- Test 36: Rechazar estado 'rechazada'
+SELECT throws_ok(
+    $$
+    INSERT INTO public.solicitudes_informacion (
+        id, pedido_id, solicitada_por, mensaje, token_hash, estado, expires_at
+    ) VALUES (
+        '00000000-0000-0000-0000-000000000035',
+        'a0000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000011',
+        'Mensaje prueba',
+        'token_info_h_35',
+        'rechazada',
+        now() + interval '3 days'
+    );
+    $$,
+    '23514',
+    NULL,
+    'Debe rechazar estado no contractual: rechazada en solicitudes_informacion'
+);
+
+-- Test 37: Rechazar estado no permitido genérico
+SELECT throws_ok(
+    $$
+    INSERT INTO public.solicitudes_informacion (
+        id, pedido_id, solicitada_por, mensaje, token_hash, estado, expires_at
+    ) VALUES (
+        '00000000-0000-0000-0000-000000000036',
+        'a0000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000011',
+        'Mensaje prueba',
+        'token_info_h_36',
+        'cualquier_otro',
+        now() + interval '3 days'
+    );
+    $$,
+    '23514',
+    NULL,
+    'Debe rechazar estado no permitido genérico en solicitudes_informacion'
+);
+
+-- -----------------------------------------------------------------------------
+-- 7. Tests de Archivos Google Drive y Relaciones N:M
 -- -----------------------------------------------------------------------------
 
 -- Insertar archivo válido
@@ -412,7 +731,7 @@ INSERT INTO public.archivos (
     'uploaded'
 );
 
--- Test 18: Rechazar provider distinto de google_drive
+-- Test 38: Rechazar provider distinto de google_drive
 SELECT throws_ok(
     $$
     INSERT INTO public.archivos (
@@ -433,7 +752,7 @@ SELECT throws_ok(
     'Debe rechazar provider distinto de google_drive'
 );
 
--- Test 19: Rechazar contexto inválido
+-- Test 39: Rechazar contexto inválido
 SELECT throws_ok(
     $$
     INSERT INTO public.archivos (
@@ -454,7 +773,7 @@ SELECT throws_ok(
     'Debe rechazar contexto de archivo inválido'
 );
 
--- Test 20: Rechazar estado de archivo inválido
+-- Test 40: Rechazar estado de archivo inválido
 SELECT throws_ok(
     $$
     INSERT INTO public.archivos (
@@ -475,7 +794,7 @@ SELECT throws_ok(
     'Debe rechazar estado de archivo inválido'
 );
 
--- Test 21: Rechazar size_bytes negativo
+-- Test 41: Rechazar size_bytes negativo
 SELECT throws_ok(
     $$
     INSERT INTO public.archivos (
@@ -496,7 +815,7 @@ SELECT throws_ok(
     'Debe rechazar size_bytes negativo en archivos'
 );
 
--- Test 22: Asociación N:M válida entre archivo y pedido
+-- Test 42: Asociación N:M válida entre archivo y pedido
 SELECT lives_ok(
     $$
     INSERT INTO public.archivo_pedido (archivo_id, pedido_id)
@@ -505,7 +824,7 @@ SELECT lives_ok(
     'Debe permitir asociar archivo y pedido en relación N:M'
 );
 
--- Test 23: Rechazar asociación duplicada entre el mismo archivo y el mismo pedido
+-- Test 43: Rechazar asociación duplicada entre el mismo archivo y el mismo pedido
 SELECT throws_ok(
     $$
     INSERT INTO public.archivo_pedido (archivo_id, pedido_id)
@@ -517,10 +836,10 @@ SELECT throws_ok(
 );
 
 -- -----------------------------------------------------------------------------
--- 6. Tests de Enlaces de Material
+-- 8. Tests de Enlaces de Material, Notas y Entregas
 -- -----------------------------------------------------------------------------
 
--- Test 24: Rechazar enlaces no HTTPS
+-- Test 44: Rechazar enlaces no HTTPS
 SELECT throws_ok(
     $$
     INSERT INTO public.enlaces_material (id, envio_id, url)
@@ -531,31 +850,7 @@ SELECT throws_ok(
     'Debe rechazar URLs de material que no usen HTTPS'
 );
 
--- -----------------------------------------------------------------------------
--- 7. Tests de Solicitudes de Información y Notas
--- -----------------------------------------------------------------------------
-
--- Test 25: Rechazar estado inválido en solicitudes de información
-SELECT throws_ok(
-    $$
-    INSERT INTO public.solicitudes_informacion (
-        id, pedido_id, solicitada_por, mensaje, token_hash, estado, expires_at
-    ) VALUES (
-        '00000000-0000-0000-0000-000000000031',
-        'a0000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000011',
-        'Por favor adjuntar logo en alta resolución',
-        'token_info_hash_1',
-        'estado_invalido',
-        now() + interval '3 days'
-    );
-    $$,
-    '23514',
-    NULL,
-    'Debe rechazar estado inválido en solicitudes_informacion'
-);
-
--- Test 26: Rechazar visibilidad inválida en notas
+-- Test 45: Rechazar visibilidad inválida en notas
 SELECT throws_ok(
     $$
     INSERT INTO public.notas_pedido (
@@ -573,11 +868,7 @@ SELECT throws_ok(
     'Debe rechazar visibilidad no permitida en notas_pedido'
 );
 
--- -----------------------------------------------------------------------------
--- 8. Tests de Entregas Versionadas
--- -----------------------------------------------------------------------------
-
--- Test 27: Rechazar entrega que no contiene ni archivo ni enlace
+-- Test 46: Rechazar entrega que no contiene ni archivo ni enlace
 SELECT throws_ok(
     $$
     INSERT INTO public.entregas_pedido (
@@ -598,7 +889,7 @@ SELECT throws_ok(
 -- 9. Tests de Trigger updated_at
 -- -----------------------------------------------------------------------------
 
--- Test 28: Comprobar que trigger updated_at actualiza el timestamp al modificar un pedido
+-- Test 47: Comprobar que trigger updated_at actualiza el timestamp al modificar un pedido
 UPDATE public.pedidos SET version = version + 1 WHERE id = 'a0000000-0000-0000-0000-000000000001';
 
 SELECT ok(
