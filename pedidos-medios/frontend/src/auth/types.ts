@@ -4,17 +4,19 @@
 
 export type AppRole = 'administrador' | 'equipo' | 'observador';
 
-export type EstadoAcceso = 'pendiente' | 'activo' | 'revocado';
+export type EstadoAcceso = 'pendiente' | 'aprobado' | 'rechazado' | 'revocado';
 
 export interface UserProfile {
-  id: string;
+  id?: string;
   userId: string;
   nombre: string;
   apellido: string;
   nombreUsuario: string;
-  email: string;
+  email?: string;
   appRole: AppRole;
   estadoAcceso: EstadoAcceso;
+  solicitadoAt?: string;
+  aprobadoAt?: string | null;
 }
 
 export interface AuthState {
@@ -22,3 +24,4 @@ export interface AuthState {
   isLoading: boolean;
   profile: UserProfile | null;
 }
+

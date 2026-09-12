@@ -1,7 +1,7 @@
 # PEDIDOS — Documentación de desarrollo · revisión 3.0
 
 **Revisión documental:** 3.0 · 2026-09-11  
-**Estado de implementación:** FASE F2 COMPLETADA (Supabase schema v3: PostgreSQL, migrations, constraints, índices, seeds y DB tests).  
+**Estado de implementación:** FASE F3 COMPLETADA (Supabase Auth + RBAC + RLS + grants mínimos + tests allow/deny + suite pgTAP y Vitest).  
 **Autoridad:** decisiones funcionales aprobadas por el propietario el 2026-09-11, ADR vigentes y requisitos de esta revisión.  
 **Arquitectura:** `PEDIDOS-WSN-GD-v2` — WordPress.org + Supabase + n8n + Google Drive, con Supabase como fuente de verdad de negocio.  
 **Repositorio oficial del desarrollo:** `https://github.com/drivegobtdf/formulariomedios`  
@@ -113,7 +113,7 @@ cp .env.example .env
 | **F0** | Congelar revisión 3.0 y OPENs | COMPLETADO |
 | **F1** | Skeleton del repositorio y toolchain reproducible | **COMPLETADO** |
 | **F2** | Supabase schema v3 (PostgreSQL, migraciones, constraints, índices, seed, pgTAP) | **COMPLETADO** |
-| **F3** | Auth / RBAC / RLS | Pendiente |
+| **F3** | Auth / RBAC / RLS (Esquema private, triggers, policies fail-closed, RPCs admin, allow/deny pgTAP) | **COMPLETADO** |
 | **F4** | Secuencia + creación multi-PED | Pendiente |
 | **F5** | Google OAuth / Drive spike | Pendiente |
 | **F6** | Formulario público 8 categorías | Pendiente |
@@ -126,7 +126,14 @@ cp .env.example .env
 | **F13** | Release / Cutover | Pendiente |
 
 > [!NOTE]
-> En la Fase F2 actual, el esquema PostgreSQL v3 está completamente implementado y verificado en Supabase local con 7 migraciones declarativas, seed determinista oficial y suite pgTAP automatizada. Todas las tablas tienen RLS habilitado (fail-closed, 0 políticas). Las políticas de acceso Auth/RLS y RPCs transaccionales se implementarán en F3 y F4 respectivamente.
+> En la Fase F3 actual, la seguridad de autenticación, autorización y RLS está completamente implementada y verificada:
+> 1. Principio de mínimo privilegio con revocación masiva de privilegios directos a roles de browser (`anon`, `authenticated`).
+> 2. Esquema no expuesto `private` con funciones `SECURITY DEFINER` para evaluación segura de roles en tiempo real (`private.is_approved()`, `private.is_admin()`, etc.).
+> 3. Matriz de políticas RLS restrictivas sobre las 18 tablas (fail-closed, 0 mutaciones directas de browser).
+> 4. Trigger de signup seguro sobre `auth.users` validando metadata requerida (`nombre`, `apellido`, `nombre_usuario` con regex `^[a-z0-9._-]{2,30}$`).
+> 5. RPCs administrativas auditadas en `public.audit_log` (`admin_approve_user`, `admin_reject_user`, `admin_revoke_user`, `admin_change_user_role`, `admin_change_username`).
+> 6. Suite completa pgTAP (85 tests: 47 schema + 38 RLS) y suite Vitest frontend (17 tests).
+
 
 ---
 
