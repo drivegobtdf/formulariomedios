@@ -120,10 +120,12 @@ describe('Auth & RLS Integration Tests contra Supabase Local Real', () => {
       .eq('user_id', observerUserId);
 
     // 4. Crear datos sintéticos de pedido y notas para lectura de tests
+    const testFingerprint = crypto.createHash('sha256').update(`integ_${runId}`).digest('hex');
+
     await serviceClient.from('envios_formulario').upsert({
       id: testEnvioId,
       submission_key: crypto.randomUUID(),
-      request_fingerprint: `fp_integ_${runId}`,
+      request_fingerprint: testFingerprint,
       nombre_apellido: 'Solicitante Integration',
       telefono: '+542901999999',
       correo: 'solicitante.integ@tierradelfuego.gob.ar',
@@ -133,6 +135,7 @@ describe('Auth & RLS Integration Tests contra Supabase Local Real', () => {
     await serviceClient.from('pedidos').upsert({
       id: testPedidoId,
       envio_id: testEnvioId,
+      client_request_ref: crypto.randomUUID(),
       pedido_visible: `PED-2026-D${Math.floor(100000 + Math.random() * 900000)}`,
       anio: 2026,
       numero: Math.floor(100000 + Math.random() * 900000),
@@ -140,7 +143,7 @@ describe('Auth & RLS Integration Tests contra Supabase Local Real', () => {
       tipo_servicio_id: 'b0000001-0000-0000-0000-000000000001',
       codigo_categoria: 'D',
       estado: 'Nuevo',
-      tracking_token_hash: `h_integ_${runId}`,
+      tracking_token_hash: crypto.createHash('sha256').update(`tok_${runId}`).digest('hex'),
     });
 
     await serviceClient.from('notas_pedido').upsert([

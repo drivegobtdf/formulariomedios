@@ -55,7 +55,7 @@ INSERT INTO public.envios_formulario (
 ) VALUES (
     'e0000000-0000-0000-0000-000000000100',
     '00000000-0000-0000-0000-000000000100',
-    'fp_rls_test',
+    'b000000000000000000000000000000000000000000000000000000000000100',
     'Solicitante Test',
     '+542901999999',
     'solicitante@tierradelfuego.gob.ar',
@@ -63,11 +63,12 @@ INSERT INTO public.envios_formulario (
 ) ON CONFLICT DO NOTHING;
 
 INSERT INTO public.pedidos (
-    id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+    id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
     estado, tracking_token_hash
 ) VALUES (
     'a0000000-0000-0000-0000-000000000100',
     'e0000000-0000-0000-0000-000000000100',
+    'c0000000-0000-0000-0000-000000000100',
     'PED-2026-D000100',
     2026,
     100,

@@ -1,4 +1,4 @@
-﻿-- ==============================================================================
+-- ==============================================================================
 -- DATABASE TESTS (pgTAP): Supabase Schema v3 Contractual Suite
 -- Proyecto: PEDIDOS — Secretaría de Medios (Revisión 3.0)
 -- ==============================================================================
@@ -67,7 +67,7 @@ INSERT INTO public.envios_formulario (
 ) VALUES (
     'e0000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000001',
-    'fp_test_1',
+    'a000000000000000000000000000000000000000000000000000000000000001',
     'Juan Pérez',
     '+542901123456',
     'juan.perez@tierradelfuego.gob.ar',
@@ -83,7 +83,7 @@ SELECT throws_ok(
     ) VALUES (
         'e0000000-0000-0000-0000-000000000002',
         '00000000-0000-0000-0000-000000000001',
-        'fp_test_2',
+        'a000000000000000000000000000000000000000000000000000000000000002',
         'María Gomez',
         '+542901654321',
         'maria@tierradelfuego.gob.ar',
@@ -104,7 +104,7 @@ SELECT throws_ok(
     ) VALUES (
         'e0000000-0000-0000-0000-000000000003',
         gen_random_uuid(),
-        'fp_test_3',
+        'a000000000000000000000000000000000000000000000000000000000000003',
         'Pedro Lopez',
         '+542901111111',
         'correo_invalido_sin_arroba',
@@ -123,12 +123,13 @@ SELECT throws_ok(
 
 -- Insertar un pedido base válido de prueba
 INSERT INTO public.pedidos (
-    id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+    id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
     estado, informacion_especifica, form_schema_version, version, tracking_token_version,
     tracking_token_hash, tracking_token_created_at
 ) VALUES (
     'a0000000-0000-0000-0000-000000000001',
     'e0000000-0000-0000-0000-000000000001',
+    'c0000000-0000-0000-0000-000000000001',
     'PED-2026-D000001',
     2026,
     1,
@@ -148,12 +149,13 @@ INSERT INTO public.pedidos (
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, informacion_especifica, form_schema_version, version, tracking_token_version,
         tracking_token_hash, tracking_token_created_at
     ) VALUES (
         'a0000000-0000-0000-0000-000000000002',
         'e0000000-0000-0000-0000-000000000001',
+        'c0000000-0000-0000-0000-000000000002',
         'PED-2026-D000001',
         2026,
         2,
@@ -178,12 +180,13 @@ SELECT throws_ok(
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, informacion_especifica, form_schema_version, version, tracking_token_version,
         tracking_token_hash, tracking_token_created_at
     ) VALUES (
         'a0000000-0000-0000-0000-000000000003',
         'e0000000-0000-0000-0000-000000000001',
+        'c0000000-0000-0000-0000-000000000003',
         'PED-2026-D000002',
         2026,
         1,
@@ -209,10 +212,10 @@ SELECT throws_ok(
 SELECT lives_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000010',
+        'a0000000-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000010', 'PED-2026-D000010',
         2026, 10, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'Nuevo', 'token_h_10'
     );
@@ -224,10 +227,10 @@ SELECT lives_ok(
 SELECT lives_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000011', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000011',
+        'a0000000-0000-0000-0000-000000000011', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000011', 'PED-2026-D000011',
         2026, 11, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'En revisión', 'token_h_11'
     );
@@ -239,10 +242,10 @@ SELECT lives_ok(
 SELECT lives_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000012',
+        'a0000000-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000012', 'PED-2026-D000012',
         2026, 12, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'En proceso', 'token_h_12'
     );
@@ -254,10 +257,10 @@ SELECT lives_ok(
 SELECT lives_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000013', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000013',
+        'a0000000-0000-0000-0000-000000000013', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000013', 'PED-2026-D000013',
         2026, 13, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'Esperando información', 'token_h_13'
     );
@@ -269,10 +272,10 @@ SELECT lives_ok(
 SELECT lives_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000014', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000014',
+        'a0000000-0000-0000-0000-000000000014', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000014', 'PED-2026-D000014',
         2026, 14, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'Finalizado', 'token_h_14'
     );
@@ -284,10 +287,10 @@ SELECT lives_ok(
 SELECT lives_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000015', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000015',
+        'a0000000-0000-0000-0000-000000000015', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000015', 'PED-2026-D000015',
         2026, 15, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'Cancelado', 'token_h_15'
     );
@@ -300,10 +303,10 @@ SELECT lives_ok(
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000016', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000016',
+        'a0000000-0000-0000-0000-000000000016', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000016', 'PED-2026-D000016',
         2026, 16, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'En Gestión', 'token_h_16'
     );
@@ -317,10 +320,10 @@ SELECT throws_ok(
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000017', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000017',
+        'a0000000-0000-0000-0000-000000000017', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000017', 'PED-2026-D000017',
         2026, 17, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'Esperando Respuesta', 'token_h_17'
     );
@@ -334,10 +337,10 @@ SELECT throws_ok(
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000018', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000018',
+        'a0000000-0000-0000-0000-000000000018', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000018', 'PED-2026-D000018',
         2026, 18, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'Listo para Retirar', 'token_h_18'
     );
@@ -351,10 +354,10 @@ SELECT throws_ok(
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000019', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000019',
+        'a0000000-0000-0000-0000-000000000019', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000019', 'PED-2026-D000019',
         2026, 19, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'Asignado', 'token_h_19'
     );
@@ -368,10 +371,10 @@ SELECT throws_ok(
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000020', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000020',
+        'a0000000-0000-0000-0000-000000000020', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000020', 'PED-2026-D000020',
         2026, 20, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'Correcciones', 'token_h_20'
     );
@@ -385,10 +388,10 @@ SELECT throws_ok(
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
-        'a0000000-0000-0000-0000-000000000021', 'e0000000-0000-0000-0000-000000000001', 'PED-2026-D000021',
+        'a0000000-0000-0000-0000-000000000021', 'e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000021', 'PED-2026-D000021',
         2026, 21, 'a0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'D',
         'cualquier_otro', 'token_h_21'
     );
@@ -402,11 +405,12 @@ SELECT throws_ok(
 SELECT throws_ok(
     $$
     INSERT INTO public.pedidos (
-        id, envio_id, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
+        id, envio_id, client_request_ref, pedido_visible, anio, numero, categoria_id, tipo_servicio_id, codigo_categoria,
         estado, tracking_token_hash
     ) VALUES (
         'a0000000-0000-0000-0000-000000000022',
         'e0000000-0000-0000-0000-000000000001',
+        'c0000000-0000-0000-0000-000000000022',
         'PED-2026-C000022',
         2026,
         22,
