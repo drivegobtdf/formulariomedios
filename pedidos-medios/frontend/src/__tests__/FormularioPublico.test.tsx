@@ -98,4 +98,74 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Confirmo que revisé los datos/i }));
     expect(submitBtn).not.toBeDisabled();
   });
+
+  it('debe aceptar direcciones de correo electrónico no institucionales válidas', async () => {
+    const { validateStep1 } = await import('../validation/formValidation');
+    const validContacto = {
+      nombre_apellido: 'Carlos Gómez',
+      telefono: '+54 2901 123456',
+      correo: 'carlos.gomez@empresa-privada.com.ar',
+      area_solicitante: 'Asociación Civil',
+    };
+    const errors = validateStep1(validContacto, ['diseno_grafico']);
+    expect(errors.correo).toBeUndefined();
+    expect(Object.keys(errors).length).toBe(0);
+  });
+
+  it('debe renderizar Step5Resultado mostrando códigos PED reales y sin exponer token de tracking', async () => {
+    const { Step5Resultado } = await import('../components/form/Step5Resultado');
+    const mockResult = {
+      success: true,
+      envio_id: 'e0000000-0000-0000-0000-000000000001',
+      pedidos: [
+        {
+          pedido_id: 'p0000000-0000-0000-0000-000000000001',
+          codigo_ped: 'PED-2026-D000101',
+          client_request_ref: 'c1',
+          categoria_slug: 'diseno_grafico',
+          tipo_slug: 'flyer_rrss',
+          tracking_token: 'raw_secret_tracking_token_do_not_expose_123',
+        },
+      ],
+      archivos: [],
+      idempotent_replay: false,
+    };
+
+    const mockPieces = [
+      {
+        client_request_ref: 'c1',
+        categoria_slug: 'diseno_grafico' as const,
+        tipo_slug: 'flyer_rrss',
+        codigo_ped_prefijo: 'D',
+        piece_title: 'Flyer para Redes',
+        data: {},
+      },
+    ];
+
+    const mockContacto = {
+      nombre_apellido: 'Carlos Gómez',
+      telefono: '+54 2901 123456',
+      correo: 'carlos.gomez@gmail.com',
+      area_solicitante: 'Prensa Externa',
+    };
+
+    render(
+      <Step5Resultado
+        result={mockResult}
+        pieces={mockPieces}
+        contacto={mockContacto}
+        onNewSubmission={() => {}}
+      />
+    );
+
+    // Debe mostrar el código PED real y el correo
+    expect(screen.getByText('PED-2026-D000101')).toBeInTheDocument();
+    expect(screen.getByText('carlos.gomez@gmail.com')).toBeInTheDocument();
+
+    // NO debe mostrar el tracking token en el DOM
+    expect(screen.queryByText(/raw_secret_tracking_token/i)).not.toBeInTheDocument();
+
+    // NO debe tener botones a seguimiento público (F7)
+    expect(screen.queryByRole('link', { name: /seguimiento/i })).not.toBeInTheDocument();
+  });
 });

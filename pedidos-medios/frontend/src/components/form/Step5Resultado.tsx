@@ -60,11 +60,11 @@ export const Step5Resultado: React.FC<Step5ResultadoProps> = ({
       </div>
 
       <div className="pedidos-result-info-box">
-        <div className="pedidos-result-info-icon">✉️</div>
+        <div className="pedidos-result-info-icon">📋</div>
         <div>
-          <h4>Notificación enviada por correo</h4>
+          <h4>Comprobante de Registro de Solicitud</h4>
           <p>
-            Enviamos un correo electrónico a <strong>{contacto.correo}</strong> con el detalle completo de tus solicitudes y los códigos de seguimiento.
+            Tus solicitudes han sido registradas para el contacto <strong>{contacto.correo}</strong>. Conservá los códigos PED indicados arriba para consultar el estado de cada pedido ante la Secretaría de Medios.
           </p>
         </div>
       </div>
