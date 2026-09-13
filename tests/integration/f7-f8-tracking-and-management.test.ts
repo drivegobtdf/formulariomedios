@@ -4,11 +4,14 @@
  *
  * Valida:
  * - DTO público de seguimiento y recuperación anti-enumeración.
+ * - Flujo seguro de recuperación mediante token de canje temporal único (24h) y rotación atómica de credencial.
+ * - Prevención de ataques de repetición (Replay) y resolución de condiciones de carrera en canje concurrente.
  * - Ciclo de vida y vigencia estricta de 48 horas corridas para solicitudes de información faltante.
  * - Validación y respuesta de solicitudes con token seguro y actualización de estado.
  * - Transiciones de estado, asignación, notas, finalización con entrega, cancelación y reapertura.
  * - Control de concurrencia optimista por versión.
  * - Restricciones de acceso por rol (Admin, Equipo vs Observador).
+ * - Historial operativo unificado sanitizado (pedido_get_historial).
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -18,6 +21,7 @@ import crypto from 'node:crypto';
 // Edge functions handlers
 import trackingGetHandler from '../../supabase/functions/tracking-get/index.ts';
 import trackingRecoverHandler from '../../supabase/functions/tracking-recover/index.ts';
+import trackingExchangeHandler from '../../supabase/functions/tracking-exchange/index.ts';
 import infoTokenValidateHandler from '../../supabase/functions/info-token-validate/index.ts';
 import infoResponseSubmitHandler from '../../supabase/functions/info-response-submit/index.ts';
 
@@ -37,12 +41,13 @@ describe('F7 Seguimiento Público & F8 Gestión Interna - Integration Tests', ()
 
   let adminUserId: string;
   let equipoUserId: string;
-  let _observadorUserId: string;
+  let observadorUserId: string;
 
   const password = 'TestPassword123!';
   const testNum = Math.floor(Math.random() * 800000) + 100000;
   const pedidoVisibleStr = `PED-2026-D${testNum}`;
   const testEmail = `solicitante.f7.${testNum}@tdf.gob.ar`;
+  let initialTrackingTokenRaw: string;
 
   beforeAll(async () => {
     process.env.SUPABASE_URL = LOCAL_SUPABASE_URL;
@@ -134,8 +139,8 @@ describe('F7 Seguimiento Público & F8 Gestión Interna - Integration Tests', ()
   });
 
   it('Caso 1 (F7): Consulta de seguimiento público con token válido y rechazo con token inválido', async () => {
-    const trackingTokenRaw = crypto.randomBytes(32).toString('hex');
-    const trackingTokenHash = crypto.createHash('sha256').update(trackingTokenRaw).digest('hex');
+    initialTrackingTokenRaw = crypto.randomBytes(32).toString('hex');
+    const trackingTokenHash = crypto.createHash('sha256').update(initialTrackingTokenRaw).digest('hex');
 
     // 1. Create a test submission and order
     const { data: envio, error: envError } = await serviceClient
@@ -197,7 +202,7 @@ describe('F7 Seguimiento Público & F8 Gestión Interna - Integration Tests', ()
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         pedido_visible: pedidoVisible,
-        token: trackingTokenRaw,
+        token: initialTrackingTokenRaw,
       }),
     });
 
@@ -225,27 +230,143 @@ describe('F7 Seguimiento Público & F8 Gestión Interna - Integration Tests', ()
     expect(resInvalid.status).toBe(404);
   });
 
-  it('Caso 2 (F7): Recuperación de seguimiento anti-enumeración', async () => {
-    const req = new Request('http://localhost/functions/v1/tracking-recover', {
+  it('Caso 2 (F7): Recuperación anti-enumeración, Canje Temporal Único, Rotación e Inmediata Invalidación Previa', async () => {
+    // 1. Request recovery via tracking-recover Edge Function
+    const reqRecov = new Request('http://localhost/functions/v1/tracking-recover', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: testEmail }),
     });
 
-    const res = await trackingRecoverHandler(req);
-    expect(res.status).toBe(200);
+    const resRecov = await trackingRecoverHandler(reqRecov);
+    expect(resRecov.status).toBe(200);
 
-    const body = await res.json();
-    expect(body.success).toBe(true);
-    expect(body.message).toContain('Si el correo electrónico se encuentra registrado');
+    const bodyRecov = await resRecov.json();
+    expect(bodyRecov.success).toBe(true);
+    expect(bodyRecov.message).toContain('Si el correo electrónico se encuentra registrado');
 
-    // Check that a domain event was created
-    const { data: events } = await serviceClient
-      .from('domain_events')
-      .select('*')
-      .eq('event_name', 'tracking.recovery_requested');
+    // 2. Obtain raw exchange token from the communications outbox table
+    const { data: outboxItems } = await serviceClient
+      .from('comunicaciones_pedido')
+      .select('payload')
+      .eq('destinatario_email', testEmail)
+      .eq('tipo_comunicacion', 'tracking_recovery')
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    expect(events && events.length > 0).toBe(true);
+    expect(outboxItems).toBeDefined();
+    expect(outboxItems!.length).toBe(1);
+
+    const rawExchangeToken = outboxItems![0].payload.exchange_token;
+    expect(rawExchangeToken).toBeDefined();
+    expect(typeof rawExchangeToken).toBe('string');
+
+    // 3. Perform exchange via tracking-exchange Edge Function
+    const reqExch = new Request('http://localhost/functions/v1/tracking-exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exchange_token: rawExchangeToken }),
+    });
+
+    const resExch = await trackingExchangeHandler(reqExch);
+    expect(resExch.status).toBe(200);
+
+    const bodyExch = await resExch.json();
+    expect(bodyExch.success).toBe(true);
+    expect(bodyExch.pedido_visible).toBe(pedidoVisibleStr);
+    expect(bodyExch.tracking_token).toBeDefined();
+    expect(bodyExch.token_version).toBe(2);
+
+    const newTrackingToken = bodyExch.tracking_token;
+
+    // 4. Verify that new tracking token successfully accesses tracking-get
+    const reqNewTrack = new Request('http://localhost/functions/v1/tracking-get', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pedido_visible: pedidoVisibleStr,
+        token: newTrackingToken,
+      }),
+    });
+
+    const resNewTrack = await trackingGetHandler(reqNewTrack);
+    expect(resNewTrack.status).toBe(200);
+
+    // 5. Verify that OLD tracking token is now INVALID (returns 404)
+    const reqOldTrack = new Request('http://localhost/functions/v1/tracking-get', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pedido_visible: pedidoVisibleStr,
+        token: initialTrackingTokenRaw,
+      }),
+    });
+
+    const resOldTrack = await trackingGetHandler(reqOldTrack);
+    expect(resOldTrack.status).toBe(404);
+
+    // 6. Replay attack verification: Re-submitting the same exchange token MUST return 409
+    const reqReplay = new Request('http://localhost/functions/v1/tracking-exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exchange_token: rawExchangeToken }),
+    });
+
+    const resReplay = await trackingExchangeHandler(reqReplay);
+    expect(resReplay.status).toBe(409);
+    const bodyReplay = await resReplay.json();
+    expect(bodyReplay.code).toBe('TOKEN_ALREADY_USED');
+
+    // 7. Invalid exchange token returns 404
+    const reqInvalid = new Request('http://localhost/functions/v1/tracking-exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exchange_token: 'invalid_exchange_token_123' }),
+    });
+    const resInvalid = await trackingExchangeHandler(reqInvalid);
+    expect(resInvalid.status).toBe(404);
+  });
+
+  it('Caso 2b (F7): Carrera concurrente en canje de token temporal (Exactamente uno triunfa y otro rechaza)', async () => {
+    // Generate fresh recovery token
+    await trackingRecoverHandler(
+      new Request('http://localhost/functions/v1/tracking-recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: testEmail }),
+      })
+    );
+
+    const { data: outboxItems } = await serviceClient
+      .from('comunicaciones_pedido')
+      .select('payload')
+      .eq('destinatario_email', testEmail)
+      .eq('tipo_comunicacion', 'tracking_recovery')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const concurrentExchangeToken = outboxItems![0].payload.exchange_token;
+
+    // Fire 2 concurrent exchange requests
+    const [res1, res2] = await Promise.all([
+      trackingExchangeHandler(
+        new Request('http://localhost/functions/v1/tracking-exchange', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exchange_token: concurrentExchangeToken }),
+        })
+      ),
+      trackingExchangeHandler(
+        new Request('http://localhost/functions/v1/tracking-exchange', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exchange_token: concurrentExchangeToken }),
+        })
+      ),
+    ]);
+
+    const statuses = [res1.status, res2.status].sort();
+    expect(statuses).toEqual([200, 409]);
   });
 
   it('Caso 3 (F7): Solicitud de Información Faltante con vigencia de 48 horas corridas y respuesta', async () => {
@@ -496,7 +617,7 @@ describe('F7 Seguimiento Público & F8 Gestión Interna - Integration Tests', ()
     expect(occError!.message).toContain('VERSION_CONFLICT');
   });
 
-  it('Caso 6: Restricción de permisos para rol Observador (Solo Lectura)', async () => {
+  it('Caso 6: Restricción de permisos para rol Observador (Solo Lectura) y Acceso a Historial', async () => {
     const { data: pedido } = await serviceClient
       .from('pedidos')
       .select('id, version')
@@ -512,5 +633,14 @@ describe('F7 Seguimiento Público & F8 Gestión Interna - Integration Tests', ()
 
     expect(obsErr).toBeDefined();
     expect(obsErr!.message).toContain('ROLE_FORBIDDEN');
+
+    // Observador can read operational history
+    const { data: histData, error: histErr } = await observadorClient.rpc('pedido_get_historial', {
+      p_pedido_id: pedido!.id,
+    });
+
+    expect(histErr).toBeNull();
+    expect(Array.isArray(histData)).toBe(true);
+    expect(histData!.length).toBeGreaterThan(0);
   });
 });

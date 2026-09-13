@@ -69,3 +69,6 @@ verify_jwt = false
 
 [functions.info-response-submit]
 verify_jwt = false
+
+[functions.tracking-exchange]
+verify_jwt = false

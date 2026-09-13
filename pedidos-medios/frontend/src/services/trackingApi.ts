@@ -116,6 +116,36 @@ export async function requestTrackingRecovery(email: string): Promise<{ success:
   return res.json();
 }
 
+export async function exchangeTrackingToken(exchangeToken: string): Promise<{
+  success: boolean;
+  pedido_id: string;
+  pedido_visible: string;
+  tracking_token: string;
+  token_version: number;
+}> {
+  const config = getPublicConfig();
+  const endpoint = `${config.supabaseUrl}/functions/v1/tracking-exchange`;
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'apikey': config.supabaseAnonKey,
+      'Authorization': `Bearer ${config.supabaseAnonKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      exchange_token: exchangeToken.trim(),
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || `Error canjeando token de recuperación (${res.status})`);
+  }
+
+  return res.json();
+}
+
 export async function validateInfoToken(token: string): Promise<InfoTokenValidationResponse> {
   const config = getPublicConfig();
   const endpoint = `${config.supabaseUrl}/functions/v1/info-token-validate`;

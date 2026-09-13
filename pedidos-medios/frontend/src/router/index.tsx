@@ -27,6 +27,7 @@ export const AppRouter: React.FC = () => {
           <Route path="login" element={<LoginPage />} />
           <Route path="solicitar-acceso" element={<SolicitarAccesoPage />} />
           <Route path="gestion" element={<GestionDashboardPage />} />
+          <Route path="gestion/pedidos/:id" element={<PedidoDetallePage />} />
           <Route path="pedido/:id" element={<PedidoDetallePage />} />
           <Route path="usuarios" element={<UsuariosAdminPage />} />
           <Route path="*" element={<NotFoundPage />} />

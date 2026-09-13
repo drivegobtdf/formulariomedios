@@ -9,30 +9,30 @@ test.describe('PEDIDOS — Smoke Tests F1 Toolchain & App Shell', () => {
     await expect(appContainer).toBeVisible();
 
     // Verificar título principal
-    const headerTitle = page.locator('h1');
+    const headerTitle = page.locator('h1').first();
     await expect(headerTitle).toContainText('PEDIDOS — Secretaría de Medios');
 
     // Verificar vista inicial de formulario
-    const cardTitle = page.locator('h2');
+    const cardTitle = page.locator('h2').first();
     await expect(cardTitle).toContainText('1. Datos de Contacto y Servicios Requeridos');
   });
 
-  test('debe navegar correctamente a las diferentes vistas placeholder', async ({ page }) => {
+  test('debe navegar correctamente a las diferentes vistas', async ({ page }) => {
     await page.goto('/formulariomedios/');
 
     // Navegar a Gestión
     await page.click('text=Gestión');
     await expect(page).toHaveURL(/\/formulariomedios\/gestion/);
-    await expect(page.locator('h2')).toContainText('Panel de Gestión y Tablero de Pedidos');
+    await expect(page.locator('body')).toContainText('Gestión Interna de Pedidos');
 
     // Navegar a Seguimiento
     await page.click('text=Seguimiento');
     await expect(page).toHaveURL(/\/formulariomedios\/seguimiento/);
-    await expect(page.locator('h2')).toContainText('Seguimiento Público de Pedidos');
+    await expect(page.locator('body')).toContainText('Seguimiento de Pedido');
 
     // Navegar a Login
     await page.click('text=Login');
     await expect(page).toHaveURL(/\/formulariomedios\/login/);
-    await expect(page.locator('h2')).toContainText('Acceso de Personal Interno');
+    await expect(page.locator('h2').first()).toContainText('Acceso de Personal Interno');
   });
 });

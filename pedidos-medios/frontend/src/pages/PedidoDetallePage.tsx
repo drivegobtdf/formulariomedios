@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import {
   fetchPedidoById,
   fetchInternalUsers,
+  fetchPedidoHistorialOperativo,
   assignPedido,
   changePedidoState,
   finalizePedido,
@@ -15,6 +16,7 @@ import {
   createInfoRequest,
   PedidoDetailItem,
   InternalUser,
+  HistorialOperativoItem,
 } from '../services/gestionApi';
 
 export const PedidoDetallePage: React.FC = () => {
@@ -22,6 +24,7 @@ export const PedidoDetallePage: React.FC = () => {
   const { isObserver } = useAuth();
 
   const [pedido, setPedido] = useState<PedidoDetailItem | null>(null);
+  const [historial, setHistorial] = useState<HistorialOperativoItem[]>([]);
   const [users, setUsers] = useState<InternalUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -34,12 +37,12 @@ export const PedidoDetallePage: React.FC = () => {
   const [stateMotivo, setStateMotivo] = useState('');
   const [showStateModal, setShowStateModal] = useState(false);
 
-  // Finalize delivery state
+  // Finalize delivery state (F9 Pre-implementation)
   const [showFinalizeModal, setShowFinalizeModal] = useState(false);
   const [entregaUrl, setEntregaUrl] = useState('');
   const [entregaNota, setEntregaNota] = useState('');
 
-  // Cancel / Reopen modal
+  // Cancel / Reopen modal (F9 Pre-implementation)
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelMotivo, setCancelMotivo] = useState('');
   const [showReopenModal, setShowReopenModal] = useState(false);
@@ -49,7 +52,7 @@ export const PedidoDetallePage: React.FC = () => {
   const [notaTexto, setNotaTexto] = useState('');
   const [notaVisibilidad, setNotaVisibilidad] = useState<'interna' | 'solicitante'>('interna');
 
-  // Info request state
+  // Info request state (48h)
   const [showInfoReqModal, setShowInfoReqModal] = useState(false);
   const [infoReqMensaje, setInfoReqMensaje] = useState('');
 
@@ -65,6 +68,9 @@ export const PedidoDetallePage: React.FC = () => {
       setPedido(p);
       setUsers(u);
       setSelectedResponsable(p.responsable_user_id || '');
+
+      const h = await fetchPedidoHistorialOperativo(p.id).catch(() => []);
+      setHistorial(h);
     } catch (err: any) {
       setError(err.message || 'Error cargando pedido.');
     } finally {
@@ -122,7 +128,7 @@ export const PedidoDetallePage: React.FC = () => {
       setShowFinalizeModal(false);
       setEntregaUrl('');
       setEntregaNota('');
-      setSuccessMessage('Pedido finalizado y entrega registrada correctamente.');
+      setSuccessMessage('Pedido finalizado y entrega registrada (F9 Preimplementación).');
       await loadData();
     } catch (err: any) {
       setError(err.message || 'Error al finalizar el pedido.');
@@ -140,7 +146,7 @@ export const PedidoDetallePage: React.FC = () => {
       await cancelPedido(pedido.id, cancelMotivo.trim(), pedido.version);
       setShowCancelModal(false);
       setCancelMotivo('');
-      setSuccessMessage('Pedido cancelado.');
+      setSuccessMessage('Pedido cancelado (F9 Preimplementación).');
       await loadData();
     } catch (err: any) {
       setError(err.message || 'Error al cancelar pedido.');
@@ -158,7 +164,7 @@ export const PedidoDetallePage: React.FC = () => {
       await reopenPedido(pedido.id, reopenMotivo.trim(), pedido.version);
       setShowReopenModal(false);
       setReopenMotivo('');
-      setSuccessMessage('Pedido reabierto.');
+      setSuccessMessage('Pedido reabierto (F9 Preimplementación).');
       await loadData();
     } catch (err: any) {
       setError(err.message || 'Error al reabrir pedido.');
@@ -174,10 +180,10 @@ export const PedidoDetallePage: React.FC = () => {
     try {
       if (pedido.archivado) {
         await restorePedido(pedido.id, pedido.version);
-        setSuccessMessage('Pedido desarchivado.');
+        setSuccessMessage('Pedido desarchivado (F9 Preimplementación).');
       } else {
         await archivePedido(pedido.id, pedido.version);
-        setSuccessMessage('Pedido archivado.');
+        setSuccessMessage('Pedido archivado (F9 Preimplementación).');
       }
       await loadData();
     } catch (err: any) {
@@ -213,7 +219,7 @@ export const PedidoDetallePage: React.FC = () => {
       await createInfoRequest(pedido.id, infoReqMensaje.trim(), pedido.version);
       setShowInfoReqModal(false);
       setInfoReqMensaje('');
-      setSuccessMessage('Solicitud de información creada con vigencia de 48 horas corridas.');
+      setSuccessMessage('Solicitud de información creada con vigencia estricta de 48 horas corridas.');
       await loadData();
     } catch (err: any) {
       setError(err.message || 'Error al crear solicitud de información.');
@@ -241,10 +247,15 @@ export const PedidoDetallePage: React.FC = () => {
   return (
     <div style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
       {/* Breadcrumb & Navigation */}
-      <div style={{ marginBottom: '1rem' }}>
+      <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Link to="/gestion" style={{ color: '#0284c7', textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600 }}>
           ← Volver al Tablero
         </Link>
+        {isObserver && (
+          <span style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 700 }}>
+            Modo Observador (Solo Lectura)
+          </span>
+        )}
       </div>
 
       {/* Notifications */}
@@ -288,77 +299,88 @@ export const PedidoDetallePage: React.FC = () => {
 
           {/* Action Toolbar for Operadores (Disabled for Observador) */}
           {!isObserver && (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setTargetState('en_analisis');
-                  setShowStateModal(true);
-                }}
-                disabled={actionLoading || pedido.estado === 'en_analisis' || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
-                style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Analizar
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setTargetState('en_curso');
-                  setShowStateModal(true);
-                }}
-                disabled={actionLoading || pedido.estado === 'en_curso' || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
-                style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Poner En Curso
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowInfoReqModal(true)}
-                disabled={actionLoading || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
-                style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
-              >
-                + Pedir Info (48h)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowFinalizeModal(true)}
-                disabled={actionLoading || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
-                style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Finalizar Pedido
-              </button>
-
-              {pedido.estado === 'cancelado' || pedido.estado === 'finalizado' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+              {/* F8 Workflow Actions */}
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={() => setShowReopenModal(true)}
-                  disabled={actionLoading}
-                  style={{ background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+                  onClick={() => {
+                    setTargetState('en_analisis');
+                    setShowStateModal(true);
+                  }}
+                  disabled={actionLoading || pedido.estado === 'en_analisis' || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
+                  style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  Reabrir
+                  Analizar
                 </button>
-              ) : (
+
                 <button
                   type="button"
-                  onClick={() => setShowCancelModal(true)}
-                  disabled={actionLoading}
-                  style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+                  onClick={() => {
+                    setTargetState('en_curso');
+                    setShowStateModal(true);
+                  }}
+                  disabled={actionLoading || pedido.estado === 'en_curso' || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
+                  style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  Cancelar
+                  Poner En Curso
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={handleArchiveToggle}
-                disabled={actionLoading}
-                style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
-              >
-                {pedido.archivado ? 'Desarchivar' : 'Archivar'}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setShowInfoReqModal(true)}
+                  disabled={actionLoading || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
+                  style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  + Pedir Info (48h)
+                </button>
+              </div>
+
+              {/* F9 Pre-implemented Actions Gated and Labeled */}
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>F9 Preimplementación:</span>
+                <button
+                  type="button"
+                  onClick={() => setShowFinalizeModal(true)}
+                  disabled={actionLoading || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
+                  style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '0.35rem 0.6rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                  title="F9 Parcialmente preimplementada, pendiente de aceptación"
+                >
+                  Finalizar Pedido
+                </button>
+
+                {pedido.estado === 'cancelado' || pedido.estado === 'finalizado' ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowReopenModal(true)}
+                    disabled={actionLoading}
+                    style={{ background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe', padding: '0.35rem 0.6rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                    title="F9 Parcialmente preimplementada, pendiente de aceptación"
+                  >
+                    Reabrir
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelModal(true)}
+                    disabled={actionLoading}
+                    style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '0.35rem 0.6rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                    title="F9 Parcialmente preimplementada, pendiente de aceptación"
+                  >
+                    Cancelar
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleArchiveToggle}
+                  disabled={actionLoading}
+                  style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.35rem 0.6rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                  title="F9 Parcialmente preimplementada, pendiente de aceptación"
+                >
+                  {pedido.archivado ? 'Desarchivar' : 'Archivar'}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -392,7 +414,7 @@ export const PedidoDetallePage: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div style={{ fontSize: '0.875rem', color: '#0f172a' }}>
+            <div style={{ fontSize: '0.875rem', color: '#0f172a', fontWeight: 500 }}>
               {pedido.responsable_nombre || 'Sin Asignar'}
             </div>
           )}
@@ -401,7 +423,7 @@ export const PedidoDetallePage: React.FC = () => {
 
       {/* 2-Column Details Layout */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'flex-start' }}>
-        {/* Left Column: Form Details, Info Requests, Deliveries, Notes */}
+        {/* Left Column: Form Details, Info Requests, Deliveries, Notes, Historial Operativo */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Solicitante & Contact Information */}
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1.25rem' }}>
@@ -443,7 +465,7 @@ export const PedidoDetallePage: React.FC = () => {
           {/* Solicitudes de Información */}
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1.25rem' }}>
             <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem 0' }}>
-              Solicitudes de Información Faltante (48h)
+              Solicitudes de Información Faltante (Vigencia 48h)
             </h2>
             {pedido.solicitudes.length === 0 ? (
               <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>No hay solicitudes de información registradas.</p>
@@ -477,7 +499,7 @@ export const PedidoDetallePage: React.FC = () => {
           {/* Entregas */}
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1.25rem' }}>
             <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem 0' }}>
-              Entregas y Archivos Finales
+              Entregas y Archivos Finales (F9)
             </h2>
             {pedido.entregas.length === 0 ? (
               <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>No se han registrado entregas todavía.</p>
@@ -563,6 +585,43 @@ export const PedidoDetallePage: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Historial Operativo (Proyección Sanitizada) */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1.25rem' }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem 0' }}>
+              Historial Operativo Unificado
+            </h2>
+            {historial.length === 0 ? (
+              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>No hay registros de actividad operativa disponibles.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {historial.map((h, idx) => (
+                  <div key={idx} style={{ borderLeft: '3px solid #0284c7', background: '#f8fafc', padding: '0.75rem 1rem', borderRadius: '0 0.375rem 0.375rem 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#0369a1', textTransform: 'uppercase' }}>
+                        {h.evento.replace(/_/g, ' ')}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        {new Date(h.created_at).toLocaleString('es-AR')}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#334155' }}>
+                      <strong>Actor:</strong> {h.actor_nombre || 'Sistema'}
+                    </div>
+                    {h.payload && Object.keys(h.payload).length > 0 && (
+                      <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#64748b' }}>
+                        {Object.entries(h.payload).map(([k, v]) => (
+                          <span key={k} style={{ marginRight: '0.75rem' }}>
+                            <strong>{k}:</strong> {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -654,11 +713,14 @@ export const PedidoDetallePage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Finalizar */}
+      {/* Modal Finalizar (F9) */}
       {showFinalizeModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
           <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '480px', width: '100%', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#15803d' }}>Finalizar Pedido y Registrar Entrega</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#15803d' }}>Finalizar Pedido y Registrar Entrega (F9)</h3>
+            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+              Nota: Acción catalogada como F9 preimplementada, sujeta a verificación de fase.
+            </p>
             <form onSubmit={handleFinalize}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Enlace Externo de Entrega (Drive / Compartido)</label>
@@ -689,11 +751,11 @@ export const PedidoDetallePage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Cancelar */}
+      {/* Modal Cancelar (F9) */}
       {showCancelModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
           <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '440px', width: '100%', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#b91c1c' }}>Cancelar Pedido</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#b91c1c' }}>Cancelar Pedido (F9)</h3>
             <form onSubmit={handleCancel}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Motivo de Cancelación (Requerido)</label>
@@ -715,11 +777,11 @@ export const PedidoDetallePage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Reabrir */}
+      {/* Modal Reabrir (F9) */}
       {showReopenModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
           <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '440px', width: '100%', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#4338ca' }}>Reabrir Pedido</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#4338ca' }}>Reabrir Pedido (F9)</h3>
             <form onSubmit={handleReopen}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Motivo de Reapertura (Requerido)</label>

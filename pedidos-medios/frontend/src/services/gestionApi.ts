@@ -431,3 +431,20 @@ export async function createInfoRequest(pedidoId: string, mensaje: string, expec
   if (error) throw new Error(error.message);
   return data;
 }
+
+export interface HistorialOperativoItem {
+  tipo: 'evento' | 'asignacion';
+  evento: string;
+  created_at: string;
+  actor_nombre: string;
+  payload: Record<string, any>;
+}
+
+export async function fetchPedidoHistorialOperativo(pedidoId: string): Promise<HistorialOperativoItem[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_get_historial', {
+    p_pedido_id: pedidoId,
+  });
+  if (error) throw new Error(error.message);
+  return data || [];
+}

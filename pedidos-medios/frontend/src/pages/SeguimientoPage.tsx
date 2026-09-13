@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getPublicTracking, requestTrackingRecovery, TrackingPublicDTO } from '../services/trackingApi';
+import { getPublicTracking, requestTrackingRecovery, exchangeTrackingToken, TrackingPublicDTO } from '../services/trackingApi';
 
 export const SeguimientoPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [pedidoVisible, setPedidoVisible] = useState(searchParams.get('ped') || searchParams.get('pedido_visible') || '');
   const [trackingToken, setTrackingToken] = useState(searchParams.get('token') || searchParams.get('tracking_token') || '');
 
@@ -18,6 +18,13 @@ export const SeguimientoPage: React.FC = () => {
   const [recoverySuccess, setRecoverySuccess] = useState<string | null>(null);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
+  // Exchange modal state
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
+  const [exchangeInputToken, setExchangeInputToken] = useState(searchParams.get('canje') || searchParams.get('exchange_token') || '');
+  const [exchangeLoading, setExchangeLoading] = useState(false);
+  const [exchangeSuccess, setExchangeSuccess] = useState<string | null>(null);
+  const [exchangeError, setExchangeError] = useState<string | null>(null);
+
   const fetchTracking = async (ped: string, tok: string) => {
     if (!ped.trim() || !tok.trim()) return;
     setLoading(true);
@@ -26,14 +33,41 @@ export const SeguimientoPage: React.FC = () => {
     try {
       const res = await getPublicTracking(ped, tok);
       setData(res);
-    } catch (err: any) {
-      setError(err.message || 'No se pudo consultar el estado del pedido. Verifique el código y token.');
+    } catch (err: unknown) {
+      setError((err as Error)?.message || 'No se pudo consultar el estado del pedido. Verifique el código y token.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleExchange = async (tokenToExchange: string) => {
+    if (!tokenToExchange.trim()) return;
+    setExchangeLoading(true);
+    setExchangeError(null);
+    setExchangeSuccess(null);
+    try {
+      const res = await exchangeTrackingToken(tokenToExchange);
+      setExchangeSuccess(`¡Acceso rotado con éxito! Código: ${res.pedido_visible}. Su nueva clave de seguimiento ha sido activada.`);
+      setPedidoVisible(res.pedido_visible);
+      setTrackingToken(res.tracking_token);
+      setSearchParams({ ped: res.pedido_visible, token: res.tracking_token });
+      await fetchTracking(res.pedido_visible, res.tracking_token);
+    } catch (err: unknown) {
+      setExchangeError((err as Error)?.message || 'Error al canjear credencial de recuperación.');
+    } finally {
+      setExchangeLoading(false);
+    }
+  };
+
   useEffect(() => {
+    const canjeToken = searchParams.get('canje') || searchParams.get('exchange_token');
+    if (canjeToken) {
+      setExchangeInputToken(canjeToken);
+      setShowExchangeModal(true);
+      handleExchange(canjeToken);
+      return;
+    }
+
     const ped = searchParams.get('ped') || searchParams.get('pedido_visible');
     const tok = searchParams.get('token') || searchParams.get('tracking_token');
     if (ped && tok) {
@@ -53,6 +87,7 @@ export const SeguimientoPage: React.FC = () => {
       setError('Ingrese el token de seguimiento provisto al confirmar su pedido.');
       return;
     }
+    setSearchParams({ ped: pedidoVisible.trim(), token: trackingToken.trim() });
     fetchTracking(pedidoVisible, trackingToken);
   };
 
@@ -68,8 +103,8 @@ export const SeguimientoPage: React.FC = () => {
     try {
       const res = await requestTrackingRecovery(recoveryEmail);
       setRecoverySuccess(res.message || 'Si existen pedidos activos asociados a este correo, se enviaron los enlaces de seguimiento.');
-    } catch (err: any) {
-      setRecoveryError(err.message || 'Error al procesar la solicitud.');
+    } catch (err: unknown) {
+      setRecoveryError((err as Error)?.message || 'Error al procesar la solicitud.');
     } finally {
       setRecoveryLoading(false);
     }
@@ -93,62 +128,81 @@ export const SeguimientoPage: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '1.5rem' }}>
+    <div style={{ maxWidth: '850px', margin: '0 auto', padding: '1.5rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.5rem' }}>
           Seguimiento de Pedido
         </h1>
-        <p style={{ color: '#64748b' }}>
-          Consulte el estado público de su solicitud ingresando su identificador PED y el token de acceso.
+        <p style={{ color: '#64748b', fontSize: '0.95rem' }}>
+          Consulte el estado, comunicaciones, solicitudes de información y entregas de su solicitud.
         </p>
       </div>
 
-      {/* Formulario de búsqueda */}
-      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+      {/* Consulta Form */}
+      <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
-              Código de Pedido
-            </label>
-            <input
-              type="text"
-              placeholder="PED-2026-D000001"
-              value={pedidoVisible}
-              onChange={(e) => setPedidoVisible(e.target.value)}
-              style={{ width: '100%', padding: '0.625rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.875rem' }}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+            <div>
+              <label htmlFor="input-ped" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                Código de Pedido (PED)
+              </label>
+              <input
+                id="input-ped"
+                type="text"
+                placeholder="ej. PED-2026-D000001"
+                value={pedidoVisible}
+                onChange={(e) => setPedidoVisible(e.target.value.toUpperCase())}
+                style={{ width: '100%', padding: '0.625rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.95rem', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label htmlFor="input-token" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                Token de Seguimiento
+              </label>
+              <input
+                id="input-token"
+                type="text"
+                placeholder="Clave alfanumérica de seguimiento"
+                value={trackingToken}
+                onChange={(e) => setTrackingToken(e.target.value.trim())}
+                style={{ width: '100%', padding: '0.625rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.95rem', boxSizing: 'border-box' }}
+              />
+            </div>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
-              Token de Seguimiento
-            </label>
-            <input
-              type="text"
-              placeholder="Token de acceso (al menos 32 caracteres)"
-              value={trackingToken}
-              onChange={(e) => setTrackingToken(e.target.value)}
-              style={{ width: '100%', padding: '0.625rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.875rem' }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => {
-                setShowRecoveryModal(true);
-                setRecoverySuccess(null);
-                setRecoveryError(null);
-              }}
-              style={{ background: 'transparent', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
-            >
-              ¿Perdió su token o código?
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowRecoveryModal(true)}
+                style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+              >
+                ¿Olvidó su token de seguimiento?
+              </button>
+              <span style={{ color: '#cbd5e1' }}>|</span>
+              <button
+                type="button"
+                onClick={() => setShowExchangeModal(true)}
+                style={{ background: 'none', border: 'none', color: '#0891b2', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+              >
+                Canjear enlace de recuperación
+              </button>
+            </div>
 
             <button
               type="submit"
               disabled={loading}
-              style={{ backgroundColor: '#0284c7', color: '#ffffff', padding: '0.625rem 1.5rem', border: 'none', borderRadius: '0.375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}
+              style={{
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                padding: '0.625rem 1.5rem',
+                borderRadius: '0.5rem',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1,
+              }}
             >
               {loading ? 'Consultando...' : 'Consultar Estado'}
             </button>
@@ -156,163 +210,278 @@ export const SeguimientoPage: React.FC = () => {
         </form>
       </div>
 
-      {/* Mensaje de error */}
+      {/* Error Message */}
       {error && (
-        <div style={{ background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', padding: '1rem', borderRadius: '0.5rem', marginBottom: '2rem' }}>
-          <p style={{ margin: 0, fontWeight: 500 }}>{error}</p>
+        <div style={{ padding: '1rem', backgroundColor: '#fee2e2', border: '1px solid #f87171', borderRadius: '0.5rem', color: '#991b1b', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          <strong>Error:</strong> {error}
         </div>
       )}
 
-      {/* Resultados de seguimiento */}
-      {data && (
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+      {/* Loading State */}
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+          <div style={{ display: 'inline-block', width: '2rem', height: '2rem', border: '3px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <p style={{ marginTop: '1rem' }}>Obteniendo datos de seguimiento seguro...</p>
+        </div>
+      )}
+
+      {/* Result DTO Card */}
+      {data && !loading && (
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          {/* Header */}
+          <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', backgroundColor: '#f8fafc' }}>
             <div>
-              <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: 600 }}>
-                Pedido Oficial
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Solicitud Oficial
               </span>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', margin: '0.25rem 0' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: '0.25rem 0 0 0' }}>
                 {data.pedido_visible}
               </h2>
-              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>
-                {data.categoria_nombre} {data.tipo_nombre ? `· ${data.tipo_nombre}` : ''}
-              </p>
             </div>
-            <div>{getEstadoBadge(data.estado)}</div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '0.5rem' }}>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>FECHA DE SOLICITUD</div>
-              <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500, marginTop: '0.25rem' }}>
-                {new Date(data.created_at).toLocaleString('es-AR')}
-              </div>
-            </div>
-
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '0.5rem' }}>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>ÚLTIMA ACTUALIZACIÓN</div>
-              <div style={{ fontSize: '0.875rem', color: '#1e293b', fontWeight: 500, marginTop: '0.25rem' }}>
-                {new Date(data.updated_at).toLocaleString('es-AR')}
-              </div>
+            <div>
+              {getEstadoBadge(data.estado)}
             </div>
           </div>
 
-          {/* Solicitudes de información pendientes */}
-          {data.solicitudes_informacion && data.solicitudes_informacion.length > 0 && (
-            <div style={{ border: '1px solid #fef08a', background: '#fefce8', borderRadius: '0.5rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
-              <h3 style={{ color: '#854d0e', fontSize: '1rem', fontWeight: 700, margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span>⚠️</span> Información Faltante Requerida
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: '#713f12', marginBottom: '1rem' }}>
-                El equipo ha solicitado información adicional para continuar con su pedido. 
-                <strong> Vigencia: 48 horas corridas desde la emisión.</strong>
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {data.solicitudes_informacion.map((sol) => (
-                  <div key={sol.id} style={{ background: '#ffffff', padding: '1rem', borderRadius: '0.375rem', border: '1px solid #fef08a' }}>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#1e293b' }}>{sol.mensaje}</p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#854d0e' }}>
-                      <span>Vence: {new Date(sol.expires_at).toLocaleString('es-AR')} ({sol.estado})</span>
+          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Meta Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', backgroundColor: '#f1f5f9', padding: '1rem', borderRadius: '0.5rem' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Categoría</span>
+                <p style={{ margin: '0.2rem 0 0 0', fontWeight: 600, color: '#1e293b' }}>{data.categoria_nombre}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Tipo de Servicio</span>
+                <p style={{ margin: '0.2rem 0 0 0', fontWeight: 600, color: '#1e293b' }}>{data.tipo_nombre}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Fecha de Ingreso</span>
+                <p style={{ margin: '0.2rem 0 0 0', fontWeight: 600, color: '#1e293b' }}>{new Date(data.created_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            {/* Solicitudes de información faltante (48h) */}
+            {data.solicitudes_informacion && data.solicitudes_informacion.length > 0 && (
+              <div style={{ border: '1px solid #fef08a', backgroundColor: '#fefce8', borderRadius: '0.5rem', padding: '1.25rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#854d0e', margin: '0 0 0.75rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  ⚠️ Solicitud de Información Faltante
+                </h3>
+                {data.solicitudes_informacion.map((s) => {
+                  const isExpired = Date.now() >= new Date(s.expires_at).getTime();
+                  return (
+                    <div key={s.id} style={{ backgroundColor: '#ffffff', padding: '1rem', borderRadius: '0.375rem', border: '1px solid #fde047', marginBottom: '0.75rem' }}>
+                      <p style={{ margin: '0 0 0.5rem 0', color: '#334155', fontWeight: 500 }}>{s.mensaje}</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.8rem', color: '#64748b' }}>
+                        <span>Vigencia contractual: 48 horas corridas ({new Date(s.expires_at).toLocaleString()})</span>
+                        <span style={{ fontWeight: 600, color: s.estado === 'respondida' ? '#15803d' : isExpired ? '#b91c1c' : '#b45309' }}>
+                          Estado: {s.estado === 'respondida' ? 'Respondida' : isExpired ? 'Vencida' : 'Pendiente de Respuesta'}
+                        </span>
+                      </div>
+                      {s.estado === 'pendiente' && !isExpired && (
+                        <div style={{ marginTop: '0.75rem' }}>
+                          <a
+                            href={`/formulariomedios/solicitud-informacion?token=${trackingToken}&ped=${data.pedido_visible}`}
+                            style={{
+                              display: 'inline-block',
+                              backgroundColor: '#ca8a04',
+                              color: '#ffffff',
+                              padding: '0.4rem 1rem',
+                              borderRadius: '0.375rem',
+                              fontWeight: 600,
+                              fontSize: '0.85rem',
+                              textDecoration: 'none',
+                            }}
+                          >
+                            Responder Solicitud Ahora
+                          </a>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Entrega y resultados */}
-          {data.entrega && (
-            <div style={{ border: '1px solid #bbf7d0', background: '#f0fdf4', borderRadius: '0.5rem', padding: '1.25rem', marginBottom: '1.5rem' }}>
-              <h3 style={{ color: '#166534', fontSize: '1rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>
-                🎉 Entrega Final del Pedido
-              </h3>
-              <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '0.375rem', border: '1px solid #bbf7d0' }}>
-                <div style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 600, marginBottom: '0.25rem' }}>
-                  Versión #{data.entrega.version} · {new Date(data.entrega.created_at).toLocaleString('es-AR')}
-                </div>
-                {data.entrega.nota_publica && <p style={{ fontSize: '0.875rem', color: '#334155', margin: '0 0 0.5rem 0' }}>{data.entrega.nota_publica}</p>}
-                {data.entrega.url_entrega && (
-                  <a href={data.entrega.url_entrega} target="_blank" rel="noopener noreferrer" style={{ color: '#0284c7', fontSize: '0.875rem', textDecoration: 'underline', fontWeight: 500 }}>
-                    Acceder a la entrega (Enlace Externo)
-                  </a>
+            {/* Entregas y Descargas */}
+            {data.entrega && (
+              <div style={{ border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', borderRadius: '0.5rem', padding: '1.25rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#166534', margin: '0 0 0.75rem 0' }}>
+                  🎉 Entrega del Trabajo Realizado
+                </h3>
+                {data.entrega.nota_publica && (
+                  <p style={{ margin: '0 0 0.75rem 0', color: '#1e293b' }}>{data.entrega.nota_publica}</p>
                 )}
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  {data.entrega.url_entrega && (
+                    <a
+                      href={data.entrega.url_entrega}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        backgroundColor: '#16a34a',
+                        color: '#ffffff',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '0.375rem',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      Abrir Enlace de Entrega
+                    </a>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Comunicaciones */}
-          {data.comunicaciones && data.comunicaciones.length > 0 && (
-            <div style={{ border: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '0.5rem', padding: '1.25rem' }}>
-              <h3 style={{ color: '#334155', fontSize: '1rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>
-                Comunicaciones Notificadas
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {data.comunicaciones.map((c) => (
-                  <div key={c.id} style={{ background: '#ffffff', padding: '0.875rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0' }}>
-                    <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.875rem', color: '#1e293b' }}>Notificación: {c.tipo}</p>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{new Date(c.created_at).toLocaleString('es-AR')}</span>
-                  </div>
-                ))}
+            {/* Archivos Adjuntos Originales */}
+            {data.archivos_adjuntos && data.archivos_adjuntos.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#334155', margin: '0 0 0.5rem 0' }}>
+                  Archivos Adjuntos
+                </h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {data.archivos_adjuntos.map((arch) => (
+                    <li key={arch.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.375rem', fontSize: '0.875rem' }}>
+                      <span style={{ fontWeight: 500, color: '#1e293b' }}>{arch.nombre}</span>
+                      <span style={{ color: '#64748b' }}>{(arch.size_bytes / (1024 * 1024)).toFixed(2)} MB</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
-      {/* Modal de Recuperación Anti-enumeración */}
+      {/* Recovery Modal */}
       {showRecoveryModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '480px', width: '100%', padding: '1.5rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
-              Recuperación de Seguimiento
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '0.75rem', maxWidth: '450px', width: '100%', padding: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', margin: '0 0 0.5rem 0' }}>
+              Recuperar Acceso a Seguimiento
             </h3>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.25rem' }}>
-              Ingrese el correo electrónico utilizado al presentar su solicitud. Si existen pedidos asociados, recibirá un correo con los accesos directos.
+            <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>
+              Ingrese el correo electrónico que utilizó al enviar la solicitud. Le enviaremos un enlace seguro de canje para restaurar su acceso.
             </p>
-
-            <form onSubmit={handleRecoverySubmit}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
-                  Correo Electrónico
-                </label>
-                <input
-                  type="email"
-                  placeholder="su-correo@ejemplo.com"
-                  value={recoveryEmail}
-                  onChange={(e) => setRecoveryEmail(e.target.value)}
-                  style={{ width: '100%', padding: '0.625rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.875rem' }}
-                />
-              </div>
-
-              {recoveryError && (
-                <div style={{ background: '#fef2f2', color: '#991b1b', padding: '0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                  {recoveryError}
-                </div>
-              )}
-
-              {recoverySuccess && (
-                <div style={{ background: '#f0fdf4', color: '#166534', padding: '0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            {recoverySuccess ? (
+              <div>
+                <div style={{ padding: '0.75rem', backgroundColor: '#dcfce7', color: '#15803d', borderRadius: '0.375rem', fontSize: '0.875rem', marginBottom: '1rem' }}>
                   {recoverySuccess}
                 </div>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
                 <button
                   type="button"
-                  onClick={() => setShowRecoveryModal(false)}
-                  style={{ background: '#f1f5f9', color: '#475569', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', fontWeight: 500, cursor: 'pointer' }}
+                  onClick={() => { setShowRecoveryModal(false); setRecoverySuccess(null); }}
+                  style={{ width: '100%', padding: '0.625rem', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cerrar
                 </button>
+              </div>
+            ) : (
+              <form onSubmit={handleRecoverySubmit}>
+                {recoveryError && (
+                  <div style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '0.375rem', fontSize: '0.8rem', marginBottom: '0.75rem' }}>
+                    {recoveryError}
+                  </div>
+                )}
+                <div style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="recovery-email" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
+                    Correo Electrónico
+                  </label>
+                  <input
+                    id="recovery-email"
+                    type="email"
+                    required
+                    placeholder="correo@ejemplo.gob.ar"
+                    value={recoveryEmail}
+                    onChange={(e) => setRecoveryEmail(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setShowRecoveryModal(false); setRecoveryError(null); }}
+                    style={{ padding: '0.5rem 1rem', border: '1px solid #cbd5e1', background: '#ffffff', borderRadius: '0.375rem', cursor: 'pointer' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={recoveryLoading}
+                    style={{ padding: '0.5rem 1rem', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '0.375rem', fontWeight: 600, cursor: recoveryLoading ? 'not-allowed' : 'pointer' }}
+                  >
+                    {recoveryLoading ? 'Enviando...' : 'Solicitar Enlace'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Exchange Modal */}
+      {showExchangeModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '0.75rem', maxWidth: '480px', width: '100%', padding: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', margin: '0 0 0.5rem 0' }}>
+              Canjear Enlace de Recuperación
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>
+              Ingrese la credencial de canje temporal recibida para rotar y obtener su nuevo token seguro de seguimiento.
+            </p>
+            {exchangeSuccess ? (
+              <div>
+                <div style={{ padding: '0.75rem', backgroundColor: '#dcfce7', color: '#15803d', borderRadius: '0.375rem', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                  {exchangeSuccess}
+                </div>
                 <button
-                  type="submit"
-                  disabled={recoveryLoading}
-                  style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', fontWeight: 600, cursor: recoveryLoading ? 'not-allowed' : 'pointer' }}
+                  type="button"
+                  onClick={() => { setShowExchangeModal(false); setExchangeSuccess(null); }}
+                  style={{ width: '100%', padding: '0.625rem', backgroundColor: '#0891b2', color: '#ffffff', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  {recoveryLoading ? 'Enviando...' : 'Enviar Enlace'}
+                  Ver Pedido
                 </button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={(e) => { e.preventDefault(); handleExchange(exchangeInputToken); }}>
+                {exchangeError && (
+                  <div style={{ padding: '0.5rem', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '0.375rem', fontSize: '0.8rem', marginBottom: '0.75rem' }}>
+                    {exchangeError}
+                  </div>
+                )}
+                <div style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="exchange-token-input" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
+                    Token de Canje Temporal
+                  </label>
+                  <input
+                    id="exchange-token-input"
+                    type="text"
+                    required
+                    placeholder="Clave de canje temporal"
+                    value={exchangeInputToken}
+                    onChange={(e) => setExchangeInputToken(e.target.value.trim())}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setShowExchangeModal(false); setExchangeError(null); }}
+                    style={{ padding: '0.5rem 1rem', border: '1px solid #cbd5e1', background: '#ffffff', borderRadius: '0.375rem', cursor: 'pointer' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={exchangeLoading}
+                    style={{ padding: '0.5rem 1rem', backgroundColor: '#0891b2', color: '#ffffff', border: 'none', borderRadius: '0.375rem', fontWeight: 600, cursor: exchangeLoading ? 'not-allowed' : 'pointer' }}
+                  >
+                    {exchangeLoading ? 'Canjeando...' : 'Canjear y Activar'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

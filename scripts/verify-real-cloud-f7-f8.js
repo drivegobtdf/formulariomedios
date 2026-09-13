@@ -111,6 +111,16 @@ async function run() {
     });
     assert('Iniciar sesión con usuario operador (rol equipo)', !signInErr && Boolean(authData.session?.access_token));
 
+    // Authenticated user Supabase Client with JWT
+    const authUserClient = createClient(SUPABASE_PROJECT_URL, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+        headers: {
+          Authorization: `Bearer ${authData.session.access_token}`,
+        },
+      },
+    });
+
     // 2. Create test submission via submission-create Edge Function
     console.log('\n--- Creando Submission y Pedido vía submission-create ---');
     const submissionKey = crypto.randomUUID();
@@ -158,7 +168,7 @@ async function run() {
     const createdPedido = submitData.pedidos[0];
     const pedidoId = createdPedido.id;
     const pedidoVisible = createdPedido.pedido_visible;
-    const rawTrackingToken = createdPedido.tracking_token;
+    let rawTrackingToken = createdPedido.tracking_token;
     createdPedidoIds.push(pedidoId);
 
     // 3. Test Edge Function: tracking-get
@@ -200,10 +210,62 @@ async function run() {
       recoverFakeRes.status === 200 && recoverFakeData.success === true
     );
 
-    // 5. Test RPCs for F8 Management as Authenticated Operator
+    // 5. Test Edge Function: tracking-exchange (Canje de token temporal y rotación)
+    console.log('\n--- Probando Edge Function: tracking-exchange (Canje Temporal y Rotación) ---');
+    const { data: outboxItems } = await serviceClient
+      .from('comunicaciones_pedido')
+      .select('payload')
+      .eq('destinatario_email', solicitanteEmail)
+      .eq('tipo_comunicacion', 'tracking_recovery')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    assert('Outbox comunicaciones_pedido contiene credencial de canje temporal', 
+      outboxItems && outboxItems.length > 0 && Boolean(outboxItems[0].payload.exchange_token)
+    );
+
+    const exchangeTokenRaw = outboxItems[0].payload.exchange_token;
+
+    // Call tracking-exchange POST
+    const exchangeRes = await fetch(`${FUNCTIONS_URL}/tracking-exchange`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': anonKey },
+      body: JSON.stringify({ exchange_token: exchangeTokenRaw }),
+    });
+    const exchangeData = await exchangeRes.json();
+    assert('tracking-exchange retorna HTTP 200 y nuevo tracking_token rotado', 
+      exchangeRes.status === 200 && exchangeData.success === true && Boolean(exchangeData.tracking_token)
+    );
+
+    const newRotatedTrackingToken = exchangeData.tracking_token;
+
+    // Verify that NEW tracking token works in tracking-get
+    const trackNewRes = await fetch(`${FUNCTIONS_URL}/tracking-get?pedido_visible=${pedidoVisible}&token=${newRotatedTrackingToken}`, {
+      headers: { 'apikey': anonKey }
+    });
+    assert('tracking-get funciona con el NUEVO tracking token emitido en el canje', trackNewRes.status === 200);
+
+    // Verify that OLD tracking token is now INVALID
+    const trackOldRes = await fetch(`${FUNCTIONS_URL}/tracking-get?pedido_visible=${pedidoVisible}&token=${rawTrackingToken}`, {
+      headers: { 'apikey': anonKey }
+    });
+    assert('El tracking token anterior queda inmediatamente INVALIDADO tras el canje (404)', trackOldRes.status === 404);
+
+    // Update rawTrackingToken to continue subsequent checks
+    rawTrackingToken = newRotatedTrackingToken;
+
+    // Verify Replay rejection on same exchange token (HTTP 409)
+    const replayRes = await fetch(`${FUNCTIONS_URL}/tracking-exchange`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': anonKey },
+      body: JSON.stringify({ exchange_token: exchangeTokenRaw }),
+    });
+    assert('Reintento con token de canje ya usado es rechazado con HTTP 409 (Replay Protection)', replayRes.status === 409);
+
+    // 6. Test RPCs for F8 Management as Authenticated Operator
     console.log('\n--- Probando RPCs de Gestión F8 (pedido_assign, state changes, OCC) ---');
     const { data: currentPedRec } = await serviceClient.from('pedidos').select('version').eq('id', pedidoId).single();
-    const { data: assignRes, error: assignErr } = await userClient.rpc('pedido_assign', {
+    const { data: assignRes, error: assignErr } = await authUserClient.rpc('pedido_assign', {
       p_pedido_id: pedidoId,
       p_responsable_user_id: operatorId,
       p_expected_version: currentPedRec.version,
@@ -211,7 +273,7 @@ async function run() {
     assert('RPC pedido_assign asigna responsable y avanza versión', !assignErr && assignRes?.responsable_id === operatorId);
 
     // Change state from 'Nuevo' to 'En revisión'
-    const { data: revRes, error: revErr } = await userClient.rpc('pedido_change_state', {
+    const { data: revRes, error: revErr } = await authUserClient.rpc('pedido_change_state', {
       p_pedido_id: pedidoId,
       p_target_state: 'En revisión',
       p_motivo: 'Tomando pedido para revisión técnica',
@@ -220,7 +282,7 @@ async function run() {
     assert('RPC pedido_change_state cambia a "En revisión"', !revErr && revRes?.estado === 'En revisión');
 
     // Change state from 'En revisión' to 'En proceso'
-    const { data: stRes, error: stErr } = await userClient.rpc('pedido_change_state', {
+    const { data: stRes, error: stErr } = await authUserClient.rpc('pedido_change_state', {
       p_pedido_id: pedidoId,
       p_target_state: 'En proceso',
       p_motivo: 'Iniciando producción gráfica Cloud',
@@ -229,7 +291,7 @@ async function run() {
     assert('RPC pedido_change_state cambia a "En proceso"', !stErr && stRes?.estado === 'En proceso');
 
     // OCC Conflict Test
-    const { error: occErr } = await userClient.rpc('pedido_change_state', {
+    const { error: occErr } = await authUserClient.rpc('pedido_change_state', {
       p_pedido_id: pedidoId,
       p_target_state: 'Esperando información',
       p_motivo: 'Conflicto OCC',
@@ -238,16 +300,16 @@ async function run() {
     assert('RPC detecta conflicto OCC (VERSION_CONFLICT)', Boolean(occErr), occErr ? occErr.message : '');
 
     // Create Internal Note
-    const { data: notaRes, error: notaErr } = await userClient.rpc('nota_pedido_create', {
+    const { data: notaRes, error: notaErr } = await authUserClient.rpc('nota_pedido_create', {
       p_pedido_id: pedidoId,
       p_contenido: 'Nota interna de prueba Cloud F8',
       p_visibilidad: 'interna',
     });
     assert('RPC nota_pedido_create registra nota interna', !notaErr && !!notaRes?.nota_id);
 
-    // 6. Test 48h Missing Info Request & Submission
+    // 7. Test 48h Missing Info Request & Submission
     console.log('\n--- Probando Solicitud de Información Faltante (48h de vigencia) ---');
-    const { data: infoReqRes, error: infoReqErr } = await userClient.rpc('info_request_create', {
+    const { data: infoReqRes, error: infoReqErr } = await authUserClient.rpc('info_request_create', {
       p_pedido_id: pedidoId,
       p_mensaje: 'Por favor adjuntar el logo en alta resolución vectorial.',
       p_expected_version: stRes.version,
@@ -298,10 +360,19 @@ async function run() {
       tokenValUsedRes.status === 200 && tokenValUsedData.valid === true && tokenValUsedData.responded === true
     );
 
-    // 7. Finalize Pedido with Delivery
+    // 8. Test pedido_get_historial RPC (Unified Operational History)
+    console.log('\n--- Probando RPC pedido_get_historial (Historial Operativo) ---');
+    const { data: histData, error: histErr } = await authUserClient.rpc('pedido_get_historial', {
+      p_pedido_id: pedidoId,
+    });
+    assert('RPC pedido_get_historial retorna lista de eventos para usuario autenticado', 
+      !histErr && Array.isArray(histData) && histData.length > 0
+    );
+
+    // 9. Finalize Pedido with Delivery
     console.log('\n--- Probando Finalización y Entrega de Pedido ---');
     const { data: currentPed2 } = await serviceClient.from('pedidos').select('version').eq('id', pedidoId).single();
-    const { data: finRes, error: finErr } = await userClient.rpc('pedido_finalize', {
+    const { data: finRes, error: finErr } = await authUserClient.rpc('pedido_finalize', {
       p_pedido_id: pedidoId,
       p_expected_version: currentPed2.version,
       p_archivos_entrega: null,
@@ -312,21 +383,21 @@ async function run() {
       !finErr && finRes?.estado === 'Finalizado' && !!finRes?.entrega_id
     );
 
-    // 8. Test Archive and Restore
+    // 10. Test Archive and Restore
     console.log('\n--- Probando Archivar / Restaurar ---');
-    const { data: arcRes, error: arcErr } = await userClient.rpc('pedido_archive', {
+    const { data: arcRes, error: arcErr } = await authUserClient.rpc('pedido_archive', {
       p_pedido_id: pedidoId,
       p_expected_version: finRes.version,
     });
     assert('RPC pedido_archive marca pedido como archivado', !arcErr && arcRes?.archivado === true);
 
-    const { data: restRes, error: restErr } = await userClient.rpc('pedido_restore', {
+    const { data: restRes, error: restErr } = await authUserClient.rpc('pedido_restore', {
       p_pedido_id: pedidoId,
       p_expected_version: arcRes.version,
     });
     assert('RPC pedido_restore desarchiva pedido', !restErr && restRes?.archivado === false);
 
-    // 9. Cancel and Reopen flow with a second submission
+    // 11. Cancel and Reopen flow with a second submission
     console.log('\n--- Probando Cancelación y Reapertura ---');
     const sub2Res = await fetch(`${FUNCTIONS_URL}/submission-create`, {
       method: 'POST',
@@ -362,21 +433,21 @@ async function run() {
 
     const { data: ped2Rec } = await serviceClient.from('pedidos').select('version').eq('id', ped2Id).single();
 
-    const { data: cancelRes, error: cancelErr } = await userClient.rpc('pedido_cancel', {
+    const { data: cancelRes, error: cancelErr } = await authUserClient.rpc('pedido_cancel', {
       p_pedido_id: ped2Id,
       p_motivo: 'Cancelado por solicitud del usuario en Cloud',
       p_expected_version: ped2Rec.version,
     });
     assert('RPC pedido_cancel cancela pedido con motivo', !cancelErr && cancelRes?.estado === 'Cancelado');
 
-    const { data: reopenRes, error: reopenErr } = await userClient.rpc('pedido_reopen', {
+    const { data: reopenRes, error: reopenErr } = await authUserClient.rpc('pedido_reopen', {
       p_pedido_id: ped2Id,
       p_motivo: 'Reabierto por reactivación en Cloud',
       p_expected_version: cancelRes.version,
     });
     assert('RPC pedido_reopen reabre pedido a "Nuevo" o "En revisión"', !reopenErr && (reopenRes?.estado === 'Nuevo' || reopenRes?.estado === 'En revisión'));
 
-    // 10. Audit Log & Domain Events verification
+    // 12. Audit Log & Domain Events verification
     const { data: events } = await serviceClient.from('domain_events').select('*').eq('aggregate_id', pedidoId);
     assert('domain_events registra eventos de ciclo de vida en Cloud', (events?.length || 0) >= 3, `Eventos: ${events?.length}`);
 
@@ -386,9 +457,11 @@ async function run() {
   } finally {
     console.log('\n--- Limpieza de datos de prueba Cloud ---');
     for (const pid of createdPedidoIds) {
+      await serviceClient.from('tracking_recovery_tokens').delete().eq('pedido_id', pid);
       await serviceClient.from('solicitudes_informacion').delete().eq('pedido_id', pid);
       await serviceClient.from('entregas_pedido').delete().eq('pedido_id', pid);
       await serviceClient.from('notas_pedido').delete().eq('pedido_id', pid);
+      await serviceClient.from('comunicaciones_pedido').delete().eq('pedido_id', pid);
       await serviceClient.from('domain_events').delete().eq('aggregate_id', pid);
       await serviceClient.from('audit_log').delete().eq('recurso_id', pid);
       await serviceClient.from('pedidos').delete().eq('id', pid);

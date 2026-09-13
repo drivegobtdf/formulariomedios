@@ -7,7 +7,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(45);
+SELECT plan(57);
 
 -- -----------------------------------------------------------------------------
 -- 0. Fixtures de Autenticación y Contexto
@@ -504,9 +504,124 @@ SELECT results_eq(
 
 -- Test 45: Recuperación de acceso emite evento durable tracking.recovery_requested
 SELECT results_eq(
-    $$SELECT count(*)::integer FROM public.domain_events WHERE event_name = 'tracking.recovery_requested' AND aggregate_id = 'e0000000-0000-0000-0000-000000000777'$$,
+    $$SELECT count(*)::integer FROM public.domain_events WHERE event_name = 'tracking.recovery_requested' AND aggregate_id = 'a0000000-0000-0000-0000-000000000777'$$,
     ARRAY[1],
-    'tracking_recover_core debe emitir evento tracking.recovery_requested'
+    'tracking_recover_core debe emitir evento tracking.recovery_requested para el pedido'
+);
+
+-- -----------------------------------------------------------------------------
+-- 7. F7: Canje de Token Temporal de Recuperación (tracking_exchange_core) [Tests 46..53]
+-- -----------------------------------------------------------------------------
+
+-- Test 46: Comprobar que tracking_recovery_tokens tiene 1 token activo para el pedido
+SELECT results_eq(
+    $$SELECT count(*)::integer FROM public.tracking_recovery_tokens WHERE pedido_id = 'a0000000-0000-0000-0000-000000000777' AND used_at IS NULL$$,
+    ARRAY[1],
+    'tracking_recover_core debe registrar 1 token de canje en tracking_recovery_tokens'
+);
+
+-- Obtener el token de canje crudo generado desde la cola outbox
+CREATE TEMP TABLE t_recov_token_info AS
+SELECT id, (payload->>'exchange_token')::text AS raw_exchange_token
+FROM public.comunicaciones_pedido
+WHERE pedido_id = 'a0000000-0000-0000-0000-000000000777' AND tipo_comunicacion = 'tracking_recovery'
+ORDER BY created_at DESC
+LIMIT 1;
+GRANT ALL ON t_recov_token_info TO service_role, authenticated, anon, PUBLIC;
+
+-- Test 47: Canje con token inexistente -> REJECTED (P0002 / TOKEN_NOT_FOUND)
+SET ROLE service_role;
+SELECT throws_ok(
+    $$SELECT public.tracking_exchange_core('raw_token_inexistente_123456')$$,
+    'P0002',
+    NULL,
+    'Canje con token inexistente debe fallar con TOKEN_NOT_FOUND'
+);
+
+-- Test 48: Canje exitoso con token válido -> SUCCESS, rota hash e incrementa tracking_token_version
+CREATE TEMP TABLE t_exchange_res AS
+SELECT public.tracking_exchange_core((SELECT raw_exchange_token FROM t_recov_token_info)) AS res;
+GRANT ALL ON t_exchange_res TO service_role, authenticated, anon, PUBLIC;
+
+SELECT results_eq(
+    $$SELECT (res->>'pedido_visible')::text FROM t_exchange_res$$,
+    ARRAY['PED-2026-D000777'],
+    'Canje exitoso retorna pedido_visible correcto'
+);
+
+SELECT results_eq(
+    $$SELECT length(res->>'tracking_token')::integer FROM t_exchange_res$$,
+    ARRAY[64],
+    'Canje exitoso entrega nuevo tracking_token de 64 hex'
+);
+
+-- Test 49: El token de canje queda marcado como used_at IS NOT NULL
+SELECT results_eq(
+    $$SELECT (used_at IS NOT NULL) FROM public.tracking_recovery_tokens WHERE pedido_id = 'a0000000-0000-0000-0000-000000000777'$$,
+    ARRAY[true],
+    'Token de canje debe quedar marcado como usado (used_at no nulo)'
+);
+
+-- Test 50: Replay attack: intentar reutilizar el mismo token de canje -> REJECTED (42202 / TOKEN_ALREADY_USED)
+SELECT throws_ok(
+    $$SELECT public.tracking_exchange_core((SELECT raw_exchange_token FROM t_recov_token_info))$$,
+    '42202',
+    NULL,
+    'Reintento de canje con token ya usado debe fallar con TOKEN_ALREADY_USED (42202)'
+);
+
+-- Test 51: El token anterior ya NO funciona para tracking_get_core
+SELECT is(
+    public.tracking_get_core(
+        'PED-2026-D000777',
+        encode(digest('raw_super_secret_tracking_token_777', 'sha256'), 'hex')
+    ),
+    NULL,
+    'Token previo a la rotación debe quedar invalidado'
+);
+
+-- Test 52: El nuevo tracking token funciona correctamente en tracking_get_core
+SELECT results_eq(
+    $$SELECT (public.tracking_get_core(
+        'PED-2026-D000777',
+        encode(digest((SELECT res->>'tracking_token' FROM t_exchange_res), 'sha256'), 'hex')
+    )->>'pedido_visible')::text$$,
+    ARRAY['PED-2026-D000777'],
+    'Nuevo tracking token emitido en el canje permite consultar el seguimiento'
+);
+
+-- Test 53: tracking_token_version se incrementó a 2
+SELECT results_eq(
+    $$SELECT tracking_token_version::integer FROM public.pedidos WHERE id = 'a0000000-0000-0000-0000-000000000777'$$,
+    ARRAY[2],
+    'tracking_token_version debe incrementarse a 2 tras la rotación atómica'
+);
+
+-- -----------------------------------------------------------------------------
+-- 8. F8: Historial Operativo Unificado (pedido_get_historial) [Tests 54..56]
+-- -----------------------------------------------------------------------------
+
+-- Test 54: Anon no puede consultar pedido_get_historial -> REJECTED (42501)
+SELECT pg_temp.set_auth_context(NULL, 'anon');
+SELECT throws_ok(
+    $$SELECT public.pedido_get_historial('a0000000-0000-0000-0000-000000000777')$$,
+    '42501',
+    NULL,
+    'Anon no debe poder consultar el historial operativo'
+);
+
+-- Test 55: Administrador consulta pedido_get_historial -> SUCCESS (retorna lista de eventos estructurados)
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SELECT isnt_empty(
+    $$SELECT public.pedido_get_historial('a0000000-0000-0000-0000-000000000777')$$,
+    'pedido_get_historial debe retornar registros estructurados para rol administrador'
+);
+
+-- Test 56: Observador puede consultar pedido_get_historial (auditoría/observabilidad)
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000103'::uuid);
+SELECT isnt_empty(
+    $$SELECT public.pedido_get_historial('a0000000-0000-0000-0000-000000000777')$$,
+    'pedido_get_historial debe retornar registros para rol observador'
 );
 
 SELECT * FROM finish();
