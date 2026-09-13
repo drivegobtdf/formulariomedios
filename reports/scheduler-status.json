@@ -1,0 +1,18 @@
+{
+  "daemon_pid": 42060,
+  "status": "completed_once",
+  "started_at": "2026-09-13T22:37:47.479Z",
+  "last_heartbeat": "2026-09-13T22:37:49.385Z",
+  "interval_ms": 5000,
+  "batch_size": 10,
+  "lease_seconds": 300,
+  "metrics": {
+    "total_cycles": 1,
+    "total_processed": 1,
+    "total_success": 1,
+    "total_failed": 0,
+    "total_uncertain": 0,
+    "total_swept": 0
+  },
+  "completed_at": "2026-09-13T22:37:49.385Z"
+}

@@ -72,3 +72,21 @@ verify_jwt = false
 
 [functions.tracking-exchange]
 verify_jwt = false
+
+[functions.solicitante-access-request]
+verify_jwt = false
+
+[functions.solicitante-session-exchange]
+verify_jwt = false
+
+[functions.solicitante-pedidos-list]
+verify_jwt = false
+
+[functions.solicitante-pedido-detail]
+verify_jwt = false
+
+[functions.solicitante-info-respond]
+verify_jwt = false
+
+[functions.solicitante-session-revoke]
+verify_jwt = false

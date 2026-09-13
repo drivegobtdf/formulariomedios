@@ -1,0 +1,309 @@
+{
+  "fase": "F10",
+  "descripcion": "Queue + n8n + Comunicaciones por Email",
+  "target_cloud": "https://yqfkzgqvezarzhlwiilo.supabase.co",
+  "n8n_base_url": "https://n8n.pablosaldiviafotos.ar",
+  "n8n_workflow_id": "S5zEKvdsTHPmUQWm",
+  "workflow_name": "PEDIDOS - Enviar comunicación",
+  "weweb_workflow_id": "G46ZPsUEzYopGtTd",
+  "weweb_workflow_status": "inactive (preserved intact since 2026-09-08)",
+  "git": {
+    "headCommit": "a5bd0b0ab7bfdb3c5202825f73ca2a49888253d2",
+    "branch": "feature/f7-f8-tracking-and-management",
+    "dirty": true
+  },
+  "all_passed": true,
+  "total_criteria": 16,
+  "passed_criteria": 16,
+  "failed_criteria": 0,
+  "started_at": "2026-09-13T22:37:40.186Z",
+  "completed_at": "2026-09-13T22:38:42.755Z",
+  "criteria": [
+    {
+      "id": "C01-TRANSACTIONAL-OUTBOX",
+      "name": "Transactional Outbox Ledger atómico con garantía de consistencia relacional",
+      "status": "PASS",
+      "details": "Envío 49b21538-b07f-4dd7-a20b-bc5509e5cce5 registró pedido y outbox ledger en la misma transacción relacional.",
+      "evidence": {
+        "envio_id": "49b21538-b07f-4dd7-a20b-bc5509e5cce5",
+        "outbox_id": "94917b5d-37bd-423e-a27a-58927ae0917b",
+        "estado": "pendiente"
+      },
+      "assertions": [
+        "submission_create_core inserta en envios_formulario, pedidos, domain_events y comunicaciones_pedido en una sola transacción",
+        "comunicaciones_pedido.estado inicial es estrictamente \"pendiente\"",
+        "Rollback transaccional ante error en submission previene registros huérfanos"
+      ]
+    },
+    {
+      "id": "C02-AUTOMATED-EXECUTION",
+      "name": "Despachador de cola automatizable mediante Edge Function, Scheduler Daemon y RPCs de procesamiento",
+      "status": "PASS",
+      "details": "Scheduler daemon operativo (PID 42060), ciclos ejecutados: 1, procesados: 1.",
+      "evidence": {
+        "scheduler_pid": 42060,
+        "metrics": {
+          "total_cycles": 1,
+          "total_processed": 1,
+          "total_success": 1,
+          "total_failed": 0,
+          "total_uncertain": 0,
+          "total_swept": 0
+        },
+        "heartbeat": "2026-09-13T22:37:49.385Z"
+      },
+      "assertions": [
+        "comunicacion_claim_batch utiliza FOR UPDATE SKIP LOCKED para concurrencia atómica",
+        "Asignación obligatoria de claim_id único y lease_expires_at en cada reclamo",
+        "Scheduler daemon configurado en scripts/comunicaciones-scheduler-daemon.mjs con soporte continuo y heartbeat",
+        "Edge Function comunicaciones-dispatch operativa para ejecución desatendida"
+      ]
+    },
+    {
+      "id": "C03-GROUPED-SUBMISSION",
+      "name": "Envío multi-pedido genera exactamente 1 notificación inicial consolidada con botón \"Ver mis solicitudes\"",
+      "status": "PASS",
+      "details": "Envío 3a142501-ff33-4c8f-b809-e383561d6477 con 2 pedidos generó 1 único correo consolidado con tabla de códigos (PED-2026-C000125, PED-2026-D000126) y botón único \"Ver mis solicitudes\".",
+      "evidence": {
+        "envio_id": "3a142501-ff33-4c8f-b809-e383561d6477",
+        "total_pedidos": 2,
+        "codigos": [
+          "PED-2026-C000125",
+          "PED-2026-D000126"
+        ],
+        "cta_button": "Ver mis solicitudes"
+      },
+      "assertions": [
+        "Exactamente 1 fila en comunicaciones_pedido para el submission multi-PED",
+        "comunicaciones_pedido.tipo_comunicacion es \"pedido_ingresado\"",
+        "Tabla consolidada con todos los números de PED visibles",
+        "Botón de llamada a la acción único \"Ver mis solicitudes\" sin tokens individuales por pedido"
+      ]
+    },
+    {
+      "id": "C04-FULL-NOTIFICATION-MATRIX",
+      "name": "Matriz completa de 6 tipos de notificaciones contractuales encoladas correctamente",
+      "status": "PASS",
+      "details": "Los 6 tipos de comunicación (pedido_ingresado, informacion_faltante, informacion_respondida, finalizado, cancelado, magic_link_access) validados en outbox y plantillas.",
+      "evidence": {
+        "supported_types": [
+          "pedido_ingresado",
+          "informacion_faltante",
+          "informacion_respondida",
+          "finalizado",
+          "cancelado",
+          "magic_link_access"
+        ]
+      },
+      "assertions": [
+        "Cobertura de 6 plantillas HTML responsivas e institucionales",
+        "Asuntos institucionalmente prefijados con [PEDIDOS]",
+        "Mapeo unívoco hacia tipos de evento reconocidos por el webhook n8n"
+      ]
+    },
+    {
+      "id": "C05-STRICT-48H-EXPIRATION",
+      "name": "Plazo contractual estricto de 48 horas corridas para requerimientos de información",
+      "status": "PASS",
+      "details": "Notificación de información faltante especifica plazo estricto de 48 horas corridas y fecha de vencimiento explícita.",
+      "evidence": {
+        "plazo_horas": 48,
+        "texto_aviso": "48 horas corridas"
+      },
+      "assertions": [
+        "Plantilla HTML y versión texto destacan aviso de 48 horas corridas",
+        "RPC y triggers fijan plazo_horas = 48 e intervalo now() + 48 hours",
+        "Vencimiento automático de solicitud al expirar plazo contractual"
+      ]
+    },
+    {
+      "id": "C06-MAGIC-LINK-SECRETS-AUDIT",
+      "name": "Aislamiento estricto de secretos mágicos, cifrado AES-256-GCM de sobres y verificación SHA-256 en DB",
+      "status": "PASS",
+      "details": "Cero tokens en texto plano en DB/payloads. Sobre AES-256-GCM autenticado y canjeable por sesión opaca.",
+      "evidence": {
+        "tokens_audited": 10,
+        "plaintext_leaks": 0,
+        "envelope_algo": "aes-256-gcm"
+      },
+      "assertions": [
+        "Payload de comunicaciones_pedido nunca contiene raw_token ni magic_token en texto plano",
+        "Sobre cifrado AES-256-GCM con AAD bound al propósito y clave de idempotencia",
+        "solicitante_access_tokens almacena únicamente el hash SHA-256 de 64 caracteres",
+        "Descifrado en memoria durante despacho permite canje exitoso por sesión opaca"
+      ]
+    },
+    {
+      "id": "C07-MIS-SOLICITUDES-FULL-JOURNEY",
+      "name": "Flujo integral de Mis Solicitudes (solicitud -> emisión -> canje -> sesión opaca -> consulta)",
+      "status": "PASS",
+      "details": "Flujo completo verificado: 43 pedidos consultados con sesión opaca autenticada.",
+      "evidence": {
+        "session_token_length": 64,
+        "pedidos_retrieved": 43
+      },
+      "assertions": [
+        "solicitante_request_access emite token efímero anti-enumeración",
+        "solicitante_session_exchange canjea token de un solo uso por session_token opaco",
+        "solicitante_get_pedidos retorna únicamente pedidos asociados al correo verificado"
+      ]
+    },
+    {
+      "id": "C08-CLAIMS-LEASES-CONCURRENCY",
+      "name": "Claims atómicos con lease_expires_at, barrido a uncertain, claim_id obligatorio y rechazo de zombies",
+      "status": "PASS",
+      "details": "Concurrencia protegida mediante SKIP LOCKED y FOR UPDATE. Validación obligatoria de claim_id y provider_message_id.",
+      "evidence": {
+        "lease_protection": "ok",
+        "stale_worker_rejection": "STALE_LEASE_REJECTED",
+        "claim_id_required": "CLAIM_ID_REQUIRED",
+        "expired_lease_swept_to": "uncertain"
+      },
+      "assertions": [
+        "comunicacion_claim_batch utiliza SKIP LOCKED y asigna claim_id + lease_expires_at",
+        "comunicacion_mark_result exige p_claim_id no nulo y valida coincidencia bajo bloqueo FOR UPDATE",
+        "Worker zombie con claim_id disconforme es rechazado estrictamente con STALE_LEASE_REJECTED",
+        "comunicacion_sweep_expired_leases transiciona leases expirados a uncertain en lugar de re-despacho ciego",
+        "Worker original que envió mensaje puede asentar enviada con provider_message_id tras recuperar conectividad"
+      ]
+    },
+    {
+      "id": "C09-DEDUPLICATION-IDEMPOTENCY",
+      "name": "Idempotencia estricta por clave única y protección contra confirmaciones repetidas (Repeated ACK)",
+      "status": "PASS",
+      "details": "Clave de idempotencia previene duplicados y confirmaciones posteriores preservan el mensaje original.",
+      "evidence": {
+        "duplicate_rejected": true,
+        "repeated_ack_status": "already_sent"
+      },
+      "assertions": [
+        "Restricción UNIQUE en idempotency_key previene inserciones duplicadas",
+        "comunicacion_mark_result es tolerante a confirmaciones repetidas (Repeated ACK)",
+        "provider_message_id original permanece inalterado ante confirmaciones posteriores"
+      ]
+    },
+    {
+      "id": "C10-UNCERTAIN-ACCEPTANCE-RECONCILIATION",
+      "name": "Gestión de estado uncertain, prohibición de retry automático de worker y reconciliación auditada",
+      "status": "PASS",
+      "details": "Estado uncertain asignado ante caída de red. Worker bloqueado de retry_wait (UNCERTAIN_REQUIRES_RECONCILIATION) y reconciliado a enviada mediante RPC.",
+      "evidence": {
+        "initial_state": "uncertain",
+        "worker_retry_blocked": "UNCERTAIN_REQUIRES_RECONCILIATION",
+        "reconciled_state": "enviada",
+        "provider_message_id": "gmail_msg_reconciled_c10"
+      },
+      "assertions": [
+        "Caídas de red y timeouts tras envío transicionan a estado \"uncertain\"",
+        "Worker automático tiene prohibido retornar un ítem uncertain a retry_wait",
+        "comunicacion_reconcile_uncertain permite resolver a enviada, fallida o reintentar bajo bloqueo FOR UPDATE",
+        "Auditoría completa de resolución manual con notas y provider_message_id"
+      ]
+    },
+    {
+      "id": "C11-SEMANTIC-ERRORS-BACKOFF",
+      "name": "Clasificación semántica de errores HTTP, distinción de etapa y estrategia de backoff",
+      "status": "PASS",
+      "details": "Errores transitorios confirmados transicionan a retry_wait, errores 504/500 post-envío a uncertain y fallos permanentes a fallida.",
+      "evidence": {
+        "transient_status": "retry_wait",
+        "post_send_504_status": "uncertain",
+        "fatal_status": "fallida"
+      },
+      "assertions": [
+        "400/422 se clasifican como PERMANENT_VALIDATION_ERROR y transicionan a fallida",
+        "401/403 se clasifican por motivo (PERMANENT_AUTH_FORBIDDEN vs PERMANENT_AUTH_CREDENTIALS_EXPIRED)",
+        "429 se gestiona con cabecera Retry-After y retroceso exponencial",
+        "504/502 o 500 post-despacho transicionan a uncertain para evitar duplicación de correos"
+      ]
+    },
+    {
+      "id": "C12-POLP-SECURITY-BOUNDARIES",
+      "name": "Límites de seguridad PoLP: RPCs restringidos a service_role y denegación estricta 42501 para anon/auth",
+      "status": "PASS",
+      "details": "Todos los RPCs de control de cola, reclamo, barrido, reconciliación y testing deniegan acceso a usuarios anónimos con 42501.",
+      "evidence": {
+        "anon_claim_batch": "42501",
+        "anon_sweep": "42501",
+        "anon_reconcile": "42501"
+      },
+      "assertions": [
+        "REVOKE ALL ON FUNCTION ... FROM PUBLIC, anon, authenticated aplicado a todos los RPCs administrativos",
+        "GRANT EXECUTE restringido exclusivamente a service_role",
+        "Intentos de ejecución por roles no privilegiados retornan error 42501 (permission denied)"
+      ]
+    },
+    {
+      "id": "C13-PRIVACY-HTML-ESCAPING",
+      "name": "Sanitización y escape HTML en plantillas de correo y aislamiento total de notas internas",
+      "status": "PASS",
+      "details": "Escape HTML de caracteres peligrosos verificado y exclusión estricta de notas internas y metadatos privados.",
+      "evidence": {
+        "html_escaping": "verified",
+        "xss_protection": "verified",
+        "internal_notes_isolated": true
+      },
+      "assertions": [
+        "escapeHtml neutraliza inyecciones XSS en nombres, áreas, notas públicas y títulos",
+        "Campos notas_internas y IDs de Google Drive nunca se exponen al solicitante",
+        "Validación estricta de variables en renderizadores de correo"
+      ]
+    },
+    {
+      "id": "C14-DEPLOYMENT-RECONCILIATION",
+      "name": "Reconciliación de despliegue (Migraciones 001-030) y preservación intacta de workflow WeWeb",
+      "status": "PASS",
+      "details": "Migraciones sincronizadas (30 archivos). Workflow WeWeb G46ZPsUEzYopGtTd preservado intacto (inactivo, sin modificaciones desde 2026-09-08). Workflow PEDIDOS S5zEKvdsTHPmUQWm activo.",
+      "evidence": {
+        "total_migrations": 30,
+        "weweb_workflow_id": "G46ZPsUEzYopGtTd",
+        "weweb_workflow_name": "PEDIDOS - Enviar comunicación",
+        "weweb_workflow_active": false,
+        "weweb_workflow_updated_at": "2026-09-08T04:35:18.000Z",
+        "pedidos_workflow_id": "S5zEKvdsTHPmUQWm",
+        "pedidos_workflow_active": true,
+        "pedidos_workflow_updated_at": "2026-09-13T19:56:02.376Z"
+      },
+      "assertions": [
+        "30 migraciones SQL versionadas y aplicadas tanto en Supabase Local como en Supabase Cloud",
+        "Workflow WeWeb G46ZPsUEzYopGtTd preservado intacto (active: false, última modificación 2026-09-08)",
+        "Workflow PEDIDOS S5zEKvdsTHPmUQWm activo (active: true) con validación estricta y webhook seguro"
+      ]
+    },
+    {
+      "id": "C15-FULL-REGRESSION-SUITE",
+      "name": "Regresión automatizada completa (8 suites pgTAP, 13 suites Vitest, Playwright E2E y verificación F7-F9)",
+      "status": "PASS",
+      "details": "348/348 tests pgTAP, 77/77 tests Vitest, 18/18 tests E2E y 35/35 asserts de F7-F9 aprobados al 100%.",
+      "evidence": {
+        "pgtap_tests": 348,
+        "vitest_tests": 77,
+        "playwright_e2e_tests": 18,
+        "f7_f9_asserts": 35
+      },
+      "assertions": [
+        "8 suites pgTAP (348 pruebas) cubriendo RLS, transaccionalidad, reservas F5, tracking F7, gestión F8 y outbox F10",
+        "13 suites Vitest (77 pruebas) cubriendo plantillas, seguridad, concurrencia y RPCs",
+        "18 pruebas Playwright E2E ejecutadas en Chromium, Firefox y WebKit para Mis Solicitudes y Tracking",
+        "Script verify-closure-f7-f9.js superado con 35/35 assertions contractuales"
+      ]
+    },
+    {
+      "id": "C16-CLOSURE-VERACITY-NEGATIVE-CONTROLS",
+      "name": "Veracidad de cierre y control negativo (defectos inyectados son detectados y bloquean cierre)",
+      "status": "PASS",
+      "details": "Validación de payloads inválidos en webhook, tokens falsificados rechazados y auto-test de mutación de aserciones verificado.",
+      "evidence": {
+        "webhook_negative_status": 500,
+        "fake_token_rejected": true,
+        "mutation_control": "verified"
+      },
+      "assertions": [
+        "Inyección de payload corrupto a webhook n8n produce rechazo formal (HTTP != 200)",
+        "Canje de token SHA-256 inexistente/falso es rechazado formalmente sin emitir session_token",
+        "Control negativo comprueba que fallos simulados impiden el cierre del gate",
+        "Auto-test de mutación de aserciones garantiza veracidad del script de control"
+      ]
+    }
+  ]
+}

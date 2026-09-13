@@ -33,7 +33,12 @@
     "db:reset": "supabase db reset",
     "supabase": "supabase",
     "supabase:status": "supabase status",
-    "google:bootstrap": "node scripts/google-drive-oauth-bootstrap.js"
+    "google:bootstrap": "node scripts/google-drive-oauth-bootstrap.js",
+    "verify:closure:f7-f9": "node scripts/verify-closure-f7-f9.js",
+    "verify:closure:f10": "node scripts/verify-closure-f10.js",
+    "dispatch:comunicaciones": "node scripts/comunicaciones-dispatch.mjs",
+    "start:scheduler": "node scripts/comunicaciones-scheduler-daemon.mjs",
+    "status:scheduler": "node scripts/comunicaciones-scheduler-daemon.mjs --status"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

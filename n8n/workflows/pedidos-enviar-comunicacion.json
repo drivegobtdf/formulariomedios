@@ -1,0 +1,330 @@
+{
+  "name": "PEDIDOS - Enviar comunicación",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b6e66a15-a4bc-4bdb-9321-4c6b49e57621",
+      "name": "Ejecutar prueba manual"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2d966a3e-d43e-4f05-beb2-3ab9f9111d32",
+              "name": "communication_id",
+              "value": "TEST-COMM-001",
+              "type": "string"
+            },
+            {
+              "id": "5c9b3232-5d36-436a-95cb-4ebbffdb374a",
+              "name": "pedido_id",
+              "value": "TEST-PED-001",
+              "type": "string"
+            },
+            {
+              "id": "1d1c97bf-83c3-4413-aa2f-b77a04526bab",
+              "name": "servicio_id",
+              "value": "TEST-SERV-001",
+              "type": "string"
+            },
+            {
+              "id": "cfec5b43-c5f0-4f39-8dba-3df4080407e8",
+              "name": "tipo",
+              "value": "pedido_ingresado",
+              "type": "string"
+            },
+            {
+              "id": "b93f0fae-bcaf-458a-adfe-afefb5dc691b",
+              "name": "to",
+              "value": "pablosaldiviainfo@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "17efe2fe-7f80-45ba-933d-dc6b3a2dea30",
+              "name": "subject",
+              "value": "Prueba PEDIDOS desde n8n",
+              "type": "string"
+            },
+            {
+              "id": "c25e8f10-9406-454e-a5b3-e2b9408cdf5b",
+              "name": "html",
+              "value": "<div style=\"font-family:Arial,sans-serif;line-height:1.5;color:#0B2746\"><h2>Prueba PEDIDOS</h2><p>Este correo fue enviado desde n8n.</p><p><strong>No corresponde a un pedido real.</strong></p><hr><p style=\"font-size:12px;color:#666\">Este es un mensaje automático. No respondas a este correo.</p></div>",
+              "type": "string"
+            },
+            {
+              "id": "84b39ea8-6bd3-4784-9197-9375066de91e",
+              "name": "text",
+              "value": "Prueba PEDIDOS desde n8n. No corresponde a un pedido real.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ],
+      "id": "719ba811-bb8e-499a-aecd-ecd82c0c4acb",
+      "name": "Payload de prueba"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $input.first().json;\n\nconst required = ['communication_id', 'tipo', 'to', 'subject', 'html'];\nconst missing = required.filter((key) => {\n  const value = p[key];\n  return value === undefined || value === null || String(value).trim() === '';\n});\n\nif (missing.length) {\n  throw new Error(`Faltan campos obligatorios: ${missing.join(', ')}`);\n}\n\nconst to = String(p.to).trim();\nconst basicEmail = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\nif (!basicEmail.test(to)) {\n  throw new Error('El destinatario no tiene un formato de email válido.');\n}\n\nconst allowedTypes = [\n  'pedido_ingresado',\n  'cambio_estado',\n  'informacion_faltante',\n  'informacion_respondida',\n  'finalizado',\n  'cancelado',\n  'magic_link_access'\n];\n\nif (!allowedTypes.includes(String(p.tipo))) {\n  throw new Error(`Tipo de comunicación no permitido: ${p.tipo}`);\n}\n\nreturn [{\n  json: {\n    communication_id: String(p.communication_id),\n    pedido_id: p.pedido_id ? String(p.pedido_id) : '',\n    servicio_id: p.servicio_id ? String(p.servicio_id) : '',\n    tipo: String(p.tipo),\n    to,\n    subject: String(p.subject).trim(),\n    html: String(p.html),\n    text: p.text ? String(p.text) : ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "id": "ee613849-4b01-4cf7-ab16-eda621c65d3f",
+      "name": "Validar payload"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Secretaría de Medios"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        752,
+        0
+      ],
+      "id": "a5730805-532d-46e1-9f37-f203559ee9d8",
+      "name": "Enviar con Gmail",
+      "webhookId": "25179355-c186-460f-9032-64aa870d011c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CREDENTIAL_ID_PLACEHOLDER",
+          "name": "PEDIDOS MEDIOS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7252ad40-9d46-442d-b1ed-ca1b0b24c83f",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "9ad23d41-1b78-437c-aff0-fed7036d45b0",
+              "name": "message_id",
+              "value": "={{ $json.id || $json.messageId || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ec2c6147-0778-47f4-916e-955eea2f1cd7",
+              "name": "communication_id",
+              "value": "={{ $('Validar payload').item.json.communication_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a1d0a73e-c46b-4042-9008-457a7c899c8e",
+              "name": "tipo",
+              "value": "={{ $('Validar payload').item.json.tipo }}",
+              "type": "string"
+            },
+            {
+              "id": "47e65149-e7c2-443c-8479-bc630e829aa0",
+              "name": "to",
+              "value": "={{ $('Validar payload').item.json.to }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1008,
+        0
+      ],
+      "id": "ccd6aa9b-103c-4b61-8bad-fca545b96315",
+      "name": "Resultado OK"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pedidos-email",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        352,
+        224
+      ],
+      "id": "9ef8c83e-65a1-4fdb-8869-e180d655b444",
+      "name": "Webhook",
+      "webhookId": "a58baf31-71bd-42eb-860e-6c492212f6ef",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CREDENTIAL_ID_PLACEHOLDER",
+          "name": "PEDIDOS - Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1df0102d-7647-4dd8-a02e-6a1e1d35fed1",
+              "name": "communication_id",
+              "value": "={{ $json.body.communication_id }}",
+              "type": "string"
+            },
+            {
+              "id": "e8e621ba-b354-49da-9c4b-350df62cfa1e",
+              "name": "pedido_id",
+              "value": "={{ $json.body.pedido_id }}",
+              "type": "string"
+            },
+            {
+              "id": "384edbc3-1b8a-4a24-a427-7f4729b961ae",
+              "name": "servicio_id",
+              "value": "={{ $json.body.servicio_id }}",
+              "type": "string"
+            },
+            {
+              "id": "94671100-ee53-48fb-880f-5d1c5fcad736",
+              "name": "tipo",
+              "value": "={{ $json.body.tipo }}",
+              "type": "string"
+            },
+            {
+              "id": "cd51376e-3119-4a4d-98a3-edb26b87a38c",
+              "name": "to",
+              "value": "={{ $json.body.to }}",
+              "type": "string"
+            },
+            {
+              "id": "a052c8ca-71e3-412e-9d1a-295256f63eab",
+              "name": "subject",
+              "value": "={{ $json.body.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "eb552cd4-85e3-4ce6-989e-e0ce2b1c65ab",
+              "name": "html",
+              "value": "={{ $json.body.html }}",
+              "type": "string"
+            },
+            {
+              "id": "59000501-d561-4517-8362-ec2d04e1cc16",
+              "name": "text",
+              "value": "={{ $json.body.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        224
+      ],
+      "id": "7dd4691e-eaac-4532-9ae0-c5aed8fdd1d5",
+      "name": "Preparar payload Webhook"
+    }
+  ],
+  "connections": {
+    "Ejecutar prueba manual": {
+      "main": [
+        [
+          {
+            "node": "Payload de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payload de prueba": {
+      "main": [
+        [
+          {
+            "node": "Validar payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar payload": {
+      "main": [
+        [
+          {
+            "node": "Enviar con Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar con Gmail": {
+      "main": [
+        [
+          {
+            "node": "Resultado OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Preparar payload Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar payload Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

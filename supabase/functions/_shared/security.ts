@@ -45,7 +45,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0] || 'http://localhost:5173',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-capability-token',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-capability-token, x-solicitante-session',
     'Access-Control-Expose-Headers': 'Content-Disposition, Content-Type, Content-Length, Cache-Control, X-Content-Type-Options',
     'Access-Control-Max-Age': '86400',
   };
@@ -130,4 +130,81 @@ export async function verifyUserRole(
   const role = data.app_role as 'administrador' | 'equipo' | 'observador';
 
   return { approved: isApproved, role: isApproved ? role : null };
+}
+
+/**
+ * Obtiene la clave de cifrado AES-256 de 32 bytes para sobres de magic links
+ */
+export function getEncryptionKey(customKey?: string): Buffer {
+  const rawSecret = customKey || getEnv('MAGIC_LINK_ENCRYPTION_KEY') || getEnv('SUPABASE_SERVICE_ROLE_KEY') || 'pedidos-default-envelope-secret-key-32-bytes!';
+  return crypto.createHash('sha256').update(rawSecret + ':pedidos-magic-envelope-key-v1').digest();
+}
+
+export interface EncryptedTokenEnvelope {
+  version: '1.0';
+  algo: 'aes-256-gcm';
+  iv: string;
+  tag: string;
+  ciphertext: string;
+  purpose: string;
+  created_at: string;
+}
+
+/**
+ * Cifra el material del token para transporte durable en cola mediante AES-256-GCM
+ */
+export function encryptTokenEnvelope(
+  plaintext: string,
+  purpose: string,
+  communicationId: string,
+  customKey?: string
+): EncryptedTokenEnvelope {
+  const key = getEncryptionKey(customKey);
+  const iv = crypto.randomBytes(12); // 96-bit IV para GCM
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
+  const aad = Buffer.from(`purpose:${purpose}|comm:${communicationId}`, 'utf8');
+  cipher.setAAD(aad);
+
+  let ciphertext = cipher.update(plaintext, 'utf8', 'hex');
+  ciphertext += cipher.final('hex');
+  const tag = cipher.getAuthTag().toString('hex');
+
+  return {
+    version: '1.0',
+    algo: 'aes-256-gcm',
+    iv: iv.toString('hex'),
+    tag,
+    ciphertext,
+    purpose,
+    created_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Descifra el sobre en memoria durante el despacho del correo
+ */
+export function decryptTokenEnvelope(
+  envelope: EncryptedTokenEnvelope | Record<string, any>,
+  purpose: string,
+  communicationId: string,
+  customKey?: string
+): string {
+  if (!envelope || envelope.algo !== 'aes-256-gcm' || !envelope.iv || !envelope.tag || !envelope.ciphertext) {
+    throw new Error('Sobre de cifrado inválido o corrupto');
+  }
+
+  const key = getEncryptionKey(customKey);
+  const iv = Buffer.from(envelope.iv, 'hex');
+  const tag = Buffer.from(envelope.tag, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+
+  const aad = Buffer.from(`purpose:${purpose}|comm:${communicationId}`, 'utf8');
+  decipher.setAAD(aad);
+  decipher.setAuthTag(tag);
+
+  let decrypted = decipher.update(envelope.ciphertext, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
 }

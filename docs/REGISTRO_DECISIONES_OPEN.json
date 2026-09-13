@@ -1,0 +1,41 @@
+{
+  "version": "3.1",
+  "updated_at": "2026-09-12T22:55:00-03:00",
+  "canonical_decisions": {
+    "OPEN-003": {
+      "id": "OPEN-003",
+      "estado": "ABIERTO",
+      "descripcion": "Retención, borrado, backups y custodio.",
+      "categoria": "Infraestructura y Datos",
+      "alcance": "Fuera de F7-F9 (Infraestructura / Backup / Custodia institucional)"
+    },
+    "OPEN-012": {
+      "id": "OPEN-012",
+      "estado": "ABIERTO",
+      "descripcion": "TTL definitivos de credenciales y sesiones públicas, cooldown, rate limiting y antiabuso.",
+      "categoria": "Seguridad y Antiabuso",
+      "alcance": "Parámetros provisionales centralizados en DB (F7); valores contractuales definitivos pendientes"
+    },
+    "OPEN-014": {
+      "id": "OPEN-014",
+      "estado": "ABIERTO",
+      "descripcion": "Formatos audiovisuales adicionales.",
+      "categoria": "Contenido Multimedia",
+      "alcance": "Formatos base PDF/PNG/JPG/DOCX/ZIP activos; extensiones de video/audio adicionales pendientes"
+    },
+    "OPEN-015": {
+      "id": "OPEN-015",
+      "estado": "ABIERTO",
+      "descripcion": "Último administrador, bootstrap y recuperación administrativa.",
+      "categoria": "Gobernanza y Autenticación",
+      "alcance": "Recuperación operativa de superadmin y protección contra bloqueo total"
+    },
+    "OPEN-016": {
+      "id": "OPEN-016",
+      "estado": "CERRADO",
+      "descripcion": "Spike real de subida y descarga Google Drive.",
+      "categoria": "Integración Storage",
+      "evidencia": "tests/e2e/integrated-cloud-drive.spec.ts, tests/integration/drive-upload-local.test.ts, scripts/google-drive-oauth-bootstrap.js"
+    }
+  }
+}

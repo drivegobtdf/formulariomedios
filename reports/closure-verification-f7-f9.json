@@ -1,0 +1,487 @@
+{
+  "metadata": {
+    "titulo": "Reporte Automatizado de Control de Cierre F7-F9",
+    "sistema": "PEDIDOS — Secretaría de Medios",
+    "version_revision": "3.1",
+    "entorno": "Supabase Cloud (sa-east-1 / São Paulo)",
+    "project_ref": "yqfkzgqvezarzhlwiilo",
+    "timestamp": "2026-09-13T22:38:02.998Z",
+    "overall_status": "PASS"
+  },
+  "criterios": {
+    "CRIT-01-OPEN-REGISTER": {
+      "id": "CRIT-01-OPEN-REGISTER",
+      "titulo": "Validación del Registro Canónico de Decisiones Abiertas",
+      "status": "PASS",
+      "asserts": [
+        {
+          "name": "1.1 Archivo docs/REGISTRO_DECISIONES_OPEN.json existe",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "1.2 OPEN-003 es ABIERTO (Retención, borrado, backups y custodio)",
+          "status": "PASS",
+          "details": "{\"id\":\"OPEN-003\",\"estado\":\"ABIERTO\",\"descripcion\":\"Retención, borrado, backups y custodio.\",\"categoria\":\"Infraestructura y Datos\",\"alcance\":\"Fuera de F7-F9 (Infraestructura / Backup / Custodia institucional)\"}"
+        },
+        {
+          "name": "1.3 OPEN-012 es ABIERTO (TTL definitivos de credenciales y sesiones públicas, cooldown, rate limiting y antiabuso)",
+          "status": "PASS",
+          "details": "{\"id\":\"OPEN-012\",\"estado\":\"ABIERTO\",\"descripcion\":\"TTL definitivos de credenciales y sesiones públicas, cooldown, rate limiting y antiabuso.\",\"categoria\":\"Seguridad y Antiabuso\",\"alcance\":\"Parámetros provisionales centralizados en DB (F7); valores contractuales definitivos pendientes\"}"
+        },
+        {
+          "name": "1.4 OPEN-014 es ABIERTO (Formatos audiovisuales adicionales)",
+          "status": "PASS",
+          "details": "{\"id\":\"OPEN-014\",\"estado\":\"ABIERTO\",\"descripcion\":\"Formatos audiovisuales adicionales.\",\"categoria\":\"Contenido Multimedia\",\"alcance\":\"Formatos base PDF/PNG/JPG/DOCX/ZIP activos; extensiones de video/audio adicionales pendientes\"}"
+        },
+        {
+          "name": "1.5 OPEN-015 es ABIERTO (Último administrador, bootstrap y recuperación administrativa)",
+          "status": "PASS",
+          "details": "{\"id\":\"OPEN-015\",\"estado\":\"ABIERTO\",\"descripcion\":\"Último administrador, bootstrap y recuperación administrativa.\",\"categoria\":\"Gobernanza y Autenticación\",\"alcance\":\"Recuperación operativa de superadmin y protección contra bloqueo total\"}"
+        },
+        {
+          "name": "1.6 OPEN-016 es CERRADO con referencia a evidencia válida (Spike real de subida y descarga Google Drive)",
+          "status": "PASS",
+          "details": "{\"id\":\"OPEN-016\",\"estado\":\"CERRADO\",\"descripcion\":\"Spike real de subida y descarga Google Drive.\",\"categoria\":\"Integración Storage\",\"evidencia\":\"tests/e2e/integrated-cloud-drive.spec.ts, tests/integration/drive-upload-local.test.ts, scripts/google-drive-oauth-bootstrap.js\"}"
+        }
+      ]
+    },
+    "CRIT-02-TTL-CONFIG": {
+      "id": "CRIT-02-TTL-CONFIG",
+      "titulo": "Configuración de Vigencias (TTL Magic Link, Sesión, Info 48h)",
+      "status": "PASS",
+      "asserts": [
+        {
+          "name": "2.1 Tabla public.configuracion_sistema accesible por service_role",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "2.2 public.get_setting_integer retorna valor entero seguro",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "2.3 Valor no numérico cae en default seguro (no permite ilimitado)",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "2.4 Configuración 1: Magic link emitido con TTL de 7200s (2h)",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "2.5 Configuración 2: Magic link emitido con TTL de 3600s (1h) demostrado en runtime",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "2.6 Solicitud de información faltante mantiene exactamente 48 horas corridas (172800s)",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "2.7 Primer canje genera sesión opaca exitosamente",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "2.8 Replay de token mágico ya usado es rechazado con 42202 TOKEN_ALREADY_USED",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "2.9 Revocación explícita de sesión ejecutada",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "2.10 Sesión revocada es rechazada con 42501 SESSION_REVOKED",
+          "status": "PASS",
+          "details": ""
+        }
+      ]
+    },
+    "CRIT-03-MIGRATIONS": {
+      "id": "CRIT-03-MIGRATIONS",
+      "titulo": "Reconciliación de Migraciones (Repo, Local, Cloud)",
+      "status": "PASS",
+      "asserts": [
+        {
+          "name": "3.1 Migraciones base 001 a 025 (o superior) existen en repositorio",
+          "status": "PASS",
+          "details": "Encontradas: 30"
+        },
+        {
+          "name": "3.2 Historial local sincronizado al 100%",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "3.3 Historial Cloud sincronizado al 100%",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "3.4 Migración 025 formalmente aplicada con RBAC Equipo y TTLs configurables",
+          "status": "PASS",
+          "details": ""
+        }
+      ]
+    },
+    "CRIT-04-RBAC-ARCHIVE": {
+      "id": "CRIT-04-RBAC-ARCHIVE",
+      "titulo": "SRS-RBAC-002: Permisos de Archivo/Restauración para Admin y Equipo",
+      "status": "PASS",
+      "asserts": [
+        {
+          "name": "4.1 Administrador puede archivar pedido Finalizado",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "4.2 SRS-RBAC-002: Operador (Equipo) puede desarchivar pedido",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "4.3 SRS-RBAC-002: Operador (Equipo) puede archivar pedido Finalizado",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "4.4 Observador es denegado al intentar desarchivar (42501 ROLE_FORBIDDEN)",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "4.5 Archivar pedido en estado Nuevo es rechazado (42200 INVALID_STATE_FOR_ARCHIVE)",
+          "status": "PASS",
+          "details": ""
+        }
+      ]
+    },
+    "CRIT-05-INFO-RESPONSE": {
+      "id": "CRIT-05-INFO-RESPONSE",
+      "titulo": "SRS-INF-004: Respuesta a Info con Texto, Enlaces Genéricos y Adjuntos",
+      "status": "PASS",
+      "asserts": [
+        {
+          "name": "5.1 Edge Function solicitante-info-respond acepta texto, enlaces genéricos y archivos",
+          "status": "PASS",
+          "details": "{\"estado\":\"respondida\",\"success\":true,\"solicitud_id\":\"a1d93c96-11af-4738-9fd6-7dcd498bcf01\"}"
+        },
+        {
+          "name": "5.2 Archivo adjuntado en respuesta queda vinculado a archivo_pedido",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "5.3 Enlace externo genérico queda registrado en enlaces_material",
+          "status": "PASS",
+          "details": ""
+        }
+      ]
+    },
+    "CRIT-06-SECURITY-ISOLATION": {
+      "id": "CRIT-06-SECURITY-ISOLATION",
+      "titulo": "Aislamiento de Helper de Test, Outbox y Protección contra Exposición",
+      "status": "PASS",
+      "asserts": [
+        {
+          "name": "6.1 solicitante_test_claim_magic_token es inaccesible para anon (42501)",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "6.2 Tabla comunicaciones_pedido es inaccesible para anon",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "6.3 Tabla solicitante_access_tokens es inaccesible para anon",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "6.4 Tabla solicitante_sesiones es inaccesible para anon",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "6.5 Respuesta pública no incluye raw_token, token_hash ni datos sensibles",
+          "status": "PASS",
+          "details": ""
+        }
+      ]
+    },
+    "CRIT-07-NEGATIVE-FIXTURE": {
+      "id": "CRIT-07-NEGATIVE-FIXTURE",
+      "titulo": "Comprobación de Detección de Defectos por Fixture Negativo",
+      "status": "PASS",
+      "asserts": [
+        {
+          "name": "7.1 Control detecta estado corrupto en fixture de prueba negativo",
+          "status": "PASS",
+          "details": ""
+        },
+        {
+          "name": "7.2 Control detecta TTL inválido fuera de rango seguro",
+          "status": "PASS",
+          "details": ""
+        }
+      ]
+    }
+  },
+  "migration_matrix": [
+    {
+      "version": "20260912000001",
+      "archivo": "20260912000001_extensions_and_helpers.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000002",
+      "archivo": "20260912000002_catalogs.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000003",
+      "archivo": "20260912000003_core_submission_and_pedidos.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000004",
+      "archivo": "20260912000004_users_and_assignments.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000005",
+      "archivo": "20260912000005_information_files_links_deliveries_notes.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000006",
+      "archivo": "20260912000006_events_communications_audit.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000007",
+      "archivo": "20260912000007_indexes_and_integrity.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000008",
+      "archivo": "20260912000008_fix_contractual_states_and_catalog_names.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000009",
+      "archivo": "20260912000009_auth_private_helpers_and_signup_trigger.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000010",
+      "archivo": "20260912000010_rls_policies_and_grants.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000011",
+      "archivo": "20260912000011_access_admin_functions.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000012",
+      "archivo": "20260912000012_harden_f3_visibility_and_admin_lockout.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000013",
+      "archivo": "20260912000013_submission_identity_and_helpers.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000014",
+      "archivo": "20260912000014_submission_create_core.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000015",
+      "archivo": "20260912000015_harden_f4_core_function_security.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000016",
+      "archivo": "20260912000016_f5_submission_sessions_and_upload_reservations.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000017",
+      "archivo": "20260912000017_f5_submission_create_core_file_integration.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000018",
+      "archivo": "20260912000018_f5_harden_technical_tables_permissions.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000019",
+      "archivo": "20260912000019_grant_service_role_public_tables.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000020",
+      "archivo": "20260912000020_harden_service_role_granular_acls.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000021",
+      "archivo": "20260912000021_reconcile_technical_tables_and_granular_acls.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000022",
+      "archivo": "20260912000022_f7_f8_rpcs_and_state_management.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000023",
+      "archivo": "20260912000023_f7_f8_recovery_exchange_and_f9_guard.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260912000024",
+      "archivo": "20260912000024_f7_email_session_and_f9_completion.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "F7 Mis Solicitudes por correo + sesión opaca y baseline F9"
+    },
+    {
+      "version": "20260912000025",
+      "archivo": "20260912000025_rbac_archive_ttl_config_and_info_attachments.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "SRS-RBAC-002 Archive/Restore para Equipo, TTL configurables y adjuntos SRS-INF-004"
+    },
+    {
+      "version": "20260913000026",
+      "archivo": "20260913000026_f10_outbox_queue_and_dispatch.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260913000027",
+      "archivo": "20260913000027_f10_hardening_leases_uncertain_and_magic_secrets.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260913000028",
+      "archivo": "20260913000028_f10_hardened_lease_expiry_sweep_and_5xx_uncertainty.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260913000029",
+      "archivo": "20260913000029_clean_legacy_magic_token_payloads.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    },
+    {
+      "version": "20260913000030",
+      "archivo": "20260913000030_f10_hardened_concurrency_state_machine_and_durable_magic_link.sql",
+      "repo": true,
+      "local": true,
+      "cloud": true,
+      "explicacion": "Sincronizada y aplicada en repo, local y Cloud"
+    }
+  ],
+  "resumen": {
+    "total_criterios": 7,
+    "passed_criterios": 7,
+    "failed_criterios": 0,
+    "total_asserts": 35,
+    "passed_asserts": 35,
+    "failed_asserts": 0
+  }
+}

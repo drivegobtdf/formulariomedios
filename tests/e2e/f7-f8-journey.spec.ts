@@ -26,7 +26,7 @@ test.describe('PEDIDOS — E2E Journey F7 Seguimiento Público (48h/Exchange) y 
       });
     });
 
-    await page.goto('/formulariomedios/seguimiento');
+    await page.goto('/formulariomedios/seguimiento-legacy');
 
     // 1. Verificar presencia de campos de consulta
     await expect(page.locator('#input-ped')).toBeVisible();

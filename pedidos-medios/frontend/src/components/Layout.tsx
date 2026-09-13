@@ -13,33 +13,21 @@ export const Layout: React.FC = () => {
           Gobierno de Tierra del Fuego AIAS · Revisión {config.contractVersion} · v{config.pluginVersion} ({config.environment})
         </p>
 
-        <nav className="pedidos-nav" aria-label="Navegación principal de desarrollo">
+        <nav className="pedidos-nav" aria-label="Navegación principal">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
             Formulario
           </NavLink>
-          <NavLink to="/solicitud-recibida" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Confirmación
-          </NavLink>
-          <NavLink to="/seguimiento" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Seguimiento
-          </NavLink>
-          <NavLink to="/solicitud-informacion" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Info Faltante
-          </NavLink>
-          <NavLink to="/login" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Login
-          </NavLink>
-          <NavLink to="/solicitar-acceso" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Solicitar Acceso
+          <NavLink to="/mis-solicitudes" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Mis Solicitudes
           </NavLink>
           <NavLink to="/gestion" className={({ isActive }) => (isActive ? 'active' : '')}>
             Gestión
           </NavLink>
-          <NavLink to="/pedido/PED-2026-D000001" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Detalle Pedido (Demo)
-          </NavLink>
           <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
             Usuarios
+          </NavLink>
+          <NavLink to="/login" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Acceso Interno
           </NavLink>
         </nav>
       </header>

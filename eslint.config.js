@@ -14,6 +14,7 @@ export default tseslint.config(
       '**/test-results/**',
       'supabase/.temp/**',
       'FUENTES_WORK/**',
+      'scratch/**',
     ],
   },
   js.configs.recommended,
@@ -55,6 +56,9 @@ export default tseslint.config(
         ...globals.node,
         ...globals.browser,
       },
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   }
 );

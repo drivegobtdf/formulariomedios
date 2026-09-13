@@ -128,7 +128,7 @@ export const PedidoDetallePage: React.FC = () => {
       setShowFinalizeModal(false);
       setEntregaUrl('');
       setEntregaNota('');
-      setSuccessMessage('Pedido finalizado y entrega registrada (F9 Preimplementación).');
+      setSuccessMessage('Pedido finalizado y entrega registrada exitosamente.');
       await loadData();
     } catch (err: any) {
       setError(err.message || 'Error al finalizar el pedido.');
@@ -146,7 +146,7 @@ export const PedidoDetallePage: React.FC = () => {
       await cancelPedido(pedido.id, cancelMotivo.trim(), pedido.version);
       setShowCancelModal(false);
       setCancelMotivo('');
-      setSuccessMessage('Pedido cancelado (F9 Preimplementación).');
+      setSuccessMessage('Pedido cancelado exitosamente.');
       await loadData();
     } catch (err: any) {
       setError(err.message || 'Error al cancelar pedido.');
@@ -164,7 +164,7 @@ export const PedidoDetallePage: React.FC = () => {
       await reopenPedido(pedido.id, reopenMotivo.trim(), pedido.version);
       setShowReopenModal(false);
       setReopenMotivo('');
-      setSuccessMessage('Pedido reabierto (F9 Preimplementación).');
+      setSuccessMessage('Pedido reabierto exitosamente.');
       await loadData();
     } catch (err: any) {
       setError(err.message || 'Error al reabrir pedido.');
@@ -180,10 +180,10 @@ export const PedidoDetallePage: React.FC = () => {
     try {
       if (pedido.archivado) {
         await restorePedido(pedido.id, pedido.version);
-        setSuccessMessage('Pedido desarchivado (F9 Preimplementación).');
+        setSuccessMessage('Pedido restaurado del archivo.');
       } else {
         await archivePedido(pedido.id, pedido.version);
-        setSuccessMessage('Pedido archivado (F9 Preimplementación).');
+        setSuccessMessage('Pedido archivado correctamente.');
       }
       await loadData();
     } catch (err: any) {
@@ -305,10 +305,10 @@ export const PedidoDetallePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setTargetState('en_analisis');
+                    setTargetState('En revisión');
                     setShowStateModal(true);
                   }}
-                  disabled={actionLoading || pedido.estado === 'en_analisis' || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
+                  disabled={actionLoading || pedido.estado === 'En revisión' || pedido.estado.toLowerCase() === 'finalizado' || pedido.estado.toLowerCase() === 'cancelado'}
                   style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Analizar
@@ -317,10 +317,10 @@ export const PedidoDetallePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setTargetState('en_curso');
+                    setTargetState('En proceso');
                     setShowStateModal(true);
                   }}
-                  disabled={actionLoading || pedido.estado === 'en_curso' || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
+                  disabled={actionLoading || pedido.estado === 'En proceso' || pedido.estado.toLowerCase() === 'finalizado' || pedido.estado.toLowerCase() === 'cancelado'}
                   style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Poner En Curso
@@ -329,57 +329,57 @@ export const PedidoDetallePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowInfoReqModal(true)}
-                  disabled={actionLoading || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
+                  disabled={actionLoading || pedido.estado.toLowerCase() === 'finalizado' || pedido.estado.toLowerCase() === 'cancelado'}
                   style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
                 >
                   + Pedir Info (48h)
                 </button>
               </div>
 
-              {/* F9 Pre-implemented Actions Gated and Labeled */}
+              {/* Operaciones de Cierre / F9 */}
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>F9 Preimplementación:</span>
-                <button
-                  type="button"
-                  onClick={() => setShowFinalizeModal(true)}
-                  disabled={actionLoading || pedido.estado === 'finalizado' || pedido.estado === 'cancelado'}
-                  style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '0.35rem 0.6rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
-                  title="F9 Parcialmente preimplementada, pendiente de aceptación"
-                >
-                  Finalizar Pedido
-                </button>
+                {pedido.estado.toLowerCase() !== 'finalizado' && pedido.estado.toLowerCase() !== 'cancelado' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowFinalizeModal(true)}
+                      disabled={actionLoading}
+                      style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '0.4rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      ✓ Finalizar Pedido
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCancelModal(true)}
+                      disabled={actionLoading}
+                      style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '0.4rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      ✕ Cancelar
+                    </button>
+                  </>
+                )}
 
-                {pedido.estado === 'cancelado' || pedido.estado === 'finalizado' ? (
+                {pedido.estado.toLowerCase() === 'cancelado' && (
                   <button
                     type="button"
                     onClick={() => setShowReopenModal(true)}
                     disabled={actionLoading}
-                    style={{ background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe', padding: '0.35rem 0.6rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
-                    title="F9 Parcialmente preimplementada, pendiente de aceptación"
+                    style={{ background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe', padding: '0.4rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
                   >
-                    Reabrir
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowCancelModal(true)}
-                    disabled={actionLoading}
-                    style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '0.35rem 0.6rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
-                    title="F9 Parcialmente preimplementada, pendiente de aceptación"
-                  >
-                    Cancelar
+                    ↺ Reabrir Pedido
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={handleArchiveToggle}
-                  disabled={actionLoading}
-                  style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.35rem 0.6rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
-                  title="F9 Parcialmente preimplementada, pendiente de aceptación"
-                >
-                  {pedido.archivado ? 'Desarchivar' : 'Archivar'}
-                </button>
+                {(pedido.estado.toLowerCase() === 'finalizado' || pedido.estado.toLowerCase() === 'cancelado') && (
+                  <button
+                    type="button"
+                    onClick={handleArchiveToggle}
+                    disabled={actionLoading}
+                    style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '0.4rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {pedido.archivado ? 'Desarchivar' : 'Archivar'}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -499,7 +499,7 @@ export const PedidoDetallePage: React.FC = () => {
           {/* Entregas */}
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1.25rem' }}>
             <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem 0' }}>
-              Entregas y Archivos Finales (F9)
+              Entregas y Materiales Finales
             </h2>
             {pedido.entregas.length === 0 ? (
               <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>No se han registrado entregas todavía.</p>
@@ -717,9 +717,9 @@ export const PedidoDetallePage: React.FC = () => {
       {showFinalizeModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
           <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '480px', width: '100%', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#15803d' }}>Finalizar Pedido y Registrar Entrega (F9)</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#15803d' }}>Finalizar Pedido y Registrar Entrega</h3>
             <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 1rem 0' }}>
-              Nota: Acción catalogada como F9 preimplementada, sujeta a verificación de fase.
+              Ingrese el enlace a los materiales producidos (Google Drive u otro) y la nota explicativa para el solicitante.
             </p>
             <form onSubmit={handleFinalize}>
               <div style={{ marginBottom: '1rem' }}>
@@ -755,7 +755,7 @@ export const PedidoDetallePage: React.FC = () => {
       {showCancelModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
           <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '440px', width: '100%', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#b91c1c' }}>Cancelar Pedido (F9)</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#b91c1c' }}>Cancelar Pedido</h3>
             <form onSubmit={handleCancel}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Motivo de Cancelación (Requerido)</label>
@@ -781,7 +781,7 @@ export const PedidoDetallePage: React.FC = () => {
       {showReopenModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
           <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '440px', width: '100%', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#4338ca' }}>Reabrir Pedido (F9)</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#4338ca' }}>Reabrir Pedido</h3>
             <form onSubmit={handleReopen}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Motivo de Reapertura (Requerido)</label>

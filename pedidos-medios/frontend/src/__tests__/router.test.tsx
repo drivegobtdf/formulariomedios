@@ -10,25 +10,9 @@ describe('App Router Placeholder Routes', () => {
       'href',
       '/formulariomedios'
     );
-    expect(screen.getByRole('link', { name: /^Confirmación$/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /^Mis Solicitudes$/i })).toHaveAttribute(
       'href',
-      '/formulariomedios/solicitud-recibida'
-    );
-    expect(screen.getByRole('link', { name: /^Seguimiento$/i })).toHaveAttribute(
-      'href',
-      '/formulariomedios/seguimiento'
-    );
-    expect(screen.getByRole('link', { name: /^Info Faltante$/i })).toHaveAttribute(
-      'href',
-      '/formulariomedios/solicitud-informacion'
-    );
-    expect(screen.getByRole('link', { name: /^Login$/i })).toHaveAttribute(
-      'href',
-      '/formulariomedios/login'
-    );
-    expect(screen.getByRole('link', { name: /^Solicitar Acceso$/i })).toHaveAttribute(
-      'href',
-      '/formulariomedios/solicitar-acceso'
+      '/formulariomedios/mis-solicitudes'
     );
     expect(screen.getByRole('link', { name: /^Gestión$/i })).toHaveAttribute(
       'href',
@@ -37,6 +21,10 @@ describe('App Router Placeholder Routes', () => {
     expect(screen.getByRole('link', { name: /^Usuarios$/i })).toHaveAttribute(
       'href',
       '/formulariomedios/usuarios'
+    );
+    expect(screen.getByRole('link', { name: /^Acceso Interno$/i })).toHaveAttribute(
+      'href',
+      '/formulariomedios/login'
     );
   });
 });
