@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
 import { getCorsHeaders, getSupabaseConfig } from '../_shared/security.ts';
+import { validateSubmissionPayloadDates } from '../_shared/payloadValidation.ts';
 
 export default async function handler(req: Request): Promise<Response> {
   const corsHeaders = getCorsHeaders(req);
@@ -16,13 +17,26 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
+    const body = await req.json();
+
+    // Validación Server-Side Centralizada de Fechas Operativas (Revisión 3.0)
+    const dateValidation = validateSubmissionPayloadDates(body);
+    if (!dateValidation.isValid) {
+      return new Response(
+        JSON.stringify({
+          error: 'VALIDATION_ERROR',
+          message: dateValidation.error,
+          field: dateValidation.field,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { supabaseUrl, serviceRoleKey } = getSupabaseConfig();
 
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-
-    const body = await req.json();
 
     const { data, error } = await supabase.rpc('submission_create_core', {
       p_payload: body,
