@@ -11,6 +11,54 @@ import {
 import { getDriveAdapter } from '../_shared/drive-adapter.ts';
 import { getEnv } from '../_shared/env.ts';
 
+/**
+ * Resuelve la URL base pública del relay de almacenamiento.
+ * Valida mediante la API URL y compara exact origin.
+ * Solo permite localhost en entorno local explícito.
+ * En Cloud, si falta una URL pública válida, arroja un error controlado (sin fallback a 127.0.0.1).
+ */
+export function resolvePublicRelayBaseUrl(
+  publicSupabaseUrl = getEnv('PUBLIC_SUPABASE_URL'),
+  supabaseUrlEnv = getEnv('SUPABASE_URL'),
+  isExplicitLocal = Boolean(
+    getEnv('ENVIRONMENT') === 'local' ||
+    getEnv('APP_ENV') === 'local' ||
+    getEnv('LOCAL_DEV') === 'true' ||
+    (getEnv('SUPABASE_URL') || '').includes('127.0.0.1') ||
+    (getEnv('SUPABASE_URL') || '').includes('localhost')
+  )
+): string {
+  if (publicSupabaseUrl) {
+    try {
+      const parsed = new URL(publicSupabaseUrl);
+      if (parsed.protocol === 'https:') {
+        return parsed.origin;
+      }
+      if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') && isExplicitLocal) {
+        return parsed.origin;
+      }
+    } catch {
+      // Ignorar URL no parseable
+    }
+  }
+
+  if (supabaseUrlEnv) {
+    try {
+      const parsed = new URL(supabaseUrlEnv);
+      if (parsed.protocol === 'https:') {
+        return parsed.origin;
+      }
+      if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') && isExplicitLocal) {
+        return parsed.origin;
+      }
+    } catch {
+      // Ignorar URL no parseable
+    }
+  }
+
+  throw new Error('CONFIG_ERROR: No se encontró una URL pública o local válida configurada para el relay de almacenamiento');
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const corsHeaders = getCorsHeaders(req);
 
@@ -277,16 +325,17 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-    const proto = req.headers.get('x-forwarded-proto') || (host && (host.includes('localhost') || host.includes('127.0.0.1')) ? 'http' : 'https');
-    const configuredSupabaseUrl = getEnv('PUBLIC_SUPABASE_URL') || getEnv('SUPABASE_URL');
     let baseUrl: string;
-    if (configuredSupabaseUrl && !configuredSupabaseUrl.includes('kong:')) {
-      baseUrl = configuredSupabaseUrl;
-    } else if (host && !host.includes('kong:') && !host.includes('edge-runtime.supabase.com')) {
-      baseUrl = `${proto}://${host}`;
-    } else {
-      baseUrl = 'http://127.0.0.1:54321';
+    try {
+      baseUrl = resolvePublicRelayBaseUrl();
+    } catch (configErr) {
+      return new Response(
+        JSON.stringify({
+          error: 'CONFIG_ERROR',
+          message: (configErr as Error)?.message || 'Error de configuración de almacenamiento',
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     const relayUrl = `${baseUrl}/functions/v1/drive-upload-prepare?reservation_id=${reservationId}`;
 

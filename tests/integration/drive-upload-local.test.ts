@@ -25,7 +25,7 @@ import {
 
 // Edge function handlers
 import sessionPrepareHandler from '../../supabase/functions/submission-session-prepare/index.ts';
-import uploadPrepareHandler from '../../supabase/functions/drive-upload-prepare/index.ts';
+import uploadPrepareHandler, { resolvePublicRelayBaseUrl } from '../../supabase/functions/drive-upload-prepare/index.ts';
 import uploadCompleteHandler from '../../supabase/functions/drive-upload-complete/index.ts';
 import submissionCreateHandler from '../../supabase/functions/submission-create/index.ts';
 import driveDownloadHandler from '../../supabase/functions/drive-download/index.ts';
@@ -654,5 +654,31 @@ describe('F5 Google Drive & Upload/Download Integration Tests', () => {
       .select('*')
       .eq('submission_key', submissionKey);
     expect(dbEnvios).toHaveLength(0);
+  });
+
+  describe('Caso 5: Validación y Resolución Segura de relay_url (Origins exactos, no substring blacklists)', () => {
+    const cloudUrl = 'https://yqfkzgqvezarzhlwiilo.supabase.co';
+
+    it('1. origen autorizado aceptado: backend acepta URL HTTPS pública válida de Cloud', () => {
+      const base = resolvePublicRelayBaseUrl(cloudUrl, undefined, false);
+      expect(base).toBe(cloudUrl);
+    });
+
+    it('permitir localhost únicamente en configuración local explícita', () => {
+      const localBase = resolvePublicRelayBaseUrl(undefined, 'http://127.0.0.1:54321', true);
+      expect(localBase).toBe('http://127.0.0.1:54321');
+    });
+
+    it('4. Cloud sin configuración válida falla sin fallback local', () => {
+      expect(() => resolvePublicRelayBaseUrl(undefined, undefined, false)).toThrow(
+        'CONFIG_ERROR: No se encontró una URL pública o local válida'
+      );
+      expect(() => resolvePublicRelayBaseUrl('http://127.0.0.1:54321', undefined, false)).toThrow(
+        'CONFIG_ERROR: No se encontró una URL pública o local válida'
+      );
+      expect(() => resolvePublicRelayBaseUrl('invalid-schema', undefined, false)).toThrow(
+        'CONFIG_ERROR: No se encontró una URL pública o local válida'
+      );
+    });
   });
 });

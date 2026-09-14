@@ -66,21 +66,75 @@ export interface UploadResult {
   client_file_ref: string;
 }
 
+/**
+ * Valida un destino de upload comparando su origin exacto mediante la API URL.
+ * Solo autoriza el endpoint público configurado o un relay expresamente autorizado.
+ * No utiliza listas de substrings prohibidos.
+ *
+ * Si relayUrl pertenece al origin autorizado, lo retorna.
+ * Si relayUrl es inválido, no coincide con el origin autorizado o es un host interno,
+ * retorna la URL canónica bajo el origin de Supabase configurado.
+ */
 export function resolveUploadRelayUrl(
   relayUrl: string | undefined,
   reservationId: string,
-  supabaseUrl: string
+  configuredSupabaseUrl: string,
+  authorizedRelayOrigin?: string
 ): string {
-  if (
-    relayUrl &&
-    !relayUrl.includes('kong:') &&
-    !relayUrl.includes(':8081') &&
-    !relayUrl.startsWith('http://127.0.0.1/') &&
-    !relayUrl.includes('edge-runtime.supabase.com')
-  ) {
-    return relayUrl;
+  if (!configuredSupabaseUrl) {
+    throw new Error('CONFIG_ERROR: URL de Supabase no configurada');
   }
-  return `${supabaseUrl}/functions/v1/drive-upload-prepare?reservation_id=${reservationId}`;
+
+  let expectedOrigin: string;
+  try {
+    expectedOrigin = new URL(configuredSupabaseUrl).origin;
+  } catch {
+    throw new Error('CONFIG_ERROR: URL de Supabase configurada inválida');
+  }
+
+  const allowedOrigins = new Set<string>([expectedOrigin]);
+  if (authorizedRelayOrigin) {
+    try {
+      allowedOrigins.add(new URL(authorizedRelayOrigin).origin);
+    } catch {
+      // Ignorar origen adicional inválido
+    }
+  }
+
+  if (relayUrl) {
+    try {
+      const parsedRelay = new URL(relayUrl);
+      if (allowedOrigins.has(parsedRelay.origin)) {
+        return parsedRelay.toString();
+      }
+    } catch {
+      // relayUrl no parseable como URL válida
+    }
+  }
+
+  return `${expectedOrigin}/functions/v1/drive-upload-prepare?reservation_id=${encodeURIComponent(reservationId)}`;
+}
+
+/**
+ * Verifica si un target URL pertenece exactamente al origin de Supabase configurado
+ * o al relay expresamente autorizado.
+ */
+export function isOriginAuthorized(
+  targetUrl: string,
+  configuredSupabaseUrl: string,
+  authorizedRelayOrigin?: string
+): boolean {
+  try {
+    const targetOrigin = new URL(targetUrl).origin;
+    const expectedOrigin = new URL(configuredSupabaseUrl).origin;
+    if (targetOrigin === expectedOrigin) return true;
+    if (authorizedRelayOrigin && targetOrigin === new URL(authorizedRelayOrigin).origin) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export async function uploadFileToDrive(
@@ -130,14 +184,19 @@ export async function uploadFileToDrive(
     config.supabaseUrl
   );
 
+  const isAuthorized = isOriginAuthorized(targetUploadUrl, config.supabaseUrl);
+  if (!isAuthorized) {
+    throw new Error('SECURITY_ERROR: Destino de almacenamiento no autorizado. Transferencia cancelada.');
+  }
+
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', targetUploadUrl);
-    if (targetUploadUrl.includes('/functions/v1/drive-upload-prepare') || prepData.relay_url) {
-      xhr.setRequestHeader('apikey', config.supabaseAnonKey);
-      xhr.setRequestHeader('Authorization', `Bearer ${config.supabaseAnonKey}`);
-      xhr.setRequestHeader('x-capability-token', capabilityToken);
-    }
+    
+    // Enviar tokens y apikey ÚNICAMENTE porque el origen fue verificado como autorizado
+    xhr.setRequestHeader('apikey', config.supabaseAnonKey);
+    xhr.setRequestHeader('Authorization', `Bearer ${config.supabaseAnonKey}`);
+    xhr.setRequestHeader('x-capability-token', capabilityToken);
     xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
 
     xhr.upload.onprogress = (event) => {
