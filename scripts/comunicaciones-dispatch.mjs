@@ -83,7 +83,36 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 const n8nUrl = (env.N8N_BASE_URL || env.N8N_URL || 'http://127.0.0.1:5678').replace(/\/$/, '');
 const n8nApiKey = env.N8N_API_KEY || '';
 const integrationSecret = env.N8N_INTEGRATION_SECRET || (n8nApiKey ? crypto.createHash('sha256').update(n8nApiKey + ':pedidos-integration-salt').digest('hex') : '');
-const appUrl = env.PUBLIC_APP_URL || env.APP_URL || 'http://localhost:5173';
+export function resolvePublicAppUrl(
+  publicAppUrl = env.PUBLIC_APP_URL || env.APP_URL,
+  isExplicitLocal = Boolean(
+    env.ENVIRONMENT === 'local' ||
+    env.APP_ENV === 'local' ||
+    env.LOCAL_DEV === 'true' ||
+    (env.SUPABASE_URL || '').includes('127.0.0.1') ||
+    (env.SUPABASE_URL || '').includes('localhost')
+  )
+) {
+  if (publicAppUrl && typeof publicAppUrl === 'string' && publicAppUrl.trim().length > 0) {
+    try {
+      const trimmed = publicAppUrl.trim();
+      const parsed = new URL(trimmed);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        return trimmed.replace(/\/+$/, '');
+      }
+    } catch {
+      throw new Error(`CONFIG_ERROR: PUBLIC_APP_URL '${publicAppUrl}' no es una URL válida`);
+    }
+  }
+
+  if (isExplicitLocal) {
+    return 'http://localhost:5173';
+  }
+
+  throw new Error('CONFIG_ERROR: PUBLIC_APP_URL no está configurado en el servidor para el entorno Cloud.');
+}
+
+const appUrl = resolvePublicAppUrl(undefined, true);
 
 export function getEncryptionKey(customKey) {
   const rawSecret = customKey || env.MAGIC_LINK_ENCRYPTION_KEY || env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || 'pedidos-default-envelope-secret-key-32-bytes!';

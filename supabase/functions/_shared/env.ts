@@ -106,3 +106,40 @@ export function getSupabaseConfig(): SupabaseConfig {
     serviceRoleKey,
   };
 }
+
+/**
+ * Resuelve la URL base pública del frontend para construcción de enlaces en correos (C03, C06, C07).
+ * - Valida la URL mediante la API standard URL.
+ * - En Cloud, si falta una URL pública configurada o es inválida, arroja un error controlado
+ *   (sin fallback silencioso a localhost:5173).
+ * - En entorno local explícito, permite localhost como fallback de desarrollo.
+ * - Preserva paths base institucionales (ej: /formulariomedios).
+ */
+export function resolvePublicAppUrl(
+  publicAppUrl = getEnv('PUBLIC_APP_URL') || getEnv('APP_URL'),
+  isExplicitLocal = Boolean(
+    getEnv('ENVIRONMENT') === 'local' ||
+    getEnv('APP_ENV') === 'local' ||
+    getEnv('LOCAL_DEV') === 'true' ||
+    (getEnv('SUPABASE_URL') || '').includes('127.0.0.1') ||
+    (getEnv('SUPABASE_URL') || '').includes('localhost')
+  )
+): string {
+  if (publicAppUrl && typeof publicAppUrl === 'string' && publicAppUrl.trim().length > 0) {
+    try {
+      const trimmed = publicAppUrl.trim();
+      const parsed = new URL(trimmed);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        return trimmed.replace(/\/+$/, '');
+      }
+    } catch {
+      throw new Error(`CONFIG_ERROR: PUBLIC_APP_URL '${publicAppUrl}' no es una URL válida`);
+    }
+  }
+
+  if (isExplicitLocal) {
+    return 'http://localhost:5173';
+  }
+
+  throw new Error('CONFIG_ERROR: PUBLIC_APP_URL no está configurado en el servidor para el entorno Cloud.');
+}

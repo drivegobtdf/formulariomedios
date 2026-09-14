@@ -50,9 +50,14 @@ export const MisSolicitudesPage: React.FC = () => {
   const [responseError, setResponseError] = useState<string | null>(null);
   const [responseSuccess, setResponseSuccess] = useState<string | null>(null);
 
-  // Automatic Magic Token Exchange on URL query param (?token=...)
+  // Automatic Magic Token Exchange on URL query param (?token=...) or URL hash (#token=...)
   useEffect(() => {
-    const magicToken = searchParams.get('token') || searchParams.get('access_token');
+    let hashToken: string | null = null;
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#\/?/, ''));
+      hashToken = hashParams.get('token') || hashParams.get('access_token');
+    }
+    const magicToken = searchParams.get('token') || searchParams.get('access_token') || hashToken;
     if (magicToken && !sessionToken) {
       handleExchange(magicToken);
     }
@@ -96,8 +101,11 @@ export const MisSolicitudesPage: React.FC = () => {
       setSessionEmail(res.email);
       sessionStorage.setItem('solicitante_session_token', res.session_token);
       sessionStorage.setItem('solicitante_session_email', res.email);
-      // Clean query params from URL
+      // Clean query params and hash from URL
       setSearchParams({});
+      if (typeof window !== 'undefined' && window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
     } catch (err: unknown) {
       const msg = (err as Error)?.message || 'El enlace de acceso es inválido o ha expirado.';
       setExchangeError(msg);

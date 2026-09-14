@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
-import { getCorsHeaders, getSupabaseConfig, getEnv, decryptTokenEnvelope, timingSafeEqualString } from '../_shared/security.ts';
+import { getCorsHeaders, getSupabaseConfig, getEnv, decryptTokenEnvelope, timingSafeEqualString, resolvePublicAppUrl } from '../_shared/security.ts';
 import { renderEmailForCommunication } from '../_shared/emailTemplates.ts';
 
 interface ClaimedCommItem {
@@ -108,7 +108,18 @@ export default async function handler(req: Request): Promise<Response> {
     const n8nBaseUrl = getEnv('N8N_BASE_URL') || 'https://n8n.pablosaldiviafotos.ar';
     const n8nWebhookPath = getEnv('N8N_WEBHOOK_PATH') || 'pedidos-email';
     const n8nIntegrationSecret = getEnv('N8N_INTEGRATION_SECRET') || '';
-    const appUrl = getEnv('PUBLIC_APP_URL') || getEnv('APP_URL') || 'http://localhost:5173';
+    let appUrl: string;
+    try {
+      appUrl = resolvePublicAppUrl();
+    } catch (configErr) {
+      return new Response(
+        JSON.stringify({
+          error: 'CONFIGURATION_ERROR',
+          message: (configErr as Error)?.message || 'Error de configuración de PUBLIC_APP_URL',
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const results: Array<{ id: string; success: boolean; status: string; provider_message_id?: string; error?: string }> = [];
 

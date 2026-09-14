@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0';
-import { getEnv, getSupabaseConfig } from './env.ts';
+import { getEnv, getSupabaseConfig, resolvePublicAppUrl } from './env.ts';
 
-export { getEnv, getSupabaseConfig };
+export { getEnv, getSupabaseConfig, resolvePublicAppUrl };
 export type { SupabaseConfig } from './env.ts';
 
 // Constantes contractuales vigentes (Revisión 3.0)
