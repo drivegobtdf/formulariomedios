@@ -59,16 +59,41 @@ export async function prepareSubmissionSession(submissionKey: string): Promise<S
  * 2. PUT directo a Google Drive (resumable session) con progreso
  * 3. drive-upload-complete -> verifica en backend y crea registro verificado
  */
+export interface UploadResult {
+  archivo_id: string;
+  drive_file_id: string;
+  reservation_id: string;
+  client_file_ref: string;
+}
+
+export function resolveUploadRelayUrl(
+  relayUrl: string | undefined,
+  reservationId: string,
+  supabaseUrl: string
+): string {
+  if (
+    relayUrl &&
+    !relayUrl.includes('kong:') &&
+    !relayUrl.includes(':8081') &&
+    !relayUrl.startsWith('http://127.0.0.1/') &&
+    !relayUrl.includes('edge-runtime.supabase.com')
+  ) {
+    return relayUrl;
+  }
+  return `${supabaseUrl}/functions/v1/drive-upload-prepare?reservation_id=${reservationId}`;
+}
+
 export async function uploadFileToDrive(
   sessionId: string,
   capabilityToken: string,
   clientFileRef: string,
   file: File,
-  onProgress?: (progressPct: number) => void
-): Promise<{ archivo_id: string; drive_file_id: string; reservation_id: string; client_file_ref: string }> {
+  onProgress?: (percent: number) => void
+): Promise<UploadResult> {
   const config = getPublicConfig();
+  if (onProgress) onProgress(5);
 
-  // Paso 1: Preparar reserva de subida
+  // Paso 1: Solicitar reserva de carga e inicialización de sesión
   const prepareUrl = `${config.supabaseUrl}/functions/v1/drive-upload-prepare`;
   const prepRes = await fetch(prepareUrl, {
     method: 'POST',
@@ -99,12 +124,16 @@ export async function uploadFileToDrive(
 
   // Paso 2: Subida de bytes hacia almacenamiento (vía relay en streaming con CORS seguro o URL directa)
   let driveFileId = prepData.drive_file_id || '';
-  const targetUploadUrl = prepData.relay_url || prepData.upload_url;
+  const targetUploadUrl = resolveUploadRelayUrl(
+    prepData.relay_url,
+    prepData.reservation_id,
+    config.supabaseUrl
+  );
 
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', targetUploadUrl);
-    if (prepData.relay_url) {
+    if (targetUploadUrl.includes('/functions/v1/drive-upload-prepare') || prepData.relay_url) {
       xhr.setRequestHeader('apikey', config.supabaseAnonKey);
       xhr.setRequestHeader('Authorization', `Bearer ${config.supabaseAnonKey}`);
       xhr.setRequestHeader('x-capability-token', capabilityToken);
@@ -178,6 +207,85 @@ export async function uploadFileToDrive(
 }
 
 /**
+ * Mapea y valida la respuesta del backend RPC submission_create_core
+ * hacia el modelo canónico del frontend.
+ *
+ * Contrato backend:
+ * - id: uuid
+ * - pedido_visible: string (ej: "PED-2026-D001613")
+ *
+ * Contrato frontend:
+ * - pedido_id: uuid
+ * - codigo_ped: string (ej: "PED-2026-D001613")
+ */
+export function mapSubmissionResponse(raw: unknown): SubmissionResponsePayload {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Respuesta de envío inválida: el servidor no retornó un objeto.');
+  }
+
+  const data = raw as Record<string, unknown>;
+
+  if (!data.envio_id || typeof data.envio_id !== 'string') {
+    throw new Error('Respuesta de envío inválida: falta envio_id en la respuesta del servidor.');
+  }
+
+  if (!Array.isArray(data.pedidos) || data.pedidos.length === 0) {
+    throw new Error('Respuesta de envío inválida: no se registraron pedidos en el resultado.');
+  }
+
+  const pedidos = data.pedidos.map((p: unknown, idx: number) => {
+    if (!p || typeof p !== 'object') {
+      throw new Error(`Respuesta de envío inválida: elemento pedido [${idx}] corrupto.`);
+    }
+    const ped = p as Record<string, unknown>;
+
+    const pedido_id = String(ped.id || ped.pedido_id || '').trim();
+    if (!pedido_id) {
+      throw new Error(`Respuesta de envío incompleta: el servidor no retornó el identificador del pedido [${idx}].`);
+    }
+
+    const codigo_ped = String(ped.pedido_visible || ped.codigo_ped || '').trim();
+    if (!codigo_ped) {
+      throw new Error(
+        `Respuesta de envío incompleta: el servidor no retornó el código identificador visible (pedido_visible) para el pedido [${idx}].`
+      );
+    }
+
+    const client_request_ref = String(ped.client_request_ref || '').trim();
+    const categoria_slug = String(ped.categoria_slug || '').trim();
+    const tipo_slug = String(ped.tipo_slug || '').trim();
+
+    return {
+      pedido_id,
+      codigo_ped,
+      client_request_ref,
+      categoria_slug,
+      tipo_slug,
+    };
+  });
+
+  const archivos = Array.isArray(data.archivos)
+    ? data.archivos.map((a: unknown) => {
+        const arch = (a && typeof a === 'object' ? a : {}) as Record<string, unknown>;
+        return {
+          archivo_id: String(arch.archivo_id || arch.id || '').trim(),
+          client_file_ref: String(arch.client_file_ref || '').trim(),
+          nombre: String(arch.nombre || arch.nombre_original || '').trim(),
+        };
+      })
+    : undefined;
+
+  return {
+    envio_id: data.envio_id,
+    submission_key: typeof data.submission_key === 'string' ? data.submission_key : undefined,
+    idempotent_replay: Boolean(data.idempotent_replay),
+    pedidos,
+    archivos,
+    archivos_count: typeof data.archivos_count === 'number' ? data.archivos_count : archivos?.length,
+  };
+}
+
+/**
  * Enviar el formulario y crear atómicamente 1 Envío + N PEDs
  */
 export async function submitMultiPedFormulario(
@@ -208,5 +316,6 @@ export async function submitMultiPedFormulario(
     throw new Error(errorData.error || errorData.message || `Error al procesar la solicitud (${res.status})`);
   }
 
-  return res.json();
+  const rawJson = await res.json();
+  return mapSubmissionResponse(rawJson);
 }

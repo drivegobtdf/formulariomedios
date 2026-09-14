@@ -10,6 +10,13 @@ import {
   FormUploadedFile,
   FormLinkItem,
 } from '../types/form';
+import {
+  validateWhatsAppPhone,
+  getWhatsAppDetails,
+  formatPhoneForDisplay,
+} from '../utils/phoneUtils';
+
+export { validateWhatsAppPhone, getWhatsAppDetails, formatPhoneForDisplay };
 
 export interface ValidationErrors {
   [key: string]: string;
@@ -17,6 +24,25 @@ export interface ValidationErrors {
 
 export const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 export const URL_REGEX = /^https?:\/\/[^\s$.?#].[^\s]*$/i;
+
+/**
+ * Valida si una URL es completa con protocolo explícito http:// o https://
+ * Case-insensitive respecto al protocolo.
+ * Bloquea cualquier otro esquema (javascript:, data:, file:, ftp:, etc.).
+ */
+export function isValidHttpUrl(urlString: string): boolean {
+  if (!urlString || typeof urlString !== 'string') return false;
+  const trimmed = urlString.trim();
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return false;
+  }
+  try {
+    const url = new URL(trimmed);
+    return (url.protocol === 'http:' || url.protocol === 'https:') && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
 
 export const MAX_FILES_LIMIT = 10;
 export const MAX_FILE_SIZE_LIMIT = 10 * 1024 * 1024; // 10,485,760 bytes
@@ -48,6 +74,94 @@ export function validateFileMetadata(file: { name: string; size: number; type: s
 }
 
 // -----------------------------------------------------------------------------
+// Helpers de Validación Reactiva y Fechas Locales
+// -----------------------------------------------------------------------------
+
+/**
+ * Obtiene la fecha local actual en formato YYYY-MM-DD sin desfasaje por UTC.
+ */
+export function getLocalTodayDateString(refDate: Date = new Date()): string {
+  const year = refDate.getFullYear();
+  const month = String(refDate.getMonth() + 1).padStart(2, '0');
+  const day = String(refDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Valida si una fecha YYYY-MM-DD es anterior a la fecha local del día de la solicitud.
+ * Regla:
+ * - date < today_local -> true (inválida)
+ * - date == today_local -> false (válida)
+ * - date > today_local -> false (válida)
+ */
+export function isDateBeforeToday(dateStr: string, refDate: Date = new Date()): boolean {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+    return false;
+  }
+  const todayStr = getLocalTodayDateString(refDate);
+  return dateStr.trim() < todayStr;
+}
+
+/**
+ * Valida un campo de fecha límite obligatoria con validación de no-anterioridad.
+ */
+export function validateFechaLimite(
+  dateValue?: string,
+  emptyMessage = 'Indicá la fecha límite de entrega.',
+  pastMessage = 'La fecha límite no puede ser anterior a la fecha de la solicitud.',
+  refDate: Date = new Date()
+): string | null {
+  if (!dateValue || dateValue.trim() === '') {
+    return emptyMessage;
+  }
+  if (isDateBeforeToday(dateValue, refDate)) {
+    return pastMessage;
+  }
+  return null;
+}
+
+/**
+ * Valida longitud mínima requerida de un campo de texto.
+ */
+export function validateMinLength(
+  value: string | undefined,
+  min: number,
+  emptyMessage: string,
+  tooShortMessage?: string
+): string | null {
+  const trimmed = value ? value.trim() : '';
+  if (!trimmed) {
+    return emptyMessage;
+  }
+  if (trimmed.length < min) {
+    return tooShortMessage || `Ingresá al menos ${min} caracteres.`;
+  }
+  return null;
+}
+
+/**
+ * Revalida reactivamente el conjunto de errores visibles.
+ * Regla:
+ * - Si un campo tenía error y ahora es válido (no está en freshErrors) -> se remueve inmediatamente.
+ * - Si un campo tenía error y sigue siendo inválido -> se actualiza el mensaje de error.
+ * - Si un campo NO tenía error visible -> NO se añade prematuramente mientras el usuario escribe/selecciona.
+ */
+export function revalidateErrors(
+  currentErrors: ValidationErrors,
+  freshErrors: ValidationErrors
+): ValidationErrors {
+  const nextErrors = { ...currentErrors };
+  for (const key of Object.keys(currentErrors)) {
+    if (!freshErrors[key]) {
+      delete nextErrors[key];
+    } else {
+      nextErrors[key] = freshErrors[key];
+    }
+  }
+  return nextErrors;
+}
+
+// -----------------------------------------------------------------------------
 // Paso 1: Contacto y Categorías
 // -----------------------------------------------------------------------------
 
@@ -58,8 +172,12 @@ export function validateStep1(contacto: ContactoFormState, selected_categorias: 
     errors.nombre_apellido = 'Ingresá tu nombre y apellido.';
   }
 
-  if (!contacto.telefono || contacto.telefono.trim().length < 5) {
-    errors.telefono = 'Ingresá un número de teléfono o WhatsApp de contacto válido.';
+  const phoneVal = validateWhatsAppPhone(
+    contacto.telefono_local !== undefined ? contacto.telefono_local : contacto.telefono,
+    contacto.telefono_pais || 'AR'
+  );
+  if (!phoneVal.isValid) {
+    errors.telefono = phoneVal.errorMessage || 'Ingresá un número de WhatsApp válido.';
   }
 
   if (!contacto.correo || !EMAIL_REGEX.test(contacto.correo.trim())) {
@@ -99,11 +217,18 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
               if (!data?.formato || data.formato.trim() === '') {
                 errors['flyer_rrss.formato'] = 'Seleccioná el formato del flyer.';
               }
-              if (!data?.texto || data.texto.trim().length < 5) {
-                errors['flyer_rrss.texto'] = 'Ingresá el texto o contenido que debe llevar el flyer.';
+              const textoErr = validateMinLength(
+                data?.texto,
+                5,
+                'Ingresá el texto o contenido que debe llevar el flyer.',
+                'Ingresá al menos 5 caracteres.'
+              );
+              if (textoErr) {
+                errors['flyer_rrss.texto'] = textoErr;
               }
-              if (!data?.fecha_limite || data.fecha_limite.trim() === '') {
-                errors['flyer_rrss.fecha_limite'] = 'Indicá la fecha límite o requerida de entrega.';
+              const fechaErr = validateFechaLimite(data?.fecha_limite);
+              if (fechaErr) {
+                errors['flyer_rrss.fecha_limite'] = fechaErr;
               }
               break;
             }
@@ -221,8 +346,9 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
           if (!data?.formato || data.formato.trim() === '') {
             errors['audiovisual.formato'] = 'Seleccioná el formato de video.';
           }
-          if (!data?.fecha_limite || data.fecha_limite.trim() === '') {
-            errors['audiovisual.fecha_limite'] = 'Indicá la fecha límite de entrega requerida.';
+          const fechaAudiovisualErr = validateFechaLimite(data?.fecha_limite);
+          if (fechaAudiovisualErr) {
+            errors['audiovisual.fecha_limite'] = fechaAudiovisualErr;
           }
           if (data?.requiere_grabacion) {
             if (!data.grabacion_fecha || data.grabacion_fecha.trim() === '') {
@@ -261,8 +387,9 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
           if (!data?.formato || data.formato.trim() === '') {
             errors['motion.formato'] = 'Seleccioná el formato visual.';
           }
-          if (!data?.fecha_limite || data.fecha_limite.trim() === '') {
-            errors['motion.fecha_limite'] = 'Indicá la fecha límite de entrega.';
+          const fechaMotionErr = validateFechaLimite(data?.fecha_limite);
+          if (fechaMotionErr) {
+            errors['motion.fecha_limite'] = fechaMotionErr;
           }
         }
         break;
@@ -318,14 +445,18 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
           if (!data?.descripcion_objetivo || data.descripcion_objetivo.trim().length < 5) {
             errors['web.descripcion_objetivo'] = 'Ingresá la descripción y objetivo de la página o cambio.';
           }
-          if (data?.pagina_existente && (!data.url_pagina || !URL_REGEX.test(data.url_pagina.trim()))) {
+          if (data?.pagina_existente && (!data.url_pagina || !isValidHttpUrl(data.url_pagina))) {
             errors['web.url_pagina'] = 'Ingresá una URL válida de la página existente (ej: https://tierradelfuego.gob.ar/ejemplo).';
           }
           if (!data?.contenido_cambios || data.contenido_cambios.trim().length < 5) {
             errors['web.contenido_cambios'] = 'Detallá los contenidos, secciones o cambios solicitados.';
           }
-          if (!data?.fecha_limite || data.fecha_limite.trim() === '') {
-            errors['web.fecha_limite'] = 'Indicá la fecha límite de publicación o puesta en línea.';
+          const fechaWebErr = validateFechaLimite(
+            data?.fecha_limite,
+            'Indicá la fecha límite de publicación o puesta en línea.'
+          );
+          if (fechaWebErr) {
+            errors['web.fecha_limite'] = fechaWebErr;
           }
         }
         break;
@@ -358,8 +489,8 @@ export function validateStep3(archivos: FormUploadedFile[], links: FormLinkItem[
 
   for (let i = 0; i < links.length; i++) {
     const link = links[i];
-    if (!link.url || !URL_REGEX.test(link.url.trim())) {
-      errors[`link_${i}`] = `El enlace "${link.url}" no tiene un formato URL válido (ej: https://drive.google.com/...).`;
+    if (!link.url || !isValidHttpUrl(link.url)) {
+      errors[`link_${i}`] = 'Enlace no válido. Ingresá la dirección completa con http:// o https://.';
     }
   }
 

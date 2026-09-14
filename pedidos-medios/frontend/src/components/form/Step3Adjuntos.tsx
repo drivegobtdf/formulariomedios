@@ -16,6 +16,7 @@ interface Step3AdjuntosProps {
   availablePieces: FormPieceItem[];
   onAddFiles: (files: File[]) => void;
   onRemoveFile: (index: number) => void;
+  onRetryFile?: (index: number) => void;
   onChangeFileTarget: (index: number, target: 'all' | string) => void;
   onAddLink: () => void;
   onRemoveLink: (index: number) => void;
@@ -31,6 +32,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
   availablePieces,
   onAddFiles,
   onRemoveFile,
+  onRetryFile,
   onChangeFileTarget,
   onAddLink,
   onRemoveLink,
@@ -222,6 +224,26 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
                   </div>
 
                   <div className="pedidos-file-actions">
+                    {isError && fileItem.file && onRetryFile && (
+                      <button
+                        type="button"
+                        className="pedidos-btn-retry"
+                        onClick={() => onRetryFile(idx)}
+                        title="Reintentar subida"
+                        aria-label={`Reintentar subida ${fileItem.name}`}
+                        style={{
+                          marginRight: '0.5rem',
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.75rem',
+                          background: '#f1f5f9',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        🔄 Reintentar
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="pedidos-btn-icon-danger"
@@ -261,15 +283,24 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
           <div className="pedidos-links-list">
             {links.map((link, idx) => (
               <div key={link.id} className="pedidos-link-row">
-                <div className="pedidos-form-row" style={{ flex: 1, margin: 0 }}>
+                <div className="pedidos-form-row" style={{ flex: 1, margin: 0, gap: '0.75rem' }}>
                   <div className="pedidos-form-group col-7" style={{ marginBottom: 0 }}>
+                    <label
+                      htmlFor={`link_url_${idx}`}
+                      className="pedidos-label"
+                      style={{ display: 'block', marginBottom: '0.25rem' }}
+                    >
+                      Enlace al material
+                    </label>
                     <input
+                      id={`link_url_${idx}`}
                       type="url"
                       className={`pedidos-input ${errors[`link_${idx}`] ? 'error' : ''}`}
-                      placeholder="https://drive.google.com/... o enlace de nube"
+                      placeholder="https://drive.google.com/... o https://ejemplo.com"
                       value={link.url}
                       onChange={(e) => onChangeLink(idx, { url: e.target.value })}
-                      aria-label="URL del enlace"
+                      aria-label="Enlace al material"
+                      aria-invalid={Boolean(errors[`link_${idx}`])}
                     />
                     {errors[`link_${idx}`] && (
                       <span className="pedidos-error-text" role="alert">{errors[`link_${idx}`]}</span>
@@ -277,20 +308,36 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
                   </div>
 
                   <div className="pedidos-form-group col-5" style={{ marginBottom: 0 }}>
+                    <label
+                      htmlFor={`link_desc_${idx}`}
+                      className="pedidos-label"
+                      style={{ display: 'block', marginBottom: '0.25rem' }}
+                    >
+                      Descripción
+                    </label>
                     <input
+                      id={`link_desc_${idx}`}
                       type="text"
                       className="pedidos-input"
                       placeholder="Descripción breve (ej: Fotos en alta)"
                       value={link.descripcion || ''}
                       onChange={(e) => onChangeLink(idx, { descripcion: e.target.value })}
-                      aria-label="Descripción del enlace"
+                      aria-label="Descripción"
                     />
                   </div>
                 </div>
 
                 {isMultiPiece && (
                   <div style={{ minWidth: '180px' }}>
+                    <label
+                      htmlFor={`link_target_${idx}`}
+                      className="pedidos-label"
+                      style={{ display: 'block', marginBottom: '0.25rem' }}
+                    >
+                      Asociar a
+                    </label>
                     <select
+                      id={`link_target_${idx}`}
                       className="pedidos-select-sm"
                       value={
                         link.targets === 'all'
@@ -319,6 +366,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
                 <button
                   type="button"
                   className="pedidos-btn-icon-danger"
+                  style={{ marginTop: '1.4rem' }}
                   onClick={() => onRemoveLink(idx)}
                   title="Eliminar enlace"
                   aria-label="Eliminar enlace"

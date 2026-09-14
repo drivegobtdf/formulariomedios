@@ -8,6 +8,7 @@ export interface PedidosPublicConfig {
   supabaseUrl: string;
   supabaseAnonKey: string;
   environment: 'development' | 'staging' | 'production';
+  uiMode: 'development' | 'production-preview';
   basePath: string;
   contractVersion: string;
   pluginVersion: string;
@@ -23,6 +24,7 @@ const DEFAULT_CONFIG: PedidosPublicConfig = {
   supabaseUrl: 'https://placeholder-project.supabase.co',
   supabaseAnonKey: 'sb_publishable_placeholder_anon_key_for_development_only',
   environment: 'development',
+  uiMode: 'development',
   basePath: '/formulariomedios',
   contractVersion: '3.0',
   pluginVersion: '0.1.0-alpha',
@@ -33,21 +35,31 @@ export function getPublicConfig(): PedidosPublicConfig {
 
   const supabaseUrl =
     wpConfig.supabaseUrl ||
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
+    import.meta.env.VITE_SUPABASE_URL ||
     DEFAULT_CONFIG.supabaseUrl;
 
   const supabaseAnonKey =
     wpConfig.supabaseAnonKey ||
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
+    import.meta.env.VITE_SUPABASE_ANON_KEY ||
     DEFAULT_CONFIG.supabaseAnonKey;
 
   const environment = (wpConfig.environment ||
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ENVIRONMENT) ||
+    import.meta.env.VITE_ENVIRONMENT ||
     DEFAULT_CONFIG.environment) as PedidosPublicConfig['environment'];
+
+  const rawUiMode =
+    wpConfig.uiMode ||
+    import.meta.env.VITE_UI_MODE ||
+    (environment === 'production' ? 'production-preview' : DEFAULT_CONFIG.uiMode);
+
+  const uiMode =
+    rawUiMode === 'production-preview' || rawUiMode === 'production'
+      ? 'production-preview'
+      : 'development';
 
   const rawBasePath =
     wpConfig.basePath ||
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BASE_PATH) ||
+    import.meta.env.VITE_BASE_PATH ||
     DEFAULT_CONFIG.basePath;
 
   // Normalizar base path (asegurar leading slash y quitar trailing slash)
@@ -59,7 +71,7 @@ export function getPublicConfig(): PedidosPublicConfig {
 
   const contractVersion =
     wpConfig.contractVersion ||
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CONTRACT_VERSION) ||
+    import.meta.env.VITE_CONTRACT_VERSION ||
     DEFAULT_CONFIG.contractVersion;
 
   const pluginVersion = wpConfig.pluginVersion || DEFAULT_CONFIG.pluginVersion;
@@ -68,6 +80,7 @@ export function getPublicConfig(): PedidosPublicConfig {
     supabaseUrl,
     supabaseAnonKey,
     environment,
+    uiMode,
     basePath,
     contractVersion,
     pluginVersion,

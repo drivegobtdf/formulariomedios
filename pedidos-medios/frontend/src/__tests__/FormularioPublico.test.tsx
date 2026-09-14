@@ -5,6 +5,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FormularioPublicoPage } from '../pages/FormularioPublicoPage';
+import { getLocalTodayDateString } from '../validation/formValidation';
 
 // Mock scrollTo
 window.scrollTo = vi.fn();
@@ -23,8 +24,8 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
     fireEvent.change(screen.getByLabelText(/Nombre y apellido/i), {
       target: { value: 'Juan Pérez' },
     });
-    fireEvent.change(screen.getByLabelText(/Teléfono \/ WhatsApp/i), {
-      target: { value: '+542901998877' },
+    fireEvent.change(screen.getByLabelText(/Número de WhatsApp/i), {
+      target: { value: '2901998877' },
     });
     fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
       target: { value: 'juan.perez@tierradelfuego.gob.ar' },
@@ -168,5 +169,365 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
 
     // NO debe tener botones a seguimiento público (F7)
     expect(screen.queryByRole('link', { name: /seguimiento/i })).not.toBeInTheDocument();
+  });
+
+  describe('Validación Reactiva y UX Flyer RRSS (Escenarios A - N)', () => {
+    const setupStep2WithFlyer = async () => {
+      render(<FormularioPublicoPage />);
+
+      // Completar Paso 1 válido
+      fireEvent.change(screen.getByLabelText(/Nombre y apellido/i), {
+        target: { value: 'Juan Pérez' },
+      });
+      fireEvent.change(screen.getByLabelText(/Número de WhatsApp/i), {
+        target: { value: '2901998877' },
+      });
+      fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
+        target: { value: 'juan.perez@tierradelfuego.gob.ar' },
+      });
+      fireEvent.change(screen.getByLabelText(/Área, Ministerio o Dependencia/i), {
+        target: { value: 'Secretaría General' },
+      });
+
+      // Seleccionar Diseño Gráfico
+      fireEvent.click(screen.getByLabelText(/Diseño gráfico/i));
+
+      // Avanzar a Paso 2
+      const nextBtn1 = screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i });
+      fireEvent.click(nextBtn1);
+
+      // Seleccionar pieza Flyer para redes sociales
+      const flyerCheckbox = screen.getByRole('checkbox', { name: /Flyer para redes sociales/i });
+      fireEvent.click(flyerCheckbox);
+
+      return {
+        nextBtn2: screen.getByRole('button', { name: /Continuar a Adjuntos y Enlaces/i }),
+      };
+    };
+
+    it('Escenario A & C & F: Campos vacíos al intentar continuar muestran errores visibles específicos', async () => {
+      const { nextBtn2 } = await setupStep2WithFlyer();
+
+      // Intentar continuar con campos de flyer vacíos
+      fireEvent.click(nextBtn2);
+
+      // Formato
+      expect(screen.getByText(/Seleccioná el formato del flyer\./i)).toBeInTheDocument();
+      // Textarea vacío (Escenario C)
+      expect(
+        screen.getByText(/Ingresá el texto o contenido que debe llevar el flyer\./i)
+      ).toBeInTheDocument();
+      // Fecha vacía (Escenario F)
+      expect(screen.getByText(/Indicá la fecha límite de entrega\./i)).toBeInTheDocument();
+    });
+
+    it('Escenario B: Formato vacío con error desaparece inmediatamente al seleccionar opción sin nuevo submit', async () => {
+      const { nextBtn2 } = await setupStep2WithFlyer();
+
+      fireEvent.click(nextBtn2);
+      expect(screen.getByText(/Seleccioná el formato del flyer\./i)).toBeInTheDocument();
+
+      const selectFormato = screen.getByLabelText(/Formato de la imagen/i);
+      expect(selectFormato).toHaveClass('error');
+      expect(selectFormato).toHaveAttribute('aria-invalid', 'true');
+
+      // Seleccionar un formato válido
+      fireEvent.change(selectFormato, {
+        target: { value: 'Cuadrado 1:1 (Feed Instagram/Facebook)' },
+      });
+
+      // El error debe desaparecer inmediatamente
+      expect(screen.queryByText(/Seleccioná el formato del flyer\./i)).not.toBeInTheDocument();
+      expect(selectFormato).not.toHaveClass('error');
+      expect(selectFormato).toHaveAttribute('aria-invalid', 'false');
+    });
+
+    it('Escenario D & E: Textarea informa mínimo 5 caracteres, actualiza mensaje si es corto y desaparece al alcanzar el mínimo', async () => {
+      const { nextBtn2 } = await setupStep2WithFlyer();
+
+      const textarea = screen.getByLabelText(/Texto y contenido que debe incluir el flyer/i);
+      expect(screen.getByText(/0 caracteres · mínimo 5/i)).toBeInTheDocument();
+
+      // Intentar avanzar para provocar error
+      fireEvent.click(nextBtn2);
+      expect(
+        screen.getByText(/Ingresá el texto o contenido que debe llevar el flyer\./i)
+      ).toBeInTheDocument();
+      expect(textarea).toHaveClass('error');
+
+      // Escribir 4 caracteres (menor a 5) -> Escenario D
+      fireEvent.change(textarea, { target: { value: 'Hola' } });
+      expect(screen.getByText(/4 caracteres · mínimo 5/i)).toBeInTheDocument();
+      expect(screen.getByText(/Ingresá al menos 5 caracteres\./i)).toBeInTheDocument();
+      expect(textarea).toHaveClass('error');
+
+      // Escribir 5 caracteres -> Escenario E
+      fireEvent.change(textarea, { target: { value: 'Hola!' } });
+      expect(screen.getByText(/5 caracteres · mínimo 5/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Ingresá al menos 5 caracteres\./i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Ingresá el texto o contenido que debe llevar el flyer\./i)
+      ).not.toBeInTheDocument();
+      expect(textarea).not.toHaveClass('error');
+      expect(textarea).toHaveAttribute('aria-invalid', 'false');
+    });
+
+    it('Escenario G, H, I, J, K, L: Validación reactiva de fecha límite (ayer inválida, hoy y futura válidas, corrección reactiva)', async () => {
+      const { nextBtn2 } = await setupStep2WithFlyer();
+
+      const dateInput = screen.getByLabelText(/Fecha límite requerida/i);
+      const todayStr = getLocalTodayDateString();
+
+      // Calcular fecha de ayer y mañana en base a fecha local
+      const now = new Date();
+      const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const yesterdayStr = getLocalTodayDateString(yesterday);
+      const tomorrowStr = getLocalTodayDateString(tomorrow);
+
+      // Ingresar fecha de ayer (Escenario G)
+      fireEvent.change(dateInput, { target: { value: yesterdayStr } });
+      fireEvent.click(nextBtn2);
+
+      expect(
+        screen.getByText(/La fecha límite no puede ser anterior a la fecha de la solicitud\./i)
+      ).toBeInTheDocument();
+      expect(dateInput).toHaveClass('error');
+      expect(dateInput).toHaveAttribute('aria-invalid', 'true');
+
+      // Escenario J: Cambiar a hoy -> desaparece error sin nuevo submit (Escenario H: hoy es válida)
+      fireEvent.change(dateInput, { target: { value: todayStr } });
+      expect(
+        screen.queryByText(/La fecha límite no puede ser anterior a la fecha de la solicitud\./i)
+      ).not.toBeInTheDocument();
+      expect(dateInput).not.toHaveClass('error');
+      expect(dateInput).toHaveAttribute('aria-invalid', 'false');
+
+      // Volver a poner fecha pasada
+      fireEvent.change(dateInput, { target: { value: yesterdayStr } });
+      fireEvent.click(nextBtn2);
+      expect(
+        screen.getByText(/La fecha límite no puede ser anterior a la fecha de la solicitud\./i)
+      ).toBeInTheDocument();
+
+      // Escenario K: Cambiar a fecha futura -> desaparece error sin nuevo submit (Escenario I: futura es válida)
+      fireEvent.change(dateInput, { target: { value: tomorrowStr } });
+      expect(
+        screen.queryByText(/La fecha límite no puede ser anterior a la fecha de la solicitud\./i)
+      ).not.toBeInTheDocument();
+      expect(dateInput).not.toHaveClass('error');
+      expect(dateInput).toHaveAttribute('aria-invalid', 'false');
+    });
+
+    it('Escenario M & N: Corrección total de campos avanza al Paso 3 y conserva datos ingresados', async () => {
+      const { nextBtn2 } = await setupStep2WithFlyer();
+
+      // Provocar errores
+      fireEvent.click(nextBtn2);
+
+      const selectFormato = screen.getByLabelText(/Formato de la imagen/i);
+      const dateInput = screen.getByLabelText(/Fecha límite requerida/i);
+      const textarea = screen.getByLabelText(/Texto y contenido que debe incluir el flyer/i);
+
+      // Corregir todos los campos
+      const textoPrueba = 'Texto completo del flyer institucional con datos oficiales.';
+      const todayStr = getLocalTodayDateString();
+
+      fireEvent.change(selectFormato, {
+        target: { value: 'Vertical 9:16 (Historias / Reels / WhatsApp)' },
+      });
+      fireEvent.change(dateInput, { target: { value: todayStr } });
+      fireEvent.change(textarea, { target: { value: textoPrueba } });
+
+      // Verificar que los valores se conservaron en los inputs (Escenario N)
+      expect(selectFormato).toHaveValue('Vertical 9:16 (Historias / Reels / WhatsApp)');
+      expect(dateInput).toHaveValue(todayStr);
+      expect(textarea).toHaveValue(textoPrueba);
+
+      // Escenario M: Pulsar Continuar permite avanzar al Paso 3 normalmente
+      fireEvent.click(nextBtn2);
+
+      expect(
+        screen.getByRole('heading', {
+          level: 2,
+          name: /3\. Archivos Adjuntos y Enlaces de Referencia/i,
+        })
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Paso 3: Enlaces al Material - Validación Reactiva y Labels Persistentes', () => {
+    const setupStep3 = async () => {
+      render(<FormularioPublicoPage />);
+
+      // Paso 1
+      fireEvent.change(screen.getByLabelText(/Nombre y Apellido/i), {
+        target: { value: 'Juan Pérez' },
+      });
+      fireEvent.change(screen.getByLabelText(/Número de WhatsApp/i), {
+        target: { value: '2901998877' },
+      });
+      fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
+        target: { value: 'juan.perez@tierradelfuego.gob.ar' },
+      });
+      fireEvent.change(screen.getByLabelText(/Área, Ministerio o Dependencia/i), {
+        target: { value: 'Secretaría General' },
+      });
+      fireEvent.click(screen.getByLabelText(/Diseño gráfico/i));
+
+      // Avanzar a Paso 2
+      fireEvent.click(screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i }));
+
+      // Completar Paso 2 con Flyer válido
+      fireEvent.click(screen.getByRole('checkbox', { name: /Flyer para redes sociales/i }));
+      fireEvent.change(screen.getByLabelText(/Formato de la imagen/i), {
+        target: { value: 'Cuadrado 1:1 (Feed Instagram/Facebook)' },
+      });
+      fireEvent.change(screen.getByLabelText(/Fecha límite requerida/i), {
+        target: { value: getLocalTodayDateString() },
+      });
+      fireEvent.change(screen.getByLabelText(/Texto y contenido que debe incluir el flyer/i), {
+        target: { value: 'Texto de prueba para el flyer' },
+      });
+
+      // Avanzar a Paso 3
+      fireEvent.click(screen.getByRole('button', { name: /Continuar a Adjuntos y Enlaces/i }));
+
+      expect(
+        screen.getByRole('heading', {
+          level: 2,
+          name: /3\. Archivos Adjuntos y Enlaces de Referencia/i,
+        })
+      ).toBeInTheDocument();
+    };
+
+    it('Labels persistentes, validación reactiva de URL y retención de descripción (Tests M & N)', async () => {
+      await setupStep3();
+
+      // Agregar un enlace
+      fireEvent.click(screen.getByRole('button', { name: /\+ Agregar enlace/i }));
+
+      // Verificar labels visibles y persistentes
+      expect(screen.getByLabelText(/Enlace al material/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Descripción$/i)).toBeInTheDocument();
+
+      const urlInput = screen.getByLabelText(/Enlace al material/i);
+      const descInput = screen.getByLabelText(/^Descripción$/i);
+
+      // Ingresar URL inválida (hola) y descripción (fotos)
+      fireEvent.change(urlInput, { target: { value: 'hola' } });
+      fireEvent.change(descInput, { target: { value: 'fotos en alta resolución' } });
+
+      // Intentar continuar al Paso 4
+      const nextBtn3 = screen.getByRole('button', { name: /Continuar al Resumen y Confirmación/i });
+      fireEvent.click(nextBtn3);
+
+      // Verificar que se muestra el error exacto y el estado de error
+      expect(
+        screen.getByText('Enlace no válido. Ingresá la dirección completa con http:// o https://.')
+      ).toBeInTheDocument();
+      expect(urlInput).toHaveClass('error');
+      expect(urlInput).toHaveAttribute('aria-invalid', 'true');
+
+      // Test M: El usuario corrige a una URL válida con https:// -> desaparece el error inmediatamente sin nuevo click
+      fireEvent.change(urlInput, { target: { value: 'https://ejemplo.com' } });
+
+      expect(
+        screen.queryByText('Enlace no válido. Ingresá la dirección completa con http:// o https://.')
+      ).not.toBeInTheDocument();
+      expect(urlInput).not.toHaveClass('error');
+      expect(urlInput).toHaveAttribute('aria-invalid', 'false');
+
+      // Test N: La descripción se conserva intacta
+      expect(descInput).toHaveValue('fotos en alta resolución');
+
+      // Probar ingresar URL con http:// -> también es válida y no genera error
+      fireEvent.change(urlInput, { target: { value: 'http://ejemplo.com/material' } });
+      expect(
+        screen.queryByText('Enlace no válido. Ingresá la dirección completa con http:// o https://.')
+      ).not.toBeInTheDocument();
+      expect(urlInput).not.toHaveClass('error');
+
+      // Si el usuario introduce javascript:alert(1) y clickea continuar -> debe mostrar error
+      fireEvent.change(urlInput, { target: { value: 'javascript:alert(1)' } });
+      fireEvent.click(nextBtn3);
+      expect(
+        screen.getByText('Enlace no válido. Ingresá la dirección completa con http:// o https://.')
+      ).toBeInTheDocument();
+      expect(urlInput).toHaveClass('error');
+
+      // Corregir a Google Drive link con https:// -> desaparece inmediatamente
+      fireEvent.change(urlInput, {
+        target: { value: 'https://drive.google.com/file/d/123456789/view' },
+      });
+      expect(
+        screen.queryByText('Enlace no válido. Ingresá la dirección completa con http:// o https://.')
+      ).not.toBeInTheDocument();
+      expect(urlInput).not.toHaveClass('error');
+      expect(descInput).toHaveValue('fotos en alta resolución');
+
+      // Continuar al Paso 4
+      fireEvent.click(nextBtn3);
+      expect(
+        screen.getByRole('heading', {
+          level: 2,
+          name: /4\. Resumen y Confirmación Final/i,
+        })
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Paso 1: Selector Internacional de WhatsApp y Validación Reactiva', () => {
+    it('debe tener Argentina por defecto, validar reglas locales y revalidar reactivamente sin nuevo submit', async () => {
+      render(<FormularioPublicoPage />);
+
+      // Verificar país por defecto AR
+      const countrySelect = screen.getByLabelText(/Seleccionar país para WhatsApp/i) as HTMLSelectElement;
+      expect(countrySelect.value).toBe('AR');
+      expect(screen.getByText(/Ingresá código de área y número, sin 0 y sin 15\./i)).toBeInTheDocument();
+
+      const phoneInput = screen.getByLabelText(/Número de WhatsApp/i);
+      const nextBtn1 = screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i });
+
+      // Ingresar número con 0 inicial -> 02964477578
+      fireEvent.change(phoneInput, { target: { value: '02964477578' } });
+
+      // Intentar continuar
+      fireEvent.click(nextBtn1);
+
+      // Error visible
+      expect(screen.getByText('Ingresá el número sin el 0 inicial.')).toBeInTheDocument();
+      expect(phoneInput).toHaveClass('error');
+      expect(phoneInput).toHaveAttribute('aria-invalid', 'true');
+
+      // Corrección reactiva: usuario borra el 0 -> 2964477578
+      fireEvent.change(phoneInput, { target: { value: '2964477578' } });
+
+      // El error debe desaparecer inmediatamente sin pulsar Continuar
+      expect(screen.queryByText('Ingresá el número sin el 0 inicial.')).not.toBeInTheDocument();
+      expect(phoneInput).not.toHaveClass('error');
+      expect(phoneInput).toHaveAttribute('aria-invalid', 'false');
+
+      // Probar formato con 15
+      fireEvent.change(phoneInput, { target: { value: '296415477578' } });
+      fireEvent.click(nextBtn1);
+      expect(screen.getByText('Ingresá el número sin el prefijo 15.')).toBeInTheDocument();
+      expect(phoneInput).toHaveClass('error');
+
+      // Cambiar país a Chile (CL)
+      fireEvent.change(countrySelect, { target: { value: 'CL' } });
+      expect(countrySelect.value).toBe('CL');
+      expect(screen.getByText(/Ingresá un número de WhatsApp válido para Chile\./i)).toBeInTheDocument();
+
+      // Ingresar número válido chileno
+      fireEvent.change(phoneInput, { target: { value: '912345678' } });
+      expect(screen.queryByText(/Ingresá un número de WhatsApp válido para Chile\./i)).not.toBeInTheDocument();
+      expect(phoneInput).not.toHaveClass('error');
+
+      // Volver a Argentina y escribir formato con guiones/espacios
+      fireEvent.change(countrySelect, { target: { value: 'AR' } });
+      fireEvent.change(phoneInput, { target: { value: '2964 47-7578' } });
+      expect(phoneInput).not.toHaveClass('error');
+    });
   });
 });

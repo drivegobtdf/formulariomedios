@@ -18,6 +18,7 @@ describe('getPublicConfig', () => {
     window.__PEDIDOS_CONFIG__ = {
       basePath: '/sitio-medios/pedidos/',
       environment: 'production',
+      uiMode: 'production-preview',
       contractVersion: '3.0',
       supabaseUrl: 'https://custom-project.supabase.co',
       supabaseAnonKey: 'custom-key',
@@ -27,7 +28,28 @@ describe('getPublicConfig', () => {
     // basePath debe normalizarse sin trailing slash
     expect(config.basePath).toBe('/sitio-medios/pedidos');
     expect(config.environment).toBe('production');
+    expect(config.uiMode).toBe('production-preview');
     expect(config.supabaseUrl).toBe('https://custom-project.supabase.co');
     expect(config.supabaseAnonKey).toBe('custom-key');
+  });
+
+  it('debe resolver uiMode = production-preview cuando environment es production o uiMode es production-preview', () => {
+    window.__PEDIDOS_CONFIG__ = {
+      environment: 'production',
+    };
+    expect(getPublicConfig().uiMode).toBe('production-preview');
+
+    window.__PEDIDOS_CONFIG__ = {
+      uiMode: 'production-preview',
+    };
+    expect(getPublicConfig().uiMode).toBe('production-preview');
+  });
+
+  it('debe resolver uiMode = development cuando uiMode es development o por defecto', () => {
+    window.__PEDIDOS_CONFIG__ = {
+      uiMode: 'development',
+      environment: 'development',
+    };
+    expect(getPublicConfig().uiMode).toBe('development');
   });
 });

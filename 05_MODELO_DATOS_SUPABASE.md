@@ -91,13 +91,13 @@ Las variantes internas de las nuevas categorías viven en `informacion_especific
 | submission_key | uuid | UNIQUE NOT NULL |
 | request_fingerprint | text | NOT NULL |
 | nombre_apellido | text | NOT NULL |
-| telefono | text | NOT NULL |
+| telefono | text | NOT NULL (Formato internacional canónico E.164, ej: +5492964477578) |
 | correo | text | NOT NULL |
 | area_solicitante | text | NOT NULL |
 | form_schema_version | integer | NOT NULL |
 | created_at | timestamptz | default now() |
 
-La clave/fingerprint gobierna la idempotencia de todo el conjunto.
+La clave/fingerprint gobierna la idempotencia de todo el conjunto. El campo `telefono` almacena el valor canónico normalizado para derivación segura de visualización y enlaces directos a WhatsApp sin columnas redundantes.
 
 ## 6. `pedido_sequences`
 

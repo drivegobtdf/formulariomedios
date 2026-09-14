@@ -18,6 +18,7 @@ import {
   InternalUser,
   HistorialOperativoItem,
 } from '../services/gestionApi';
+import { WhatsAppPhoneLink } from '../components/WhatsAppPhoneLink';
 
 export const PedidoDetallePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -444,8 +445,8 @@ export const PedidoDetallePage: React.FC = () => {
                 <span style={{ fontWeight: 600, color: '#1e293b' }}>{pedido.envio?.correo || 'N/D'}</span>
               </div>
               <div>
-                <span style={{ color: '#64748b', display: 'block', fontSize: '0.75rem' }}>TELÉFONO</span>
-                <span style={{ fontWeight: 600, color: '#1e293b' }}>{pedido.envio?.telefono || 'N/D'}</span>
+                <span style={{ color: '#64748b', display: 'block', fontSize: '0.75rem' }}>WHATSAPP / TELÉFONO</span>
+                <WhatsAppPhoneLink phone={pedido.envio?.telefono} />
               </div>
             </div>
           </div>

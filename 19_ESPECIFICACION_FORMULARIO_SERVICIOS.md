@@ -11,13 +11,13 @@
 
 ## 1. Datos personales
 
-| Campo | Requerido |
-|---|---:|
-| Nombre y apellido | Sí |
-| Teléfono / WhatsApp | Sí |
-| Correo electrónico | Sí |
-| Área/dependencia solicitante | Sí |
-| ¿Qué necesitás solicitar? | mínimo 1 |
+| Campo | Requerido | Especificación / Regla |
+|---|---:|---|
+| Nombre y apellido | Sí | Nombre completo del solicitante |
+| Número de WhatsApp | Sí | Selector internacional con Argentina por defecto (`+54 9`, entrada sin 0 y sin 15). Almacenamiento canónico E.164 (`+549...`). Click-to-chat directo desde Gestión (`https://wa.me/...`). |
+| Correo electrónico | Sí | Dirección de correo válida para notificaciones y token de acceso |
+| Área/dependencia solicitante | Sí | Dependencia o área institucional |
+| ¿Qué necesitás solicitar? | mínimo 1 | Selección de al menos una categoría de servicio |
 
 ## 2. Categorías y códigos PED
 

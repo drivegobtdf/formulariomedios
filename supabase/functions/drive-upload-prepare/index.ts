@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
 import crypto from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import {
   getCorsHeaders,
   verifyCapabilityToken,
@@ -8,6 +9,7 @@ import {
   getSupabaseConfig,
 } from '../_shared/security.ts';
 import { getDriveAdapter } from '../_shared/drive-adapter.ts';
+import { getEnv } from '../_shared/env.ts';
 
 export default async function handler(req: Request): Promise<Response> {
   const corsHeaders = getCorsHeaders(req);
@@ -80,30 +82,48 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
 
-      // Relay en streaming directo hacia Google Drive
-      const driveHeaders: Record<string, string> = {
-        'Content-Type': resData.expected_mime || req.headers.get('content-type') || 'application/octet-stream',
-      };
-      if (resData.expected_size) {
-        driveHeaders['Content-Length'] = resData.expected_size.toString();
+      let driveFileId = resData.drive_file_id || '';
+
+      if (resData.drive_session_ref.includes('mock')) {
+        // En entorno mock local, no se requiere forward HTTP externo
+        const adapter = getDriveAdapter();
+        if ('storeFileBuffer' in adapter) {
+          const bodyBytes = req.body ? new Uint8Array(await req.arrayBuffer()) : new Uint8Array();
+          (adapter as { storeFileBuffer: (...args: unknown[]) => unknown }).storeFileBuffer(
+            driveFileId || `mock_drive_file_${reservationId}`,
+            resData.expected_name,
+            resData.expected_mime || 'application/octet-stream',
+            Buffer.from(bodyBytes),
+            { reservation_id: reservationId },
+            resData.drive_parent_id
+          );
+        }
+      } else {
+        // Relay en streaming directo hacia Google Drive
+        const driveHeaders: Record<string, string> = {
+          'Content-Type': resData.expected_mime || req.headers.get('content-type') || 'application/octet-stream',
+        };
+        if (resData.expected_size) {
+          driveHeaders['Content-Length'] = resData.expected_size.toString();
+        }
+
+        const driveRes = await fetch(resData.drive_session_ref, {
+          method: 'PUT',
+          headers: driveHeaders,
+          body: req.body,
+        });
+
+        if (!driveRes.ok) {
+          const errText = await driveRes.text();
+          return new Response(
+            JSON.stringify({ error: 'DRIVE_UPLOAD_FAILED', message: `Fallo en almacenamiento Google Drive (${driveRes.status}): ${errText}` }),
+            { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const driveData = await driveRes.json().catch(() => ({}));
+        if (driveData.id) driveFileId = driveData.id;
       }
-
-      const driveRes = await fetch(resData.drive_session_ref, {
-        method: 'PUT',
-        headers: driveHeaders,
-        body: req.body,
-      });
-
-      if (!driveRes.ok) {
-        const errText = await driveRes.text();
-        return new Response(
-          JSON.stringify({ error: 'DRIVE_UPLOAD_FAILED', message: `Fallo en almacenamiento Google Drive (${driveRes.status}): ${errText}` }),
-          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const driveData = await driveRes.json().catch(() => ({}));
-      const driveFileId = driveData.id || resData.drive_file_id || '';
 
       await supabase.from('upload_reservations').update({ drive_file_id: driveFileId, state: 'uploading' }).eq('id', reservationId);
       if (resData.archivo_id && driveFileId) {
@@ -257,7 +277,18 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const relayUrl = `${supabaseUrl}/functions/v1/drive-upload-prepare?reservation_id=${reservationId}`;
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+    const proto = req.headers.get('x-forwarded-proto') || (host && (host.includes('localhost') || host.includes('127.0.0.1')) ? 'http' : 'https');
+    const configuredSupabaseUrl = getEnv('PUBLIC_SUPABASE_URL') || getEnv('SUPABASE_URL');
+    let baseUrl: string;
+    if (configuredSupabaseUrl && !configuredSupabaseUrl.includes('kong:')) {
+      baseUrl = configuredSupabaseUrl;
+    } else if (host && !host.includes('kong:') && !host.includes('edge-runtime.supabase.com')) {
+      baseUrl = `${proto}://${host}`;
+    } else {
+      baseUrl = 'http://127.0.0.1:54321';
+    }
+    const relayUrl = `${baseUrl}/functions/v1/drive-upload-prepare?reservation_id=${reservationId}`;
 
     return new Response(
       JSON.stringify({

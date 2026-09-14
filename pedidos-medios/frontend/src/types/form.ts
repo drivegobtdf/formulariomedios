@@ -112,6 +112,8 @@ export const DISENO_PIEZAS_CONFIG: DisenoPiezaMeta[] = [
 export interface ContactoFormState {
   nombre_apellido: string;
   telefono: string;
+  telefono_pais?: string;
+  telefono_local?: string;
   correo: string;
   area_solicitante: string;
 }
@@ -337,17 +339,48 @@ export interface SubmissionPayload {
   }>;
 }
 
+export interface RawBackendPedido {
+  id?: string;
+  pedido_id?: string;
+  client_request_ref: string;
+  pedido_visible?: string;
+  codigo_ped?: string;
+  categoria_slug: string;
+  tipo_slug: string;
+  tracking_token?: string | null;
+  tracking_recovery_required?: boolean;
+}
+
+export interface RawBackendSubmissionResponse {
+  envio_id: string;
+  submission_key?: string;
+  idempotent_replay?: boolean;
+  pedidos: RawBackendPedido[];
+  archivos?: Array<{
+    id?: string;
+    archivo_id?: string;
+    client_file_ref: string;
+    nombre_original?: string;
+    nombre?: string;
+    mime_type?: string;
+    size_bytes?: number;
+  }>;
+  archivos_count?: number;
+}
+
+export interface FrontendPedidoItem {
+  pedido_id: string;
+  codigo_ped: string;
+  client_request_ref: string;
+  categoria_slug: string;
+  tipo_slug: string;
+}
+
 export interface SubmissionResponsePayload {
   envio_id: string;
-  submission_key: string;
+  submission_key?: string;
   idempotent_replay: boolean;
-  pedidos: Array<{
-    pedido_id: string;
-    codigo_ped: string;
-    client_request_ref: string;
-    categoria_slug: string;
-    tipo_slug: string;
-  }>;
+  pedidos: FrontendPedidoItem[];
   archivos?: Array<{
     archivo_id: string;
     client_file_ref: string;

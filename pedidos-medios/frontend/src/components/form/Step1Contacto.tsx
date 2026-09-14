@@ -5,6 +5,12 @@ import {
   CATEGORIAS_CONFIG,
 } from '../../types/form';
 import { ValidationErrors } from '../../validation/formValidation';
+import {
+  COUNTRIES_LIST,
+  DEFAULT_COUNTRY_CODE,
+  getCountryConfig,
+  validateWhatsAppPhone,
+} from '../../utils/phoneUtils';
 
 interface Step1ContactoProps {
   contacto: ContactoFormState;
@@ -23,6 +29,35 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
   errors,
   onNext,
 }) => {
+  const selectedCountry = contacto.telefono_pais || DEFAULT_COUNTRY_CODE;
+  const countryConfig = getCountryConfig(selectedCountry);
+
+  const localNumber =
+    contacto.telefono_local !== undefined
+      ? contacto.telefono_local
+      : contacto.telefono
+      ? contacto.telefono.replace(/^\+549?/, '').replace(/^\+\d+/, '')
+      : '';
+
+  const handleCountryChange = (newCountry: string) => {
+    const val = validateWhatsAppPhone(localNumber, newCountry);
+    onChangeContacto({
+      telefono_pais: newCountry,
+      telefono_local: localNumber,
+      telefono: val.isValid && val.canonical ? val.canonical : localNumber,
+    });
+  };
+
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    const val = validateWhatsAppPhone(rawVal, selectedCountry);
+    onChangeContacto({
+      telefono_pais: selectedCountry,
+      telefono_local: rawVal,
+      telefono: val.isValid && val.canonical ? val.canonical : rawVal,
+    });
+  };
+
   return (
     <div className="pedidos-step-container">
       <div className="pedidos-step-header">
@@ -48,27 +83,63 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
               value={contacto.nombre_apellido}
               onChange={(e) => onChangeContacto({ nombre_apellido: e.target.value })}
               autoComplete="name"
+              aria-invalid={!!errors.nombre_apellido}
+              aria-describedby={errors.nombre_apellido ? 'contacto_nombre_error' : undefined}
             />
             {errors.nombre_apellido && (
-              <span className="pedidos-error-text" role="alert">{errors.nombre_apellido}</span>
+              <span id="contacto_nombre_error" className="pedidos-error-text" role="alert">{errors.nombre_apellido}</span>
             )}
           </div>
 
           <div className="pedidos-form-group col-6">
             <label htmlFor="contacto_telefono" className="pedidos-label required">
-              Teléfono / WhatsApp
+              Número de WhatsApp
             </label>
-            <input
-              type="tel"
-              id="contacto_telefono"
-              className={`pedidos-input ${errors.telefono ? 'error' : ''}`}
-              placeholder="Ej: +54 2901 445566"
-              value={contacto.telefono}
-              onChange={(e) => onChangeContacto({ telefono: e.target.value })}
-              autoComplete="tel"
-            />
-            {errors.telefono && (
-              <span className="pedidos-error-text" role="alert">{errors.telefono}</span>
+            <div className="pedidos-phone-input-group">
+              <div className="pedidos-country-select-wrapper">
+                <select
+                  id="contacto_pais"
+                  className="pedidos-select pedidos-country-select"
+                  value={selectedCountry}
+                  onChange={(e) => handleCountryChange(e.target.value)}
+                  aria-label="Seleccionar país para WhatsApp"
+                >
+                  {COUNTRIES_LIST.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.name} ({c.displayDialCode})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="pedidos-phone-number-wrapper">
+                <input
+                  type="tel"
+                  id="contacto_telefono"
+                  className={`pedidos-input ${errors.telefono ? 'error' : ''}`}
+                  placeholder={countryConfig.placeholder}
+                  value={localNumber}
+                  onChange={handleNumberChange}
+                  autoComplete="tel-national"
+                  aria-label="Número de WhatsApp"
+                  aria-invalid={Boolean(errors.telefono)}
+                  aria-describedby={
+                    errors.telefono ? 'contacto_telefono_error' : 'contacto_telefono_help'
+                  }
+                />
+              </div>
+            </div>
+            {errors.telefono ? (
+              <span id="contacto_telefono_error" className="pedidos-error-text" role="alert">
+                {errors.telefono}
+              </span>
+            ) : (
+              <span
+                id="contacto_telefono_help"
+                className="pedidos-hint-text"
+                style={{ fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}
+              >
+                {countryConfig.helpText}
+              </span>
             )}
           </div>
         </div>
@@ -86,9 +157,11 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
               value={contacto.correo}
               onChange={(e) => onChangeContacto({ correo: e.target.value })}
               autoComplete="email"
+              aria-invalid={!!errors.correo}
+              aria-describedby={errors.correo ? 'contacto_correo_error' : undefined}
             />
             {errors.correo && (
-              <span className="pedidos-error-text" role="alert">{errors.correo}</span>
+              <span id="contacto_correo_error" className="pedidos-error-text" role="alert">{errors.correo}</span>
             )}
           </div>
 
@@ -103,9 +176,11 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
               placeholder="Ej: Ministerio de Salud / Dirección de Prensa"
               value={contacto.area_solicitante}
               onChange={(e) => onChangeContacto({ area_solicitante: e.target.value })}
+              aria-invalid={!!errors.area_solicitante}
+              aria-describedby={errors.area_solicitante ? 'contacto_area_error' : undefined}
             />
             {errors.area_solicitante && (
-              <span className="pedidos-error-text" role="alert">{errors.area_solicitante}</span>
+              <span id="contacto_area_error" className="pedidos-error-text" role="alert">{errors.area_solicitante}</span>
             )}
           </div>
         </div>

@@ -10,7 +10,17 @@ import {
   validateStep4,
   validateFileMetadata,
   MAX_FILE_SIZE_LIMIT,
+  isValidHttpUrl,
+  validateWhatsAppPhone,
+  getWhatsAppDetails,
+  formatPhoneForDisplay,
+  getLocalTodayDateString,
+  isDateBeforeToday,
+  validateFechaLimite,
+  validateMinLength,
+  revalidateErrors,
 } from '../validation/formValidation';
+import { COUNTRIES_LIST, DEFAULT_COUNTRY_CODE } from '../utils/phoneUtils';
 import { FormWizardState } from '../types/form';
 
 describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
@@ -40,6 +50,119 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       );
 
       expect(Object.keys(errs).length).toBe(0);
+    });
+
+    it('WhatsApp Argentina: Validación de reglas (Tests A - H)', () => {
+      // A. Argentina seleccionado por defecto
+      expect(DEFAULT_COUNTRY_CODE).toBe('AR');
+      expect(COUNTRIES_LIST[0].code).toBe('AR');
+      expect(COUNTRIES_LIST[0].displayDialCode).toBe('+54 9');
+
+      // B. Input válido 2964477578 -> canonical +5492964477578
+      const resB = validateWhatsAppPhone('2964477578', 'AR');
+      expect(resB.isValid).toBe(true);
+      expect(resB.canonical).toBe('+5492964477578');
+
+      // C. Formato visual legible
+      expect(resB.formatted).toContain('54 9 2964');
+
+      // D. wa.me exclusivo con dígitos
+      expect(resB.waDigits).toBe('5492964477578');
+      expect(resB.waUrl).toBe('https://wa.me/5492964477578');
+
+      // E. 0 inicial -> inválido con mensaje exacto
+      const resE = validateWhatsAppPhone('02964477578', 'AR');
+      expect(resE.isValid).toBe(false);
+      expect(resE.errorMessage).toBe('Ingresá el número sin el 0 inicial.');
+
+      // F. prefijo 15 -> inválido con mensaje exacto
+      const resF1 = validateWhatsAppPhone('15477578', 'AR');
+      expect(resF1.isValid).toBe(false);
+      expect(resF1.errorMessage).toBe('Ingresá el número sin el prefijo 15.');
+
+      const resF2 = validateWhatsAppPhone('296415477578', 'AR');
+      expect(resF2.isValid).toBe(false);
+      expect(resF2.errorMessage).toBe('Ingresá el número sin el prefijo 15.');
+
+      const resF3 = validateWhatsAppPhone('2964-15-477578', 'AR');
+      expect(resF3.isValid).toBe(false);
+      expect(resF3.errorMessage).toBe('Ingresá el número sin el prefijo 15.');
+
+      // G. espacios, guiones y paréntesis durante entrada -> normalización correcta
+      const resG1 = validateWhatsAppPhone('2964 477578', 'AR');
+      expect(resG1.isValid).toBe(true);
+      expect(resG1.canonical).toBe('+5492964477578');
+
+      const resG2 = validateWhatsAppPhone('2964-47-7578', 'AR');
+      expect(resG2.isValid).toBe(true);
+      expect(resG2.canonical).toBe('+5492964477578');
+
+      const resG3 = validateWhatsAppPhone('(2964) 477578', 'AR');
+      expect(resG3.isValid).toBe(true);
+      expect(resG3.canonical).toBe('+5492964477578');
+
+      // H. letras -> inválido
+      const resH = validateWhatsAppPhone('2964abc', 'AR');
+      expect(resH.isValid).toBe(false);
+      expect(resH.errorMessage).toBe('Ingresá solo números, sin letras.');
+    });
+
+    it('WhatsApp Internacional: Reglas para CL, UY, BR, US (Sección 16)', () => {
+      // Chile (CL)
+      const resCL = validateWhatsAppPhone('912345678', 'CL');
+      expect(resCL.isValid).toBe(true);
+      expect(resCL.canonical).toBe('+56912345678');
+      expect(resCL.waDigits).toBe('56912345678');
+      expect(resCL.waUrl).toBe('https://wa.me/56912345678');
+
+      // Uruguay (UY)
+      const resUY = validateWhatsAppPhone('99123456', 'UY');
+      expect(resUY.isValid).toBe(true);
+      expect(resUY.canonical).toBe('+59899123456');
+      expect(resUY.waDigits).toBe('59899123456');
+      expect(resUY.waUrl).toBe('https://wa.me/59899123456');
+
+      // Brasil (BR)
+      const resBR = validateWhatsAppPhone('11987654321', 'BR');
+      expect(resBR.isValid).toBe(true);
+      expect(resBR.canonical).toBe('+5511987654321');
+      expect(resBR.waDigits).toBe('5511987654321');
+      expect(resBR.waUrl).toBe('https://wa.me/5511987654321');
+
+      // Estados Unidos (US)
+      const resUS = validateWhatsAppPhone('2025550123', 'US');
+      expect(resUS.isValid).toBe(true);
+      expect(resUS.canonical).toBe('+12025550123');
+      expect(resUS.waDigits).toBe('12025550123');
+      expect(resUS.waUrl).toBe('https://wa.me/12025550123');
+
+      // Verificar que regla del +54 9 NO se aplica a otros países
+      expect(resCL.canonical).not.toContain('+54');
+      expect(resUY.canonical).not.toContain('+54');
+      expect(resBR.canonical).not.toContain('+54');
+      expect(resUS.canonical).not.toContain('+54');
+
+      // Todos los waUrl no contienen espacios, guiones ni '+'
+      for (const res of [resCL, resUY, resBR, resUS]) {
+        expect(res.waUrl).toMatch(/^https:\/\/wa\.me\/\d+$/);
+      }
+    });
+
+    it('Gestión / Históricos: getWhatsAppDetails y formatPhoneForDisplay (Sección 17)', () => {
+      // A & B & C: Canónico argentino -> formateado + link wa.me sin +, espacios o guiones
+      const details = getWhatsAppDetails('+5492964477578');
+      expect(details).not.toBeNull();
+      expect(details?.waUrl).toBe('https://wa.me/5492964477578');
+      expect(details?.waDigits).toBe('5492964477578');
+      expect(details?.waDigits).not.toMatch(/[+\s\-()]/);
+
+      // Formato visual legible
+      expect(formatPhoneForDisplay('+5492964477578')).toContain('54 9 2964');
+
+      // D. Número histórico no normalizable -> retorna null (sin link falso)
+      expect(getWhatsAppDetails('12345')).toBeNull();
+      expect(getWhatsAppDetails('no-un-telefono')).toBeNull();
+      expect(formatPhoneForDisplay('12345')).toBe('12345');
     });
   });
 
@@ -139,7 +262,7 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       ).toBeNull();
     });
 
-    it('debe validar límites de archivos y links en validateStep3', () => {
+    it('debe validar límites de archivos y links en validateStep3 con mensaje unificado', () => {
       const emptyErrs = validateStep3([], []);
       expect(Object.keys(emptyErrs).length).toBe(0);
 
@@ -147,7 +270,148 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
         [],
         [{ id: '1', url: 'not-a-valid-url', targets: 'all' }]
       );
-      expect(invalidLinkErrs['link_0']).toBeDefined();
+      expect(invalidLinkErrs['link_0']).toBe(
+        'Enlace no válido. Ingresá la dirección completa con http:// o https://.'
+      );
+
+      const validLinkErrs = validateStep3(
+        [],
+        [{ id: '1', url: 'https://ejemplo.com', targets: 'all' }]
+      );
+      expect(validLinkErrs['link_0']).toBeUndefined();
+    });
+
+    it('isValidHttpUrl: debe aceptar exclusivamente URLs completas con http:// o https:// (Tests A-E, Case-Insensitive)', () => {
+      // A. https://ejemplo.com -> válido
+      expect(isValidHttpUrl('https://ejemplo.com')).toBe(true);
+
+      // B. http://ejemplo.com -> válido
+      expect(isValidHttpUrl('http://ejemplo.com')).toBe(true);
+
+      // C. https://www.ejemplo.com -> válido
+      expect(isValidHttpUrl('https://www.ejemplo.com')).toBe(true);
+
+      // D. http://www.ejemplo.com -> válido
+      expect(isValidHttpUrl('http://www.ejemplo.com')).toBe(true);
+
+      // E. https://drive.google.com/file/d/123 -> válido
+      expect(isValidHttpUrl('https://drive.google.com/file/d/123')).toBe(true);
+      expect(isValidHttpUrl('https://drive.google.com/file/d/123456789/view')).toBe(true);
+
+      // Case-insensitivity del protocolo
+      expect(isValidHttpUrl('HTTP://ejemplo.com')).toBe(true);
+      expect(isValidHttpUrl('HTTPS://ejemplo.com')).toBe(true);
+    });
+
+    it('isValidHttpUrl: debe rechazar URLs incompletas o sin protocolo explícito (Tests F-I)', () => {
+      // F. ejemplo.com -> inválido
+      expect(isValidHttpUrl('ejemplo.com')).toBe(false);
+
+      // G. www.ejemplo.com -> inválido
+      expect(isValidHttpUrl('www.ejemplo.com')).toBe(false);
+
+      // H. drive.google.com/file/d/123 -> inválido
+      expect(isValidHttpUrl('drive.google.com/file/d/123')).toBe(false);
+      expect(isValidHttpUrl('drive.google.com/file/d/123456789/view')).toBe(false);
+
+      // I. hola -> inválido
+      expect(isValidHttpUrl('hola')).toBe(false);
+      expect(isValidHttpUrl('')).toBe(false);
+      expect(isValidHttpUrl('   ')).toBe(false);
+    });
+
+    it('isValidHttpUrl: debe rechazar esquemas y protocolos no seguros o bloqueados (Tests J-L)', () => {
+      // J. javascript:alert(1) -> inválido (y JAVASCRIPT:alert(1))
+      expect(isValidHttpUrl('javascript:alert(1)')).toBe(false);
+      expect(isValidHttpUrl('JAVASCRIPT:alert(1)')).toBe(false);
+
+      // K. data:text/html,... -> inválido
+      expect(isValidHttpUrl('data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==')).toBe(false);
+
+      // L. file:///tmp/test -> inválido
+      expect(isValidHttpUrl('file:///tmp/test')).toBe(false);
+
+      // Otros esquemas bloqueados
+      expect(isValidHttpUrl('vbscript:msgbox')).toBe(false);
+      expect(isValidHttpUrl('ftp://ftp.ejemplo.com')).toBe(false);
+      expect(isValidHttpUrl('mailto:test@ejemplo.com')).toBe(false);
+    });
+  });
+
+  describe('Helpers de Fecha y Validación Reactiva', () => {
+    it('getLocalTodayDateString debe formatear la fecha local sin desfasaje por UTC', () => {
+      // 23:30 en Argentina (UTC-3)
+      const localLateDate = new Date(2026, 8, 14, 23, 30, 0); // 14 Sept 2026 23:30 local
+      expect(getLocalTodayDateString(localLateDate)).toBe('2026-09-14');
+
+      // 00:15 en Argentina (UTC-3)
+      const localEarlyDate = new Date(2026, 8, 15, 0, 15, 0); // 15 Sept 2026 00:15 local
+      expect(getLocalTodayDateString(localEarlyDate)).toBe('2026-09-15');
+    });
+
+    it('isDateBeforeToday y validateFechaLimite deben rechazar fechas pasadas y aceptar hoy y futuras', () => {
+      const refDate = new Date(2026, 8, 14, 12, 0, 0); // 14 Sept 2026
+
+      // Fecha pasada (ayer)
+      expect(isDateBeforeToday('2026-09-13', refDate)).toBe(true);
+      expect(validateFechaLimite('2026-09-13', undefined, undefined, refDate)).toBe(
+        'La fecha límite no puede ser anterior a la fecha de la solicitud.'
+      );
+
+      // Fecha de hoy (misma fecha local) -> VÁLIDA
+      expect(isDateBeforeToday('2026-09-14', refDate)).toBe(false);
+      expect(validateFechaLimite('2026-09-14', undefined, undefined, refDate)).toBeNull();
+
+      // Fecha futura (mañana) -> VÁLIDA
+      expect(isDateBeforeToday('2026-09-15', refDate)).toBe(false);
+      expect(validateFechaLimite('2026-09-15', undefined, undefined, refDate)).toBeNull();
+
+      // Fecha vacía
+      expect(validateFechaLimite('', undefined, undefined, refDate)).toBe(
+        'Indicá la fecha límite de entrega.'
+      );
+    });
+
+    it('validateMinLength debe distinguir entre campo vacío y contenido menor al mínimo', () => {
+      const emptyMsg = 'Ingresá el texto o contenido que debe llevar el flyer.';
+      const shortMsg = 'Ingresá al menos 5 caracteres.';
+
+      // Vacío
+      expect(validateMinLength('', 5, emptyMsg, shortMsg)).toBe(emptyMsg);
+      expect(validateMinLength('   ', 5, emptyMsg, shortMsg)).toBe(emptyMsg);
+
+      // Menor al mínimo
+      expect(validateMinLength('Hola', 5, emptyMsg, shortMsg)).toBe(shortMsg);
+
+      // Igual o mayor al mínimo
+      expect(validateMinLength('Hola!', 5, emptyMsg, shortMsg)).toBeNull();
+      expect(validateMinLength('Flyer oficial', 5, emptyMsg, shortMsg)).toBeNull();
+    });
+
+    it('revalidateErrors debe limpiar inmediatamente errores corregidos sin añadir errores a campos no alertados', () => {
+      const currentErrors = {
+        'flyer_rrss.formato': 'Seleccioná el formato del flyer.',
+        'flyer_rrss.texto': 'Ingresá el texto o contenido que debe llevar el flyer.',
+        'flyer_rrss.fecha_limite': 'Indicá la fecha límite de entrega.',
+      };
+
+      // Simular que el usuario corrigió el formato pero el texto y fecha siguen con error
+      const freshErrors = {
+        'flyer_rrss.texto': 'Ingresá al menos 5 caracteres.', // Mensaje actualizado
+        'flyer_rrss.fecha_limite': 'Indicá la fecha límite de entrega.',
+        'otro_campo_no_tocado': 'Error de campo no alertado previamente',
+      };
+
+      const nextErrors = revalidateErrors(currentErrors, freshErrors);
+
+      // Formato corregido -> eliminado inmediatamente
+      expect(nextErrors['flyer_rrss.formato']).toBeUndefined();
+      // Texto actualizado a nuevo mensaje
+      expect(nextErrors['flyer_rrss.texto']).toBe('Ingresá al menos 5 caracteres.');
+      // Fecha límite se conserva
+      expect(nextErrors['flyer_rrss.fecha_limite']).toBe('Indicá la fecha límite de entrega.');
+      // Campo no alertado previamente NO se añade de forma prematura
+      expect(nextErrors['otro_campo_no_tocado']).toBeUndefined();
     });
   });
 

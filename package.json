@@ -12,7 +12,13 @@
   ],
   "scripts": {
     "dev": "npm --workspace=pedidos-medios-frontend run dev",
+    "dev:preview": "npm --workspace=pedidos-medios-frontend run dev:preview",
+    "dev:preview:cloud": "npm --workspace=pedidos-medios-frontend run dev:preview:cloud",
     "build": "npm --workspace=pedidos-medios-frontend run build",
+    "build:preview": "npm --workspace=pedidos-medios-frontend run build:preview",
+    "build:preview:cloud": "npm --workspace=pedidos-medios-frontend run build:preview:cloud",
+    "preview": "npm --workspace=pedidos-medios-frontend run preview",
+    "preview:cloud": "npm --workspace=pedidos-medios-frontend run preview:cloud",
     "typecheck": "npm --workspace=pedidos-medios-frontend run typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

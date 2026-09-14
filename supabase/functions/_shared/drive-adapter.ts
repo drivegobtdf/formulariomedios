@@ -449,6 +449,19 @@ export class MockDriveAdapter implements DriveAdapter {
 
     // Si no está cargado físicamente en memoria pero proviene de una sesión mock válida, registrarlo sintéticamente
     if (!entry) {
+      if (fileId.startsWith('mock_drive_file_') || fileId.startsWith('mock_')) {
+        const syntheticBuffer = Buffer.alloc(expected.size);
+        const synthFile = this.storeFileBuffer(
+          fileId,
+          expected.name || 'mock_file',
+          expected.mimeType,
+          syntheticBuffer,
+          expected.appProperties,
+          expected.stagingFolderId
+        );
+        return { verified: true, file: synthFile };
+      }
+
       // Buscar si proviene de una sesión activa
       let foundSession: {
         options: {

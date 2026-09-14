@@ -4,6 +4,7 @@ import {
   FormPieceItem,
 } from '../../types/form';
 import { ValidationErrors } from '../../validation/formValidation';
+import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 
 interface Step4ResumenProps {
   state: FormWizardState;
@@ -53,8 +54,8 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
             <strong>{state.contacto.nombre_apellido}</strong>
           </div>
           <div className="pedidos-summary-item">
-            <span className="label">Teléfono / WhatsApp:</span>
-            <strong>{state.contacto.telefono}</strong>
+            <span className="label">Número de WhatsApp:</span>
+            <strong>{formatPhoneForDisplay(state.contacto.telefono)}</strong>
           </div>
           <div className="pedidos-summary-item">
             <span className="label">Correo oficial:</span>

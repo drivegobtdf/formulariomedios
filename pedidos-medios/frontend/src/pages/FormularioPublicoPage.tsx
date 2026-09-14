@@ -24,6 +24,7 @@ import {
   validateStep2,
   validateStep3,
   validateStep4,
+  revalidateErrors,
   ValidationErrors,
 } from '../validation/formValidation';
 import {
@@ -226,16 +227,17 @@ export const FormularioPublicoPage: React.FC = () => {
     return list;
   }, [state, pieceRefs]);
 
-  // Actualizadores de Estado
+  // Actualizadores de Estado reactivos
   const updateContacto = (fields: Partial<typeof state.contacto>) => {
-    setState((prev) => ({
-      ...prev,
-      contacto: { ...prev.contacto, ...fields },
-    }));
-    setErrors((prev) => {
-      const next = { ...prev };
-      for (const k of Object.keys(fields)) delete next[k];
-      return next;
+    setState((prev) => {
+      const nextContacto = { ...prev.contacto, ...fields };
+      const nextState = { ...prev, contacto: nextContacto };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep1(nextContacto, prev.selected_categorias);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
     });
   };
 
@@ -245,12 +247,13 @@ export const FormularioPublicoPage: React.FC = () => {
       const nextCats = exists
         ? prev.selected_categorias.filter((c) => c !== slug)
         : [...prev.selected_categorias, slug];
-      return { ...prev, selected_categorias: nextCats };
-    });
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next.selected_categorias;
-      return next;
+      const nextState = { ...prev, selected_categorias: nextCats };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep1(prev.contacto, nextCats);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
     });
   };
 
@@ -260,118 +263,207 @@ export const FormularioPublicoPage: React.FC = () => {
       const nextPiezas = exists
         ? prev.diseno_piezas.filter((p) => p !== pieza)
         : [...prev.diseno_piezas, pieza];
-      return { ...prev, diseno_piezas: nextPiezas };
-    });
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next.diseno_piezas;
-      return next;
+      const nextState = { ...prev, diseno_piezas: nextPiezas };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
     });
   };
 
   const updateFlyer = (data: Partial<FlyerRrssData>) => {
-    setState((prev) => ({
-      ...prev,
-      diseno_data: {
-        ...prev.diseno_data,
-        flyer_rrss: { ...(prev.diseno_data.flyer_rrss || { formato: '', texto: '', fecha_limite: '' }), ...data },
-      },
-    }));
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        diseno_data: {
+          ...prev.diseno_data,
+          flyer_rrss: { ...(prev.diseno_data.flyer_rrss || { formato: '', texto: '', fecha_limite: '' }), ...data },
+        },
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const updateInvitacion = (data: Partial<InvitacionDigitalData>) => {
-    setState((prev) => ({
-      ...prev,
-      diseno_data: {
-        ...prev.diseno_data,
-        invitacion_digital: {
-          ...(prev.diseno_data.invitacion_digital || {
-            nombre_evento: '',
-            fecha: '',
-            hora: '',
-            lugar: '',
-            modalidad: '',
-            programa: '',
-          }),
-          ...data,
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        diseno_data: {
+          ...prev.diseno_data,
+          invitacion_digital: {
+            ...(prev.diseno_data.invitacion_digital || {
+              nombre_evento: '',
+              fecha: '',
+              hora: '',
+              lugar: '',
+              modalidad: '',
+              programa: '',
+            }),
+            ...data,
+          },
         },
-      },
-    }));
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const updateCertificado = (data: Partial<CertificadoData>) => {
-    setState((prev) => ({
-      ...prev,
-      diseno_data: {
-        ...prev.diseno_data,
-        certificado: {
-          ...(prev.diseno_data.certificado || { nombre_actividad: '', firmantes: '', destinatarios: '' }),
-          ...data,
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        diseno_data: {
+          ...prev.diseno_data,
+          certificado: {
+            ...(prev.diseno_data.certificado || { nombre_actividad: '', firmantes: '', destinatarios: '' }),
+            ...data,
+          },
         },
-      },
-    }));
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const updateOtrosDiseno = (data: Partial<OtrosDisenoData>) => {
-    setState((prev) => ({
-      ...prev,
-      diseno_data: {
-        ...prev.diseno_data,
-        otros_diseno: {
-          ...(prev.diseno_data.otros_diseno || { descripcion: '', medidas_soporte: '' }),
-          ...data,
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        diseno_data: {
+          ...prev.diseno_data,
+          otros_diseno: {
+            ...(prev.diseno_data.otros_diseno || { descripcion: '', medidas_soporte: '' }),
+            ...data,
+          },
         },
-      },
-    }));
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const updateCobertura = (data: Partial<CoberturaEventosData>) => {
-    setState((prev) => ({
-      ...prev,
-      cobertura_data: { ...(prev.cobertura_data || { fecha: '', hora_inicio: '', lugar: '', ciudad: '', autoridades: '', requerimientos: '' }), ...data },
-    }));
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        cobertura_data: { ...(prev.cobertura_data || { fecha: '', hora_inicio: '', lugar: '', ciudad: '', autoridades: '', requerimientos: '' }), ...data },
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const updateGacetilla = (data: Partial<GacetillaData>) => {
-    setState((prev) => ({
-      ...prev,
-      gacetilla_data: { ...(prev.gacetilla_data || { referente_contacto: '', telefono_contacto: '', informacion_base: '' }), ...data },
-    }));
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        gacetilla_data: { ...(prev.gacetilla_data || { referente_contacto: '', telefono_contacto: '', informacion_base: '' }), ...data },
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const updateRedes = (data: Partial<RedesSocialesData>) => {
-    setState((prev) => ({
-      ...prev,
-      redes_data: { ...(prev.redes_data || { fecha_sugerida: '', texto_copy: '' }), ...data },
-    }));
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        redes_data: { ...(prev.redes_data || { fecha_sugerida: '', texto_copy: '' }), ...data },
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const updateAudiovisual = (data: Partial<ProduccionAudiovisualData>) => {
-    setState((prev) => ({
-      ...prev,
-      audiovisual_data: { ...(prev.audiovisual_data || { requiere_asesoramiento: false }), ...data },
-    }));
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        audiovisual_data: { ...(prev.audiovisual_data || { requiere_asesoramiento: false }), ...data },
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const updateMotion = (data: Partial<MotionGraphicsData>) => {
-    setState((prev) => ({
-      ...prev,
-      motion_data: { ...(prev.motion_data || { requiere_asesoramiento: false }), ...data },
-    }));
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        motion_data: { ...(prev.motion_data || { requiere_asesoramiento: false }), ...data },
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const updateStreaming = (data: Partial<StreamingData>) => {
-    setState((prev) => ({
-      ...prev,
-      streaming_data: { ...(prev.streaming_data || { requiere_asesoramiento: false }), ...data },
-    }));
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        streaming_data: { ...(prev.streaming_data || { requiere_asesoramiento: false }), ...data },
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const updateWeb = (data: Partial<SitiosWebData>) => {
-    setState((prev) => ({
-      ...prev,
-      web_data: { ...(prev.web_data || { requiere_asesoramiento: false }), ...data },
-    }));
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        web_data: { ...(prev.web_data || { requiere_asesoramiento: false }), ...data },
+      };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep2(nextState);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   // Manejo de Archivos y Subida Directa
@@ -463,11 +555,87 @@ export const FormularioPublicoPage: React.FC = () => {
     }
   };
 
+  const handleRetryFile = async (index: number) => {
+    const fileItem = state.archivos[index];
+    if (!fileItem || !fileItem.file) return;
+
+    try {
+      const { sessionId, capabilityToken } = await ensureSession();
+      setState((prev) => ({
+        ...prev,
+        archivos: prev.archivos.map((a, i) =>
+          i === index
+            ? { ...a, status: 'uploading', progress: 10, error_message: undefined }
+            : a
+        ),
+      }));
+
+      uploadFileToDrive(
+        sessionId,
+        capabilityToken,
+        fileItem.client_file_ref,
+        fileItem.file,
+        (progressPct) => {
+          setState((prev) => ({
+            ...prev,
+            archivos: prev.archivos.map((a, i) =>
+              i === index ? { ...a, progress: progressPct } : a
+            ),
+          }));
+        }
+      )
+        .then((res) => {
+          setState((prev) => ({
+            ...prev,
+            archivos: prev.archivos.map((a, i) =>
+              i === index
+                ? {
+                    ...a,
+                    status: 'verified',
+                    progress: 100,
+                    client_file_ref: res.client_file_ref || a.client_file_ref,
+                    archivo_id: res.archivo_id,
+                    drive_file_id: res.drive_file_id,
+                    reservation_id: res.reservation_id,
+                  }
+                : a
+            ),
+          }));
+        })
+        .catch((err) => {
+          setState((prev) => ({
+            ...prev,
+            archivos: prev.archivos.map((a, i) =>
+              i === index
+                ? { ...a, status: 'error', error_message: err.message || 'Error de subida' }
+                : a
+            ),
+          }));
+        });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setState((prev) => ({
+        ...prev,
+        archivos: prev.archivos.map((a, i) =>
+          i === index
+            ? { ...a, status: 'error', error_message: `Error preparando sesión: ${msg}` }
+            : a
+        ),
+      }));
+    }
+  };
+
   const handleRemoveFile = (index: number) => {
-    setState((prev) => ({
-      ...prev,
-      archivos: prev.archivos.filter((_, i) => i !== index),
-    }));
+    setState((prev) => {
+      const nextArchivos = prev.archivos.filter((_, i) => i !== index);
+      const nextState = { ...prev, archivos: nextArchivos };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep3(nextArchivos, prev.links);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const handleChangeFileTarget = (index: number, target: 'all' | string) => {
@@ -496,17 +664,29 @@ export const FormularioPublicoPage: React.FC = () => {
   };
 
   const handleRemoveLink = (index: number) => {
-    setState((prev) => ({
-      ...prev,
-      links: prev.links.filter((_, i) => i !== index),
-    }));
+    setState((prev) => {
+      const nextLinks = prev.links.filter((_, i) => i !== index);
+      const nextState = { ...prev, links: nextLinks };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep3(prev.archivos, nextLinks);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   const handleChangeLink = (index: number, fields: Partial<FormLinkItem>) => {
-    setState((prev) => ({
-      ...prev,
-      links: prev.links.map((l, i) => (i === index ? { ...l, ...fields } : l)),
-    }));
+    setState((prev) => {
+      const nextLinks = prev.links.map((l, i) => (i === index ? { ...l, ...fields } : l));
+      const nextState = { ...prev, links: nextLinks };
+      setErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const freshErrors = validateStep3(prev.archivos, nextLinks);
+        return revalidateErrors(prevErrors, freshErrors);
+      });
+      return nextState;
+    });
   };
 
   // Navegación del Wizard
@@ -662,6 +842,7 @@ export const FormularioPublicoPage: React.FC = () => {
           availablePieces={availablePieces}
           onAddFiles={handleAddFiles}
           onRemoveFile={handleRemoveFile}
+          onRetryFile={handleRetryFile}
           onChangeFileTarget={handleChangeFileTarget}
           onAddLink={handleAddLink}
           onRemoveLink={handleRemoveLink}
