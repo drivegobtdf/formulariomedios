@@ -113,6 +113,10 @@
         "gmailOAuth2": {
           "id": "CREDENTIAL_ID_PLACEHOLDER",
           "name": "PEDIDOS MEDIOS"
+        },
+        "httpHeaderAuth": {
+          "id": "CREDENTIAL_ID_PLACEHOLDER",
+          "name": "PEDIDOS - Header Auth"
         }
       }
     },
@@ -181,6 +185,10 @@
       "name": "Webhook",
       "webhookId": "a58baf31-71bd-42eb-860e-6c492212f6ef",
       "credentials": {
+        "gmailOAuth2": {
+          "id": "CREDENTIAL_ID_PLACEHOLDER",
+          "name": "PEDIDOS MEDIOS"
+        },
         "httpHeaderAuth": {
           "id": "CREDENTIAL_ID_PLACEHOLDER",
           "name": "PEDIDOS - Header Auth"
@@ -251,6 +259,59 @@
       ],
       "id": "7dd4691e-eaac-4532-9ae0-c5aed8fdd1d5",
       "name": "Preparar payload Webhook"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        448
+      ],
+      "id": "b8c8d8e8-1111-4444-8888-000000000001",
+      "name": "Programación periódica (1m)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://yqfkzgqvezarzhlwiilo.supabase.co/functions/v1/comunicaciones-dispatch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer <SUPABASE_ANON_KEY_PLACEHOLDER>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"batch_size\": 10,\n  \"lease_seconds\": 300\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        304,
+        448
+      ],
+      "id": "b8c8d8e8-2222-4444-8888-000000000002",
+      "name": "Invocar despachador Edge Function"
     }
   ],
   "connections": {
@@ -319,12 +380,21 @@
           }
         ]
       ]
+    },
+    "Programación periódica (1m)": {
+      "main": [
+        [
+          {
+            "node": "Invocar despachador Edge Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": false,
     "callerPolicy": "workflowsFromSameOwner"
   }
 }

@@ -2,7 +2,7 @@
 
 **Sistema:** PEDIDOS — Secretaría de Medios  
 **Revisión Contractual:** 3.1  
-**Fecha / Hora:** 2026-09-13T22:38:02.998Z  
+**Fecha / Hora:** 2026-09-14T02:14:48.958Z  
 **Entorno:** Supabase Cloud (sa-east-1 / São Paulo) (`yqfkzgqvezarzhlwiilo`)  
 **Resultado Global:** **PASS**  
 
@@ -64,11 +64,11 @@
 ### CRIT-01-OPEN-REGISTER: Validación del Registro Canónico de Decisiones Abiertas — [PASS]
 
 - [x] **1.1 Archivo docs/REGISTRO_DECISIONES_OPEN.json existe** 
-- [x] **1.2 OPEN-003 es ABIERTO (Retención, borrado, backups y custodio)** _({"id":"OPEN-003","estado":"ABIERTO","descripcion":"Retención, borrado, backups y custodio.","categoria":"Infraestructura y Datos","alcance":"Fuera de F7-F9 (Infraestructura / Backup / Custodia institucional)"})_
-- [x] **1.3 OPEN-012 es ABIERTO (TTL definitivos de credenciales y sesiones públicas, cooldown, rate limiting y antiabuso)** _({"id":"OPEN-012","estado":"ABIERTO","descripcion":"TTL definitivos de credenciales y sesiones públicas, cooldown, rate limiting y antiabuso.","categoria":"Seguridad y Antiabuso","alcance":"Parámetros provisionales centralizados en DB (F7); valores contractuales definitivos pendientes"})_
-- [x] **1.4 OPEN-014 es ABIERTO (Formatos audiovisuales adicionales)** _({"id":"OPEN-014","estado":"ABIERTO","descripcion":"Formatos audiovisuales adicionales.","categoria":"Contenido Multimedia","alcance":"Formatos base PDF/PNG/JPG/DOCX/ZIP activos; extensiones de video/audio adicionales pendientes"})_
-- [x] **1.5 OPEN-015 es ABIERTO (Último administrador, bootstrap y recuperación administrativa)** _({"id":"OPEN-015","estado":"ABIERTO","descripcion":"Último administrador, bootstrap y recuperación administrativa.","categoria":"Gobernanza y Autenticación","alcance":"Recuperación operativa de superadmin y protección contra bloqueo total"})_
-- [x] **1.6 OPEN-016 es CERRADO con referencia a evidencia válida (Spike real de subida y descarga Google Drive)** _({"id":"OPEN-016","estado":"CERRADO","descripcion":"Spike real de subida y descarga Google Drive.","categoria":"Integración Storage","evidencia":"tests/e2e/integrated-cloud-drive.spec.ts, tests/integration/drive-upload-local.test.ts, scripts/google-drive-oauth-bootstrap.js"})_
+- [x] **1.2 OPEN-003 es ABIERTO (Retención, borrado, backups y custodio/responsables)** _({"id":"OPEN-003","estado":"ABIERTO","descripcion":"Retención, borrado, backups y custodio/responsables.","categoria":"Infraestructura y Datos","alcance":"Política de retención institucional, purgas y custodia fuera de F10."})_
+- [x] **1.3 OPEN-012 es ABIERTO (TTL definitivos de credenciales, sesiones y capabilities públicas, cooldown, rate limiting y antiabuso)** _({"id":"OPEN-012","estado":"ABIERTO","descripcion":"TTL definitivos de credenciales, sesiones y capabilities públicas; cooldown, rate limiting y antiabuso.","nota":"Los parámetros técnicos actuales siguen provisionales/configurables.","categoria":"Seguridad y Antiabuso","alcance":"Parámetros técnicos configurables en DB (configuracion_sistema); formalización definitiva pendiente."})_
+- [x] **1.4 OPEN-014 es ABIERTO (Formatos y extensiones audiovisuales adicionales)** _({"id":"OPEN-014","estado":"ABIERTO","descripcion":"Formatos y extensiones audiovisuales adicionales.","categoria":"Contenido Multimedia","alcance":"Formatos base PDF/PNG/JPG/DOCX/ZIP activos; extensiones de video/audio adicionales pendientes."})_
+- [x] **1.5 OPEN-015 es ABIERTO (Último administrador, bootstrap y recuperación de acceso administrativo)** _({"id":"OPEN-015","estado":"ABIERTO","descripcion":"Último administrador, bootstrap y recuperación de acceso administrativo.","categoria":"Gobernanza y Autenticación","alcance":"Protección contra bloqueo administrativo total y recuperación de superadmin."})_
+- [x] **1.6 OPEN-016 es CERRADO CON EVIDENCIA con referencia a evidencia válida (Spike real Google Drive)** _({"id":"OPEN-016","estado":"CERRADO CON EVIDENCIA","descripcion":"Spike real de Google Drive upload/download, ya demostrado: transferencia de 10 MiB, relay server-side, descarga autenticada y SHA-256 idéntico.","categoria":"Integración Storage","evidencia":"tests/e2e/integrated-cloud-drive.spec.ts, tests/integration/drive-upload-local.test.ts, scripts/google-drive-oauth-bootstrap.js"})_
 
 ### CRIT-02-TTL-CONFIG: Configuración de Vigencias (TTL Magic Link, Sesión, Info 48h) — [PASS]
 
@@ -100,7 +100,7 @@
 
 ### CRIT-05-INFO-RESPONSE: SRS-INF-004: Respuesta a Info con Texto, Enlaces Genéricos y Adjuntos — [PASS]
 
-- [x] **5.1 Edge Function solicitante-info-respond acepta texto, enlaces genéricos y archivos** _({"estado":"respondida","success":true,"solicitud_id":"a1d93c96-11af-4738-9fd6-7dcd498bcf01"})_
+- [x] **5.1 Edge Function solicitante-info-respond acepta texto, enlaces genéricos y archivos** _({"estado":"respondida","success":true,"solicitud_id":"a9dde748-beec-4fa6-9415-afbcb5772238"})_
 - [x] **5.2 Archivo adjuntado en respuesta queda vinculado a archivo_pedido** 
 - [x] **5.3 Enlace externo genérico queda registrado en enlaces_material** 
 

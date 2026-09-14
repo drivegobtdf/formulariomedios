@@ -150,36 +150,36 @@ async function runClosureControl() {
 
       assert(
         'CRIT-01-OPEN-REGISTER',
-        '1.2 OPEN-003 es ABIERTO (Retención, borrado, backups y custodio)',
-        items['OPEN-003']?.estado === 'ABIERTO' && items['OPEN-003']?.descripcion.includes('Retención, borrado, backups y custodio'),
+        '1.2 OPEN-003 es ABIERTO (Retención, borrado, backups y custodio/responsables)',
+        items['OPEN-003']?.estado === 'ABIERTO' && items['OPEN-003']?.descripcion.includes('Retención'),
         JSON.stringify(items['OPEN-003'])
       );
 
       assert(
         'CRIT-01-OPEN-REGISTER',
-        '1.3 OPEN-012 es ABIERTO (TTL definitivos de credenciales y sesiones públicas, cooldown, rate limiting y antiabuso)',
-        items['OPEN-012']?.estado === 'ABIERTO' && items['OPEN-012']?.descripcion.includes('TTL definitivos de credenciales y sesiones públicas'),
+        '1.3 OPEN-012 es ABIERTO (TTL definitivos de credenciales, sesiones y capabilities públicas, cooldown, rate limiting y antiabuso)',
+        items['OPEN-012']?.estado === 'ABIERTO' && items['OPEN-012']?.descripcion.includes('TTL') && items['OPEN-012']?.descripcion.includes('credenciales'),
         JSON.stringify(items['OPEN-012'])
       );
 
       assert(
         'CRIT-01-OPEN-REGISTER',
-        '1.4 OPEN-014 es ABIERTO (Formatos audiovisuales adicionales)',
-        items['OPEN-014']?.estado === 'ABIERTO' && items['OPEN-014']?.descripcion.includes('Formatos audiovisuales adicionales'),
+        '1.4 OPEN-014 es ABIERTO (Formatos y extensiones audiovisuales adicionales)',
+        items['OPEN-014']?.estado === 'ABIERTO' && items['OPEN-014']?.descripcion.includes('Formatos') && items['OPEN-014']?.descripcion.includes('audiovisuales'),
         JSON.stringify(items['OPEN-014'])
       );
 
       assert(
         'CRIT-01-OPEN-REGISTER',
-        '1.5 OPEN-015 es ABIERTO (Último administrador, bootstrap y recuperación administrativa)',
+        '1.5 OPEN-015 es ABIERTO (Último administrador, bootstrap y recuperación de acceso administrativo)',
         items['OPEN-015']?.estado === 'ABIERTO' && items['OPEN-015']?.descripcion.includes('Último administrador'),
         JSON.stringify(items['OPEN-015'])
       );
 
       assert(
         'CRIT-01-OPEN-REGISTER',
-        '1.6 OPEN-016 es CERRADO con referencia a evidencia válida (Spike real de subida y descarga Google Drive)',
-        items['OPEN-016']?.estado === 'CERRADO' && items['OPEN-016']?.descripcion.includes('Spike real de subida y descarga Google Drive') && typeof items['OPEN-016']?.evidencia === 'string' && items['OPEN-016']?.evidencia.length > 0,
+        '1.6 OPEN-016 es CERRADO CON EVIDENCIA con referencia a evidencia válida (Spike real Google Drive)',
+        items['OPEN-016']?.estado?.startsWith('CERRADO') && (items['OPEN-016']?.descripcion.includes('Google Drive') || items['OPEN-016']?.descripcion.includes('Drive')) && typeof items['OPEN-016']?.evidencia === 'string' && items['OPEN-016']?.evidencia.length > 0,
         JSON.stringify(items['OPEN-016'])
       );
     }

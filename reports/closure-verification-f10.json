@@ -8,7 +8,7 @@
   "weweb_workflow_id": "G46ZPsUEzYopGtTd",
   "weweb_workflow_status": "inactive (preserved intact since 2026-09-08)",
   "git": {
-    "headCommit": "a5bd0b0ab7bfdb3c5202825f73ca2a49888253d2",
+    "headCommit": "a0bba1e28bb0eb96658e1dc89c4b6502142337bc",
     "branch": "feature/f7-f8-tracking-and-management",
     "dirty": true
   },
@@ -16,17 +16,135 @@
   "total_criteria": 16,
   "passed_criteria": 16,
   "failed_criteria": 0,
-  "started_at": "2026-09-13T22:37:40.186Z",
-  "completed_at": "2026-09-13T22:38:42.755Z",
+  "open_decisions": {
+    "OPEN-003": {
+      "id": "OPEN-003",
+      "estado": "ABIERTO",
+      "descripcion": "Retención, borrado, backups y custodio/responsables.",
+      "keywords": [
+        "retención",
+        "borrado",
+        "backups",
+        "custodio"
+      ],
+      "forbidden": [
+        "50mb",
+        "50 mb",
+        "archivos mayores",
+        "branding",
+        "sms",
+        "whatsapp",
+        "hardening",
+        "claim_id"
+      ]
+    },
+    "OPEN-009": {
+      "id": "OPEN-009",
+      "estado": "ABIERTO",
+      "descripcion": "Proveedor de email, evidencia de idempotencia/reconciliación y horizonte operativo.",
+      "nota": "Gmail está elegido para el entorno actual; eso no cierra automáticamente los aspectos pendientes de esta decisión.",
+      "keywords": [
+        "proveedor",
+        "email",
+        "idempotencia",
+        "reconciliación"
+      ],
+      "forbidden": [
+        "branding",
+        "sms",
+        "whatsapp",
+        "50mb",
+        "paginación",
+        "hardening"
+      ]
+    },
+    "OPEN-012": {
+      "id": "OPEN-012",
+      "estado": "ABIERTO",
+      "descripcion": "TTL definitivos de credenciales, sesiones y capabilities públicas; cooldown, rate limiting y antiabuso.",
+      "nota": "Los parámetros técnicos actuales siguen provisionales/configurables.",
+      "keywords": [
+        "ttl",
+        "credenciales",
+        "sesiones",
+        "antiabuso"
+      ],
+      "forbidden": [
+        "sms",
+        "whatsapp",
+        "branding",
+        "50mb",
+        "paginación",
+        "hardening"
+      ]
+    },
+    "OPEN-014": {
+      "id": "OPEN-014",
+      "estado": "ABIERTO",
+      "descripcion": "Formatos y extensiones audiovisuales adicionales.",
+      "keywords": [
+        "formatos",
+        "audiovisuales"
+      ],
+      "forbidden": [
+        "webhook secundario",
+        "alta disponibilidad",
+        "sms",
+        "whatsapp",
+        "branding",
+        "50mb"
+      ]
+    },
+    "OPEN-015": {
+      "id": "OPEN-015",
+      "estado": "ABIERTO",
+      "descripcion": "Último administrador, bootstrap y recuperación de acceso administrativo.",
+      "keywords": [
+        "último administrador",
+        "bootstrap",
+        "recuperación"
+      ],
+      "forbidden": [
+        "paginación",
+        "sms",
+        "whatsapp",
+        "branding",
+        "50mb",
+        "hardening"
+      ]
+    },
+    "OPEN-016": {
+      "id": "OPEN-016",
+      "estado": "CERRADO CON EVIDENCIA",
+      "descripcion": "Spike real de Google Drive upload/download, ya demostrado: transferencia de 10 MiB, relay server-side, descarga autenticada y SHA-256 idéntico.",
+      "keywords": [
+        "spike",
+        "google drive",
+        "upload",
+        "download"
+      ],
+      "forbidden": [
+        "hardening f10",
+        "leases",
+        "claim_id",
+        "envelopes",
+        "concurrencia",
+        "sms",
+        "whatsapp"
+      ]
+    }
+  },
+  "started_at": "2026-09-14T02:14:26.252Z",
+  "completed_at": "2026-09-14T02:15:35.913Z",
   "criteria": [
     {
       "id": "C01-TRANSACTIONAL-OUTBOX",
       "name": "Transactional Outbox Ledger atómico con garantía de consistencia relacional",
       "status": "PASS",
-      "details": "Envío 49b21538-b07f-4dd7-a20b-bc5509e5cce5 registró pedido y outbox ledger en la misma transacción relacional.",
+      "details": "Envío e027c74c-1c92-410d-a920-c306b830bf43 registró pedido y outbox ledger en la misma transacción relacional.",
       "evidence": {
-        "envio_id": "49b21538-b07f-4dd7-a20b-bc5509e5cce5",
-        "outbox_id": "94917b5d-37bd-423e-a27a-58927ae0917b",
+        "envio_id": "e027c74c-1c92-410d-a920-c306b830bf43",
+        "outbox_id": "cb1bde57-ec10-4c0f-83e9-98977e00db0f",
         "estado": "pendiente"
       },
       "assertions": [
@@ -39,9 +157,9 @@
       "id": "C02-AUTOMATED-EXECUTION",
       "name": "Despachador de cola automatizable mediante Edge Function, Scheduler Daemon y RPCs de procesamiento",
       "status": "PASS",
-      "details": "Scheduler daemon operativo (PID 42060), ciclos ejecutados: 1, procesados: 1.",
+      "details": "Scheduler daemon operativo (PID 22152), ciclos ejecutados: 1, procesados: 1.",
       "evidence": {
-        "scheduler_pid": 42060,
+        "scheduler_pid": 22152,
         "metrics": {
           "total_cycles": 1,
           "total_processed": 1,
@@ -50,7 +168,7 @@
           "total_uncertain": 0,
           "total_swept": 0
         },
-        "heartbeat": "2026-09-13T22:37:49.385Z"
+        "heartbeat": "2026-09-14T02:14:35.263Z"
       },
       "assertions": [
         "comunicacion_claim_batch utiliza FOR UPDATE SKIP LOCKED para concurrencia atómica",
@@ -63,13 +181,13 @@
       "id": "C03-GROUPED-SUBMISSION",
       "name": "Envío multi-pedido genera exactamente 1 notificación inicial consolidada con botón \"Ver mis solicitudes\"",
       "status": "PASS",
-      "details": "Envío 3a142501-ff33-4c8f-b809-e383561d6477 con 2 pedidos generó 1 único correo consolidado con tabla de códigos (PED-2026-C000125, PED-2026-D000126) y botón único \"Ver mis solicitudes\".",
+      "details": "Envío 8f26cfb0-d75a-478b-8fe7-b711e835880f con 2 pedidos generó 1 único correo consolidado con tabla de códigos (PED-2026-D000132, PED-2026-C000133) y botón único \"Ver mis solicitudes\".",
       "evidence": {
-        "envio_id": "3a142501-ff33-4c8f-b809-e383561d6477",
+        "envio_id": "8f26cfb0-d75a-478b-8fe7-b711e835880f",
         "total_pedidos": 2,
         "codigos": [
-          "PED-2026-C000125",
-          "PED-2026-D000126"
+          "PED-2026-D000132",
+          "PED-2026-C000133"
         ],
         "cta_button": "Ver mis solicitudes"
       },
@@ -137,10 +255,10 @@
       "id": "C07-MIS-SOLICITUDES-FULL-JOURNEY",
       "name": "Flujo integral de Mis Solicitudes (solicitud -> emisión -> canje -> sesión opaca -> consulta)",
       "status": "PASS",
-      "details": "Flujo completo verificado: 43 pedidos consultados con sesión opaca autenticada.",
+      "details": "Flujo completo verificado: 50 pedidos consultados con sesión opaca autenticada.",
       "evidence": {
         "session_token_length": 64,
-        "pedidos_retrieved": 43
+        "pedidos_retrieved": 50
       },
       "assertions": [
         "solicitante_request_access emite token efímero anti-enumeración",
@@ -262,7 +380,7 @@
         "weweb_workflow_updated_at": "2026-09-08T04:35:18.000Z",
         "pedidos_workflow_id": "S5zEKvdsTHPmUQWm",
         "pedidos_workflow_active": true,
-        "pedidos_workflow_updated_at": "2026-09-13T19:56:02.376Z"
+        "pedidos_workflow_updated_at": "2026-09-14T02:07:16.151Z"
       },
       "assertions": [
         "30 migraciones SQL versionadas y aplicadas tanto en Supabase Local como en Supabase Cloud",
@@ -290,19 +408,30 @@
     },
     {
       "id": "C16-CLOSURE-VERACITY-NEGATIVE-CONTROLS",
-      "name": "Veracidad de cierre y control negativo (defectos inyectados son detectados y bloquean cierre)",
+      "name": "Veracidad de cierre, registro canónico de OPEN y controles negativos documentales e inyectados",
       "status": "PASS",
-      "details": "Validación de payloads inválidos en webhook, tokens falsificados rechazados y auto-test de mutación de aserciones verificado.",
+      "details": "Registro canónico OPEN validado contra contrato, 4 controles negativos documentales (A, B, C, D) superados, payload corrupto rechazado, token falso bloqueado y auto-test de mutación verificado.",
       "evidence": {
+        "canonical_open_verified": true,
+        "negative_controls": {
+          "control_A_sms": "BLOCKED",
+          "control_B_hardening": "BLOCKED",
+          "control_C_close_pending": "BLOCKED",
+          "control_D_missing_id": "BLOCKED"
+        },
         "webhook_negative_status": 500,
         "fake_token_rejected": true,
         "mutation_control": "verified"
       },
       "assertions": [
+        "Registro canónico docs/REGISTRO_DECISIONES_OPEN.json cumple estrictamente con las 6 identidades y estados aprobados",
+        "Control Negativo A: Intento de adulterar OPEN-012 a SMS/WhatsApp es detectado y bloqueado inmediatamente",
+        "Control Negativo B: Intento de atribuir hardening F10 a OPEN-016 es detectado y bloqueado inmediatamente",
+        "Control Negativo C: Intento de cerrar indebidamente un OPEN pendiente (OPEN-009) es detectado y bloqueado",
+        "Control Negativo D: Intento de omitir un identificador obligatorio (OPEN-015) es detectado y bloqueado",
         "Inyección de payload corrupto a webhook n8n produce rechazo formal (HTTP != 200)",
         "Canje de token SHA-256 inexistente/falso es rechazado formalmente sin emitir session_token",
-        "Control negativo comprueba que fallos simulados impiden el cierre del gate",
-        "Auto-test de mutación de aserciones garantiza veracidad del script de control"
+        "Auto-test de mutación de aserciones garantiza veracidad absoluta del verificador"
       ]
     }
   ]

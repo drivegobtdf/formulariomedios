@@ -1,41 +1,50 @@
 {
-  "version": "3.1",
-  "updated_at": "2026-09-12T22:55:00-03:00",
+  "version": "3.2",
+  "updated_at": "2026-09-13T23:10:00-03:00",
   "canonical_decisions": {
     "OPEN-003": {
       "id": "OPEN-003",
       "estado": "ABIERTO",
-      "descripcion": "Retención, borrado, backups y custodio.",
+      "descripcion": "Retención, borrado, backups y custodio/responsables.",
       "categoria": "Infraestructura y Datos",
-      "alcance": "Fuera de F7-F9 (Infraestructura / Backup / Custodia institucional)"
+      "alcance": "Política de retención institucional, purgas y custodia fuera de F10."
+    },
+    "OPEN-009": {
+      "id": "OPEN-009",
+      "estado": "ABIERTO",
+      "descripcion": "Proveedor de email, evidencia de idempotencia/reconciliación y horizonte operativo.",
+      "nota": "Gmail está elegido para el entorno actual; eso no cierra automáticamente los aspectos pendientes de esta decisión.",
+      "categoria": "Comunicaciones y Notificaciones",
+      "alcance": "Evaluación de volumen y cuotas definitivas para horizontes de producción."
     },
     "OPEN-012": {
       "id": "OPEN-012",
       "estado": "ABIERTO",
-      "descripcion": "TTL definitivos de credenciales y sesiones públicas, cooldown, rate limiting y antiabuso.",
+      "descripcion": "TTL definitivos de credenciales, sesiones y capabilities públicas; cooldown, rate limiting y antiabuso.",
+      "nota": "Los parámetros técnicos actuales siguen provisionales/configurables.",
       "categoria": "Seguridad y Antiabuso",
-      "alcance": "Parámetros provisionales centralizados en DB (F7); valores contractuales definitivos pendientes"
+      "alcance": "Parámetros técnicos configurables en DB (configuracion_sistema); formalización definitiva pendiente."
     },
     "OPEN-014": {
       "id": "OPEN-014",
       "estado": "ABIERTO",
-      "descripcion": "Formatos audiovisuales adicionales.",
+      "descripcion": "Formatos y extensiones audiovisuales adicionales.",
       "categoria": "Contenido Multimedia",
-      "alcance": "Formatos base PDF/PNG/JPG/DOCX/ZIP activos; extensiones de video/audio adicionales pendientes"
+      "alcance": "Formatos base PDF/PNG/JPG/DOCX/ZIP activos; extensiones de video/audio adicionales pendientes."
     },
     "OPEN-015": {
       "id": "OPEN-015",
       "estado": "ABIERTO",
-      "descripcion": "Último administrador, bootstrap y recuperación administrativa.",
+      "descripcion": "Último administrador, bootstrap y recuperación de acceso administrativo.",
       "categoria": "Gobernanza y Autenticación",
-      "alcance": "Recuperación operativa de superadmin y protección contra bloqueo total"
+      "alcance": "Protección contra bloqueo administrativo total y recuperación de superadmin."
     },
     "OPEN-016": {
       "id": "OPEN-016",
-      "estado": "CERRADO",
-      "descripcion": "Spike real de subida y descarga Google Drive.",
+      "estado": "CERRADO CON EVIDENCIA",
+      "descripcion": "Spike real de Google Drive upload/download, ya demostrado: transferencia de 10 MiB, relay server-side, descarga autenticada y SHA-256 idéntico.",
       "categoria": "Integración Storage",
       "evidencia": "tests/e2e/integrated-cloud-drive.spec.ts, tests/integration/drive-upload-local.test.ts, scripts/google-drive-oauth-bootstrap.js"
     }
   }
-}
+}

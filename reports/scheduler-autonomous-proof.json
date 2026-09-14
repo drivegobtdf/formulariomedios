@@ -1,0 +1,22 @@
+{
+  "test_type": "SCHEDULER_PERMANENT_AUTONOMOUS_DISPATCH",
+  "timestamp": "2026-09-14T02:10:26.920Z",
+  "communication_id": "aff46270-eab0-43d4-ac3f-447efaf7c3b2",
+  "envio_id": "191e04fa-369c-4109-a943-7460638b48cd",
+  "pedido_visible": "PED-2026-D000127",
+  "created_at": "2026-09-14T02:09:49.898747+00:00",
+  "sent_at": "2026-09-14T02:10:22.470919+00:00",
+  "recipient": "pablosaldiviainfo@gmail.com",
+  "provider": "Google Gmail OAuth2 via n8n (S5zEKvdsTHPmUQWm)",
+  "provider_message_id": "1a09dae012948b4c",
+  "gmail_acceptance_status": "ACCEPTED (Message ID retornado por API de Gmail)",
+  "final_db_state": "enviada",
+  "n8n_execution": {
+    "id": "1742",
+    "finished": true,
+    "mode": "webhook",
+    "startedAt": "2026-09-14T02:10:20.832Z",
+    "stoppedAt": "2026-09-14T02:10:21.996Z",
+    "status": "success"
+  }
+}
