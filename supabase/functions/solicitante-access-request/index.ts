@@ -31,6 +31,35 @@ export default async function handler(req: Request): Promise<Response> {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // F10 / REQ-DEDUP: Evitar duplicación de tokens/outbox si ya existe una solicitud reciente en proceso (Cooldown)
+    const cooldownSeconds = parseInt(
+      (typeof Deno !== 'undefined' ? Deno.env.get('SOLICITANTE_ACCESS_COOLDOWN_SECONDS') : '') || '45',
+      10
+    );
+    const cooldownThreshold = new Date(Date.now() - cooldownSeconds * 1000).toISOString();
+
+    const { data: recentToken } = await supabase
+      .from('solicitante_access_tokens')
+      .select('id, created_at, used_at, expires_at')
+      .ilike('correo', email)
+      .gte('created_at', cooldownThreshold)
+      .is('used_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentToken) {
+      // Cooldown activo: responder inmediatamente con mensaje uniforme anti-enumeración sin generar duplicados
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Si el correo ingresado tiene solicitudes activas, recibirá un enlace de acceso en su casilla.',
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data, error } = await supabase.rpc('solicitante_request_access', {
       p_correo: email,
     });

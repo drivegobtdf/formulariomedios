@@ -131,5 +131,30 @@ describe('solicitante-access-request: Listener HTTP & Outbox Asincrono', () => {
       expect(json.message).toContain('enlace de acceso');
       expect(json.found).toBeUndefined();
     });
+
+    it('Deduplicacion y Cooldown: Solicitudes repetidas dentro de la ventana de cooldown retornan 200 OK sin error', async () => {
+      const testEmail = `test.dedup.${Date.now()}@tierradelfuego.gob.ar`;
+
+      const req1 = new Request('http://localhost:54351/functions/v1/solicitante-access-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: testEmail }),
+      });
+      const res1 = await solicitanteAccessRequestHandler(req1);
+      expect(res1.status).toBe(200);
+      const json1 = await res1.json();
+      expect(json1.success).toBe(true);
+
+      const req2 = new Request('http://localhost:54351/functions/v1/solicitante-access-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: testEmail }),
+      });
+      const res2 = await solicitanteAccessRequestHandler(req2);
+      expect(res2.status).toBe(200);
+      const json2 = await res2.json();
+      expect(json2.success).toBe(true);
+      expect(json2.message).toBe(json1.message);
+    });
   });
 });

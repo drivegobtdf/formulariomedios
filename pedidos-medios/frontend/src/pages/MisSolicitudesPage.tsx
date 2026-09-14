@@ -27,10 +27,21 @@ export const MisSolicitudesPage: React.FC = () => {
   const [requestLoading, setRequestLoading] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
 
   // Exchange State
   const [exchangeLoading, setExchangeLoading] = useState(false);
   const [exchangeError, setExchangeError] = useState<string | null>(null);
+  const exchangingTokenRef = React.useRef<string | null>(null);
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const interval = setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldown]);
 
   // Pedidos List State
   const [pedidos, setPedidos] = useState<SolicitantePedidoListItem[]>([]);
@@ -58,10 +69,10 @@ export const MisSolicitudesPage: React.FC = () => {
       hashToken = hashParams.get('token') || hashParams.get('access_token');
     }
     const magicToken = searchParams.get('token') || searchParams.get('access_token') || hashToken;
-    if (magicToken && !sessionToken) {
+    if (magicToken && !sessionToken && exchangingTokenRef.current !== magicToken) {
       handleExchange(magicToken);
     }
-  }, [searchParams]);
+  }, [searchParams, sessionToken]);
 
   // Load Pedidos when Session Token is present
   useEffect(() => {
@@ -72,6 +83,7 @@ export const MisSolicitudesPage: React.FC = () => {
 
   const handleRequestAccess = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cooldown > 0) return;
     if (!email.trim() || !email.includes('@')) {
       setRequestError('Ingrese un correo electrónico válido.');
       return;
@@ -85,6 +97,7 @@ export const MisSolicitudesPage: React.FC = () => {
         res.message ||
           'Si existen solicitudes asociadas a este correo, le enviamos un enlace seguro para acceder.'
       );
+      setCooldown(45);
     } catch (err: unknown) {
       setRequestError((err as Error)?.message || 'Error al procesar la solicitud.');
     } finally {
@@ -93,21 +106,42 @@ export const MisSolicitudesPage: React.FC = () => {
   };
 
   const handleExchange = async (token: string) => {
+    if (exchangingTokenRef.current === token) return;
+    exchangingTokenRef.current = token;
     setExchangeLoading(true);
     setExchangeError(null);
+
+    // Clean hash and query params immediately to prevent repeat triggers on fast re-renders
+    if (typeof window !== 'undefined' && window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    if (searchParams.get('token') || searchParams.get('access_token')) {
+      setSearchParams({});
+    }
+
     try {
       const res = await solicitanteSessionExchange(token);
       setSessionToken(res.session_token);
       setSessionEmail(res.email);
       sessionStorage.setItem('solicitante_session_token', res.session_token);
       sessionStorage.setItem('solicitante_session_email', res.email);
-      // Clean query params and hash from URL
-      setSearchParams({});
-      if (typeof window !== 'undefined' && window.location.hash) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      setExchangeError(null);
+    } catch (err: any) {
+      // If we already have a valid session established in storage, do not override with error
+      if (sessionStorage.getItem('solicitante_session_token')) {
+        return;
       }
-    } catch (err: unknown) {
-      const msg = (err as Error)?.message || 'El enlace de acceso es inválido o ha expirado.';
+      const code = err?.code || '';
+      let msg = 'El enlace de acceso es inválido o ha expirado. Por favor solicite un nuevo enlace.';
+      if (code === 'TOKEN_EXPIRED') {
+        msg = 'Este enlace de acceso ha expirado. Por favor solicite un nuevo enlace para acceder.';
+      } else if (code === 'TOKEN_ALREADY_USED') {
+        msg = 'Este enlace de acceso ya ha sido utilizado previamente. Por favor solicite un nuevo enlace.';
+      } else if (code === 'TOKEN_NOT_FOUND' || code === 'TOKEN_INVALID') {
+        msg = 'El enlace de acceso no es válido o no existe. Por favor solicite un nuevo enlace.';
+      } else if (err?.message) {
+        msg = err.message;
+      }
       setExchangeError(msg);
     } finally {
       setExchangeLoading(false);
@@ -200,6 +234,7 @@ export const MisSolicitudesPage: React.FC = () => {
     setSessionEmail(null);
     sessionStorage.removeItem('solicitante_session_token');
     sessionStorage.removeItem('solicitante_session_email');
+    exchangingTokenRef.current = null;
     setPedidos([]);
     setSelectedPedido(null);
   };
@@ -296,15 +331,40 @@ export const MisSolicitudesPage: React.FC = () => {
               </div>
 
               {exchangeError && (
-                <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fee2e2', border: '1px solid #f87171', borderRadius: '0.5rem', color: '#991b1b', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
-                  <strong>Aviso:</strong> {exchangeError}
+                <div style={{ padding: '0.875rem 1rem', backgroundColor: '#fee2e2', border: '1px solid #f87171', borderRadius: '0.5rem', color: '#991b1b', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Aviso de Acceso</div>
+                  <div style={{ marginBottom: '0.5rem' }}>{exchangeError}</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExchangeError(null);
+                      exchangingTokenRef.current = null;
+                    }}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #dc2626',
+                      color: '#dc2626',
+                      padding: '0.35rem 0.75rem',
+                      borderRadius: '0.375rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Solicitar un nuevo enlace
+                  </button>
                 </div>
               )}
 
               {requestMessage && (
                 <div style={{ padding: '1rem', backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '0.5rem', color: '#166534', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
                   <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>Enlace de acceso enviado</p>
-                  <p style={{ margin: 0 }}>{requestMessage}</p>
+                  <p style={{ margin: '0 0 0.25rem 0' }}>{requestMessage}</p>
+                  {cooldown > 0 && (
+                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: '#15803d' }}>
+                      Podrás solicitar otro enlace en {cooldown} segundos.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -332,21 +392,25 @@ export const MisSolicitudesPage: React.FC = () => {
 
                 <button
                   type="submit"
-                  disabled={requestLoading}
+                  disabled={requestLoading || cooldown > 0}
                   style={{
                     width: '100%',
-                    backgroundColor: '#2563eb',
+                    backgroundColor: cooldown > 0 ? '#94a3b8' : '#2563eb',
                     color: '#ffffff',
                     border: 'none',
                     padding: '0.75rem',
                     borderRadius: '0.5rem',
                     fontWeight: 600,
                     fontSize: '0.95rem',
-                    cursor: requestLoading ? 'not-allowed' : 'pointer',
+                    cursor: requestLoading || cooldown > 0 ? 'not-allowed' : 'pointer',
                     opacity: requestLoading ? 0.7 : 1,
                   }}
                 >
-                  {requestLoading ? 'Enviando enlace...' : 'Recibir Enlace Seguro de Acceso'}
+                  {requestLoading
+                    ? 'Enviando enlace...'
+                    : cooldown > 0
+                    ? `Podrás solicitar otro enlace en ${cooldown}s`
+                    : 'Recibir Enlace Seguro de Acceso'}
                 </button>
               </form>
             </div>
