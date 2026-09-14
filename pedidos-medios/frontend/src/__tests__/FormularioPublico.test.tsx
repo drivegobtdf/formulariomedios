@@ -290,7 +290,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.click(nextBtn2);
 
       expect(
-        screen.getByText(/La fecha límite no puede ser anterior a la fecha de la solicitud\./i)
+        screen.getByText('La fecha no puede ser anterior a hoy.')
       ).toBeInTheDocument();
       expect(dateInput).toHaveClass('error');
       expect(dateInput).toHaveAttribute('aria-invalid', 'true');
@@ -298,7 +298,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       // Escenario J: Cambiar a hoy -> desaparece error sin nuevo submit (Escenario H: hoy es válida)
       fireEvent.change(dateInput, { target: { value: todayStr } });
       expect(
-        screen.queryByText(/La fecha límite no puede ser anterior a la fecha de la solicitud\./i)
+        screen.queryByText('La fecha no puede ser anterior a hoy.')
       ).not.toBeInTheDocument();
       expect(dateInput).not.toHaveClass('error');
       expect(dateInput).toHaveAttribute('aria-invalid', 'false');
@@ -307,13 +307,13 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.change(dateInput, { target: { value: yesterdayStr } });
       fireEvent.click(nextBtn2);
       expect(
-        screen.getByText(/La fecha límite no puede ser anterior a la fecha de la solicitud\./i)
+        screen.getByText('La fecha no puede ser anterior a hoy.')
       ).toBeInTheDocument();
 
       // Escenario K: Cambiar a fecha futura -> desaparece error sin nuevo submit (Escenario I: futura es válida)
       fireEvent.change(dateInput, { target: { value: tomorrowStr } });
       expect(
-        screen.queryByText(/La fecha límite no puede ser anterior a la fecha de la solicitud\./i)
+        screen.queryByText('La fecha no puede ser anterior a hoy.')
       ).not.toBeInTheDocument();
       expect(dateInput).not.toHaveClass('error');
       expect(dateInput).toHaveAttribute('aria-invalid', 'false');
@@ -528,6 +528,122 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.change(countrySelect, { target: { value: 'AR' } });
       fireEvent.change(phoneInput, { target: { value: '2964 47-7578' } });
       expect(phoneInput).not.toHaveClass('error');
+    });
+  });
+
+  describe('Paso 2: Validación Centralizada de Fechas Pasadas y Reactividad UI', () => {
+    it('Cobertura de Eventos: debe poseer atributo min, rechazar fecha de ayer y limpiar reactivamente al ingresar hoy o futuro', async () => {
+      render(<FormularioPublicoPage />);
+
+      // Completar Paso 1 seleccionando Cobertura de Eventos
+      fireEvent.change(screen.getByLabelText(/Nombre y apellido/i), {
+        target: { value: 'Esteban Martínez' },
+      });
+      fireEvent.change(screen.getByLabelText(/Número de WhatsApp/i), {
+        target: { value: '2901445566' },
+      });
+      fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
+        target: { value: 'esteban@tierradelfuego.gob.ar' },
+      });
+      fireEvent.change(screen.getByLabelText(/Área, Ministerio o Dependencia/i), {
+        target: { value: 'Dirección de Protocolo' },
+      });
+
+      fireEvent.click(screen.getByLabelText(/Cobertura de eventos/i));
+
+      const nextBtn1 = screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i });
+      fireEvent.click(nextBtn1);
+
+      // En Paso 2 - Cobertura de Eventos
+      expect(
+        screen.getByRole('heading', { level: 3, name: /Cobertura de Eventos/i })
+      ).toBeInTheDocument();
+
+      const fechaInput = screen.getByLabelText(/Fecha del evento/i) as HTMLInputElement;
+      const today = getLocalTodayDateString();
+      expect(fechaInput).toHaveAttribute('min', today);
+
+      // Completar otros campos obligatorios de Cobertura
+      fireEvent.change(screen.getByLabelText(/Hora de inicio/i), { target: { value: '10:00' } });
+      fireEvent.change(screen.getByLabelText(/Lugar \/ Dirección/i), { target: { value: 'Gimnasio Petrina' } });
+      fireEvent.change(screen.getByLabelText(/Ciudad/i), { target: { value: 'Ushuaia' } });
+      fireEvent.change(screen.getByLabelText(/Autoridades y protagonistas/i), { target: { value: 'Gobernador' } });
+      fireEvent.change(screen.getByLabelText(/Requerimientos de cobertura/i), { target: { value: 'Cobertura fotográfica completa' } });
+
+      // Ingresar fecha pasada: 2026-09-13
+      fireEvent.change(fechaInput, { target: { value: '2026-09-13' } });
+
+      // Intentar avanzar al Paso 3
+      const nextBtn2 = screen.getByRole('button', { name: /Continuar a Adjuntos y Enlaces/i });
+      fireEvent.click(nextBtn2);
+
+      // Debe mostrar error de fecha pasada
+      expect(screen.getByText('La fecha no puede ser anterior a hoy.')).toBeInTheDocument();
+      expect(fechaInput).toHaveClass('error');
+      expect(fechaInput).toHaveAttribute('aria-invalid', 'true');
+
+      // Corrección reactiva: cambiar a fecha de hoy -> el error desaparece de inmediato sin presionar Continuar
+      fireEvent.change(fechaInput, { target: { value: today } });
+      expect(screen.queryByText('La fecha no puede ser anterior a hoy.')).not.toBeInTheDocument();
+      expect(fechaInput).not.toHaveClass('error');
+      expect(fechaInput).toHaveAttribute('aria-invalid', 'false');
+
+      // Avanzar al Paso 3 exitosamente
+      fireEvent.click(nextBtn2);
+      expect(
+        screen.getByRole('heading', { level: 2, name: /3\. Archivos Adjuntos y Enlaces de Referencia/i })
+      ).toBeInTheDocument();
+    });
+
+    it('Todos los servicios con fechas operativas deben incluir el atributo min con la fecha local de hoy', async () => {
+      render(<FormularioPublicoPage />);
+
+      // Completar Paso 1 seleccionando todos los servicios con campos de fecha
+      fireEvent.change(screen.getByLabelText(/Nombre y apellido/i), { target: { value: 'Juan' } });
+      fireEvent.change(screen.getByLabelText(/Número de WhatsApp/i), { target: { value: '2901445566' } });
+      fireEvent.change(screen.getByLabelText(/Correo electrónico/i), { target: { value: 'juan@tdf.gob.ar' } });
+      fireEvent.change(screen.getByLabelText(/Área, Ministerio o Dependencia/i), { target: { value: 'Medios' } });
+
+      fireEvent.click(screen.getByLabelText(/Diseño gráfico/i));
+      fireEvent.click(screen.getByLabelText(/Publicaciones en redes sociales/i));
+      fireEvent.click(screen.getByLabelText(/Producción audiovisual/i));
+      fireEvent.click(screen.getByLabelText(/Animación y motion graphics/i));
+      fireEvent.click(screen.getByLabelText(/Transmisión en vivo \/ streaming/i));
+      fireEvent.click(screen.getByLabelText(/Sitios y contenidos web/i));
+
+      fireEvent.click(screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i }));
+
+      // En Diseño Gráfico -> Seleccionar Flyer e Invitación
+      fireEvent.click(screen.getByRole('checkbox', { name: /Flyer para redes sociales/i }));
+      fireEvent.click(screen.getByRole('checkbox', { name: /Invitación digital/i }));
+
+      const today = getLocalTodayDateString();
+
+      // Verificar Flyer fecha límite
+      expect(screen.getByLabelText(/Fecha límite requerida/i)).toHaveAttribute('min', today);
+
+      // Verificar Invitación fecha
+      expect(screen.getByLabelText(/Fecha del evento/i)).toHaveAttribute('min', today);
+
+      // Verificar Redes Sociales fecha sugerida
+      expect(screen.getByLabelText(/Fecha sugerida de publicación/i)).toHaveAttribute('min', today);
+
+      // En Producción Audiovisual, tildar grabación
+      fireEvent.click(screen.getByLabelText(/Sí, requiere grabación/i));
+      expect(screen.getByLabelText(/Fecha de grabación/i)).toHaveAttribute('min', today);
+
+      // Verificar Producción Audiovisual y Motion Graphics fecha límite
+      const fechaEntregaInputs = screen.getAllByLabelText(/Fecha límite de entrega/i);
+      expect(fechaEntregaInputs.length).toBeGreaterThanOrEqual(2);
+      for (const input of fechaEntregaInputs) {
+        expect(input).toHaveAttribute('min', today);
+      }
+
+      // Verificar Streaming fecha
+      expect(screen.getByLabelText(/^Fecha$/i)).toHaveAttribute('min', today);
+
+      // Verificar Sitios Web fecha límite
+      expect(screen.getByLabelText(/Fecha límite de puesta en línea/i)).toHaveAttribute('min', today);
     });
   });
 });

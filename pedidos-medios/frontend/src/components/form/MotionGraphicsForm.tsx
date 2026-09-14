@@ -1,7 +1,7 @@
 import React from 'react';
 import { MotionGraphicsData, ContactoFormState } from '../../types/form';
 import { AsesoramientoCard } from './AsesoramientoCard';
-import { ValidationErrors } from '../../validation/formValidation';
+import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
 
 interface MotionGraphicsFormProps {
   data: MotionGraphicsData;
@@ -125,12 +125,15 @@ export const MotionGraphicsForm: React.FC<MotionGraphicsFormProps> = ({
               <input
                 type="date"
                 id="mg_fecha"
+                min={getLocalTodayDateString()}
                 className={`pedidos-input ${errors['motion.fecha_limite'] ? 'error' : ''}`}
                 value={data.fecha_limite || ''}
                 onChange={(e) => onChange({ fecha_limite: e.target.value })}
+                aria-invalid={!!errors['motion.fecha_limite']}
+                aria-describedby={errors['motion.fecha_limite'] ? 'mg_fecha_error' : undefined}
               />
               {errors['motion.fecha_limite'] && (
-                <span className="pedidos-error-text" role="alert">{errors['motion.fecha_limite']}</span>
+                <span id="mg_fecha_error" className="pedidos-error-text" role="alert">{errors['motion.fecha_limite']}</span>
               )}
             </div>
 

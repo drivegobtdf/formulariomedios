@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProduccionAudiovisualData, ContactoFormState } from '../../types/form';
 import { AsesoramientoCard } from './AsesoramientoCard';
-import { ValidationErrors } from '../../validation/formValidation';
+import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
 
 interface ProduccionAudiovisualFormProps {
   data: ProduccionAudiovisualData;
@@ -108,12 +108,15 @@ export const ProduccionAudiovisualForm: React.FC<ProduccionAudiovisualFormProps>
               <input
                 type="date"
                 id="av_fecha_limite"
+                min={getLocalTodayDateString()}
                 className={`pedidos-input ${errors['audiovisual.fecha_limite'] ? 'error' : ''}`}
                 value={data.fecha_limite || ''}
                 onChange={(e) => onChange({ fecha_limite: e.target.value })}
+                aria-invalid={!!errors['audiovisual.fecha_limite']}
+                aria-describedby={errors['audiovisual.fecha_limite'] ? 'av_fecha_limite_error' : undefined}
               />
               {errors['audiovisual.fecha_limite'] && (
-                <span className="pedidos-error-text" role="alert">{errors['audiovisual.fecha_limite']}</span>
+                <span id="av_fecha_limite_error" className="pedidos-error-text" role="alert">{errors['audiovisual.fecha_limite']}</span>
               )}
             </div>
 
@@ -156,12 +159,15 @@ export const ProduccionAudiovisualForm: React.FC<ProduccionAudiovisualFormProps>
                   <input
                     type="date"
                     id="av_grab_fecha"
+                    min={getLocalTodayDateString()}
                     className={`pedidos-input ${errors['audiovisual.grabacion_fecha'] ? 'error' : ''}`}
                     value={data.grabacion_fecha || ''}
                     onChange={(e) => onChange({ grabacion_fecha: e.target.value })}
+                    aria-invalid={!!errors['audiovisual.grabacion_fecha']}
+                    aria-describedby={errors['audiovisual.grabacion_fecha'] ? 'av_grab_fecha_error' : undefined}
                   />
                   {errors['audiovisual.grabacion_fecha'] && (
-                    <span className="pedidos-error-text" role="alert">{errors['audiovisual.grabacion_fecha']}</span>
+                    <span id="av_grab_fecha_error" className="pedidos-error-text" role="alert">{errors['audiovisual.grabacion_fecha']}</span>
                   )}
                 </div>
 

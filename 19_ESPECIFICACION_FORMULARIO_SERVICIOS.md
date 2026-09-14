@@ -266,6 +266,13 @@ El código refleja categoría; la secuencia `000101/000102/000103` es global anu
 
 UI y server-side deben compartir contrato versionado. Longitudes, bytes exactos de 10 MB y MIME finales se fijan como constantes de schema; no esconder reglas solo en frontend.
 
+### Política de Fechas Operativas en Solicitudes Públicas
+- **Regla Global**: Para toda fecha operativa de una nueva solicitud pública (fecha límite, fecha de evento, fecha de transmisión, fecha de grabación, fecha sugerida de publicación), se prohíben fechas anteriores a la fecha local de la solicitud (`< hoy`, civil YYYY-MM-DD).
+- **Valores permitidos**: Hoy (`= hoy`) y fechas futuras (`> hoy`).
+- **Mensaje de error canónico**: `"La fecha no puede ser anterior a hoy."`.
+- **UX**: Todos los campos de fecha operativos en el frontend incluyen el atributo HTML `min="YYYY-MM-DD"` con la fecha local de hoy (`getLocalTodayDateString()`), y revalidación reactiva inmediata (eliminación de error visible apenas se selecciona una fecha válida).
+- **Exclusión**: Los filtros de consulta histórica, rangos de búsqueda del tablero interno de gestión, líneas de tiempo y fechas de auditoría/sistema (`created_at`) quedan excluidos de esta restricción.
+
 ## 17. Criterio de cierre
 
 No considerar implementado hasta probar:

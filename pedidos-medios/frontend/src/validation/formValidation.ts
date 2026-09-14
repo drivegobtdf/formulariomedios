@@ -77,6 +77,15 @@ export function validateFileMetadata(file: { name: string; size: number; type: s
 // Helpers de Validación Reactiva y Fechas Locales
 // -----------------------------------------------------------------------------
 
+export const DEFAULT_PAST_DATE_ERROR_MESSAGE = 'La fecha no puede ser anterior a hoy.';
+
+export interface ValidateDateOptions {
+  required?: boolean;
+  requiredMessage?: string;
+  pastMessage?: string;
+  refDate?: Date;
+}
+
 /**
  * Obtiene la fecha local actual en formato YYYY-MM-DD sin desfasaje por UTC.
  */
@@ -103,21 +112,76 @@ export function isDateBeforeToday(dateStr: string, refDate: Date = new Date()): 
 }
 
 /**
+ * Valida centralizadamente un campo de fecha operativa para nuevas solicitudes públicas.
+ * Reglas:
+ * 1. Si está vacía y required = true (por defecto true) -> error requiredMessage.
+ * 2. Si está vacía y required = false -> válido (null).
+ * 3. Si no cumple formato YYYY-MM-DD o fecha de calendario no existe -> error de formato/calendario.
+ * 4. Si la fecha es anterior a hoy (civil YYYY-MM-DD) -> error pastMessage ('La fecha no puede ser anterior a hoy.').
+ * 5. Si la fecha es igual o posterior a hoy -> válido (null).
+ */
+export function validateNotPastDate(
+  dateValue?: string,
+  options?: ValidateDateOptions | string
+): string | null {
+  let required = true;
+  let requiredMessage = 'Indicá una fecha válida.';
+  let pastMessage = DEFAULT_PAST_DATE_ERROR_MESSAGE;
+  let refDate = new Date();
+
+  if (typeof options === 'string') {
+    requiredMessage = options;
+  } else if (options) {
+    if (options.required !== undefined) required = options.required;
+    if (options.requiredMessage !== undefined) requiredMessage = options.requiredMessage;
+    if (options.pastMessage !== undefined) pastMessage = options.pastMessage;
+    if (options.refDate !== undefined) refDate = options.refDate;
+  }
+
+  if (!dateValue || dateValue.trim() === '') {
+    return required ? requiredMessage : null;
+  }
+
+  const trimmed = dateValue.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return 'Formato de fecha no válido (debe ser AAAA-MM-DD).';
+  }
+
+  const [yearStr, monthStr, dayStr] = trimmed.split('-');
+  const y = parseInt(yearStr, 10);
+  const m = parseInt(monthStr, 10);
+  const d = parseInt(dayStr, 10);
+  const parsedDate = new Date(y, m - 1, d);
+  if (
+    parsedDate.getFullYear() !== y ||
+    parsedDate.getMonth() !== m - 1 ||
+    parsedDate.getDate() !== d
+  ) {
+    return 'Fecha no válida en el calendario.';
+  }
+
+  if (isDateBeforeToday(trimmed, refDate)) {
+    return pastMessage;
+  }
+
+  return null;
+}
+
+/**
  * Valida un campo de fecha límite obligatoria con validación de no-anterioridad.
  */
 export function validateFechaLimite(
   dateValue?: string,
   emptyMessage = 'Indicá la fecha límite de entrega.',
-  pastMessage = 'La fecha límite no puede ser anterior a la fecha de la solicitud.',
+  pastMessage = DEFAULT_PAST_DATE_ERROR_MESSAGE,
   refDate: Date = new Date()
 ): string | null {
-  if (!dateValue || dateValue.trim() === '') {
-    return emptyMessage;
-  }
-  if (isDateBeforeToday(dateValue, refDate)) {
-    return pastMessage;
-  }
-  return null;
+  return validateNotPastDate(dateValue, {
+    required: true,
+    requiredMessage: emptyMessage,
+    pastMessage,
+    refDate,
+  });
 }
 
 /**
@@ -226,7 +290,9 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
               if (textoErr) {
                 errors['flyer_rrss.texto'] = textoErr;
               }
-              const fechaErr = validateFechaLimite(data?.fecha_limite);
+              const fechaErr = validateNotPastDate(data?.fecha_limite, {
+                requiredMessage: 'Indicá la fecha límite de entrega.',
+              });
               if (fechaErr) {
                 errors['flyer_rrss.fecha_limite'] = fechaErr;
               }
@@ -237,8 +303,11 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
               if (!data?.nombre_evento || data.nombre_evento.trim().length < 2) {
                 errors['invitacion_digital.nombre_evento'] = 'Ingresá el nombre del evento.';
               }
-              if (!data?.fecha || data.fecha.trim() === '') {
-                errors['invitacion_digital.fecha'] = 'Indicá la fecha del evento.';
+              const fechaErr = validateNotPastDate(data?.fecha, {
+                requiredMessage: 'Indicá la fecha del evento.',
+              });
+              if (fechaErr) {
+                errors['invitacion_digital.fecha'] = fechaErr;
               }
               if (!data?.hora || data.hora.trim() === '') {
                 errors['invitacion_digital.hora'] = 'Indicá el horario del evento.';
@@ -284,8 +353,11 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
 
       case 'cobertura_eventos': {
         const data = state.cobertura_data;
-        if (!data?.fecha || data.fecha.trim() === '') {
-          errors['cobertura.fecha'] = 'Indicá la fecha de la cobertura.';
+        const fechaErr = validateNotPastDate(data?.fecha, {
+          requiredMessage: 'Indicá la fecha de la cobertura.',
+        });
+        if (fechaErr) {
+          errors['cobertura.fecha'] = fechaErr;
         }
         if (!data?.hora_inicio || data.hora_inicio.trim() === '') {
           errors['cobertura.hora_inicio'] = 'Indicá la hora de inicio del evento.';
@@ -321,8 +393,11 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
 
       case 'redes_sociales': {
         const data = state.redes_data;
-        if (!data?.fecha_sugerida || data.fecha_sugerida.trim() === '') {
-          errors['redes.fecha_sugerida'] = 'Indicá la fecha sugerida de publicación.';
+        const fechaErr = validateNotPastDate(data?.fecha_sugerida, {
+          requiredMessage: 'Indicá la fecha sugerida de publicación.',
+        });
+        if (fechaErr) {
+          errors['redes.fecha_sugerida'] = fechaErr;
         }
         if (!data?.texto_copy || data.texto_copy.trim().length < 5) {
           errors['redes.texto_copy'] = 'Ingresá el texto o copy propuesto para la publicación.';
@@ -346,13 +421,18 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
           if (!data?.formato || data.formato.trim() === '') {
             errors['audiovisual.formato'] = 'Seleccioná el formato de video.';
           }
-          const fechaAudiovisualErr = validateFechaLimite(data?.fecha_limite);
+          const fechaAudiovisualErr = validateNotPastDate(data?.fecha_limite, {
+            requiredMessage: 'Indicá la fecha límite de entrega.',
+          });
           if (fechaAudiovisualErr) {
             errors['audiovisual.fecha_limite'] = fechaAudiovisualErr;
           }
           if (data?.requiere_grabacion) {
-            if (!data.grabacion_fecha || data.grabacion_fecha.trim() === '') {
-              errors['audiovisual.grabacion_fecha'] = 'Indicá la fecha prevista para la grabación.';
+            const fechaGrabErr = validateNotPastDate(data.grabacion_fecha, {
+              requiredMessage: 'Indicá la fecha prevista para la grabación.',
+            });
+            if (fechaGrabErr) {
+              errors['audiovisual.grabacion_fecha'] = fechaGrabErr;
             }
             if (!data.grabacion_hora || data.grabacion_hora.trim() === '') {
               errors['audiovisual.grabacion_hora'] = 'Indicá el horario previsto.';
@@ -387,7 +467,9 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
           if (!data?.formato || data.formato.trim() === '') {
             errors['motion.formato'] = 'Seleccioná el formato visual.';
           }
-          const fechaMotionErr = validateFechaLimite(data?.fecha_limite);
+          const fechaMotionErr = validateNotPastDate(data?.fecha_limite, {
+            requiredMessage: 'Indicá la fecha límite de entrega.',
+          });
           if (fechaMotionErr) {
             errors['motion.fecha_limite'] = fechaMotionErr;
           }
@@ -408,8 +490,11 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
           if (!data?.nombre_evento || data.nombre_evento.trim().length < 2) {
             errors['streaming.nombre_evento'] = 'Ingresá el nombre del evento o actividad.';
           }
-          if (!data?.fecha || data.fecha.trim() === '') {
-            errors['streaming.fecha'] = 'Indicá la fecha de la transmisión.';
+          const fechaStreamingErr = validateNotPastDate(data?.fecha, {
+            requiredMessage: 'Indicá la fecha de la transmisión.',
+          });
+          if (fechaStreamingErr) {
+            errors['streaming.fecha'] = fechaStreamingErr;
           }
           if (!data?.hora_inicio || data.hora_inicio.trim() === '') {
             errors['streaming.hora_inicio'] = 'Indicá el horario de inicio.';
@@ -451,10 +536,9 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
           if (!data?.contenido_cambios || data.contenido_cambios.trim().length < 5) {
             errors['web.contenido_cambios'] = 'Detallá los contenidos, secciones o cambios solicitados.';
           }
-          const fechaWebErr = validateFechaLimite(
-            data?.fecha_limite,
-            'Indicá la fecha límite de publicación o puesta en línea.'
-          );
+          const fechaWebErr = validateNotPastDate(data?.fecha_limite, {
+            requiredMessage: 'Indicá la fecha límite de publicación o puesta en línea.',
+          });
           if (fechaWebErr) {
             errors['web.fecha_limite'] = fechaWebErr;
           }

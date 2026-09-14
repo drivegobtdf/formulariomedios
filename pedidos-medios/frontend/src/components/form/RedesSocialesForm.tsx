@@ -1,6 +1,6 @@
 import React from 'react';
 import { RedesSocialesData } from '../../types/form';
-import { ValidationErrors } from '../../validation/formValidation';
+import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
 
 interface RedesSocialesFormProps {
   data: RedesSocialesData;
@@ -25,12 +25,15 @@ export const RedesSocialesForm: React.FC<RedesSocialesFormProps> = ({ data, onCh
         <input
           type="date"
           id="redes_fecha"
+          min={getLocalTodayDateString()}
           className={`pedidos-input ${errors['redes.fecha_sugerida'] ? 'error' : ''}`}
           value={data.fecha_sugerida || ''}
           onChange={(e) => onChange({ fecha_sugerida: e.target.value })}
+          aria-invalid={!!errors['redes.fecha_sugerida']}
+          aria-describedby={errors['redes.fecha_sugerida'] ? 'redes_fecha_error' : undefined}
         />
         {errors['redes.fecha_sugerida'] && (
-          <span className="pedidos-error-text" role="alert">{errors['redes.fecha_sugerida']}</span>
+          <span id="redes_fecha_error" className="pedidos-error-text" role="alert">{errors['redes.fecha_sugerida']}</span>
         )}
       </div>
 

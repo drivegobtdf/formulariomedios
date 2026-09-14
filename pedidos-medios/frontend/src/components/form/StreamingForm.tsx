@@ -1,7 +1,7 @@
 import React from 'react';
 import { StreamingData, ContactoFormState } from '../../types/form';
 import { AsesoramientoCard } from './AsesoramientoCard';
-import { ValidationErrors } from '../../validation/formValidation';
+import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
 
 interface StreamingFormProps {
   data: StreamingData;
@@ -87,12 +87,15 @@ export const StreamingForm: React.FC<StreamingFormProps> = ({
               <input
                 type="date"
                 id="str_fecha"
+                min={getLocalTodayDateString()}
                 className={`pedidos-input ${errors['streaming.fecha'] ? 'error' : ''}`}
                 value={data.fecha || ''}
                 onChange={(e) => onChange({ fecha: e.target.value })}
+                aria-invalid={!!errors['streaming.fecha']}
+                aria-describedby={errors['streaming.fecha'] ? 'str_fecha_error' : undefined}
               />
               {errors['streaming.fecha'] && (
-                <span className="pedidos-error-text" role="alert">{errors['streaming.fecha']}</span>
+                <span id="str_fecha_error" className="pedidos-error-text" role="alert">{errors['streaming.fecha']}</span>
               )}
             </div>
 

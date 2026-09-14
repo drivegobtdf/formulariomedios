@@ -1,7 +1,7 @@
 import React from 'react';
 import { SitiosWebData, ContactoFormState } from '../../types/form';
 import { AsesoramientoCard } from './AsesoramientoCard';
-import { ValidationErrors } from '../../validation/formValidation';
+import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
 
 interface SitiosWebFormProps {
   data: SitiosWebData;
@@ -146,12 +146,15 @@ export const SitiosWebForm: React.FC<SitiosWebFormProps> = ({
               <input
                 type="date"
                 id="web_fecha"
+                min={getLocalTodayDateString()}
                 className={`pedidos-input ${errors['web.fecha_limite'] ? 'error' : ''}`}
                 value={data.fecha_limite || ''}
                 onChange={(e) => onChange({ fecha_limite: e.target.value })}
+                aria-invalid={!!errors['web.fecha_limite']}
+                aria-describedby={errors['web.fecha_limite'] ? 'web_fecha_error' : undefined}
               />
               {errors['web.fecha_limite'] && (
-                <span className="pedidos-error-text" role="alert">{errors['web.fecha_limite']}</span>
+                <span id="web_fecha_error" className="pedidos-error-text" role="alert">{errors['web.fecha_limite']}</span>
               )}
             </div>
 

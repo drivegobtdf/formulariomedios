@@ -16,7 +16,9 @@ import {
   formatPhoneForDisplay,
   getLocalTodayDateString,
   isDateBeforeToday,
+  validateNotPastDate,
   validateFechaLimite,
+  DEFAULT_PAST_DATE_ERROR_MESSAGE,
   validateMinLength,
   revalidateErrors,
 } from '../validation/formValidation';
@@ -349,13 +351,59 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       expect(getLocalTodayDateString(localEarlyDate)).toBe('2026-09-15');
     });
 
+    it('validateNotPastDate: debe validar fechas de acuerdo a la regla global (ayer prohibido, hoy y futuro permitido)', () => {
+      const refDate = new Date(2026, 8, 14, 12, 0, 0); // 14 Sept 2026
+
+      // Ayer -> rechaza con error canónico por defecto
+      expect(validateNotPastDate('2026-09-13', { refDate })).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      expect(validateNotPastDate('2026-09-13', { refDate, pastMessage: 'No podés seleccionar una fecha pasada.' })).toBe(
+        'No podés seleccionar una fecha pasada.'
+      );
+
+      // Hoy -> válido (null)
+      expect(validateNotPastDate('2026-09-14', { refDate })).toBeNull();
+
+      // Mañana y futuro lejano -> válido (null)
+      expect(validateNotPastDate('2026-09-15', { refDate })).toBeNull();
+      expect(validateNotPastDate('2027-12-31', { refDate })).toBeNull();
+
+      // Campo vacío requerido (por defecto)
+      expect(validateNotPastDate('', { refDate, requiredMessage: 'Indicá la fecha del evento.' })).toBe(
+        'Indicá la fecha del evento.'
+      );
+      expect(validateNotPastDate('   ', { refDate, requiredMessage: 'Indicá la fecha.' })).toBe(
+        'Indicá la fecha.'
+      );
+      expect(validateNotPastDate(undefined, 'Indicá la fecha.')).toBe('Indicá la fecha.');
+
+      // Campo vacío opcional
+      expect(validateNotPastDate('', { required: false, refDate })).toBeNull();
+      expect(validateNotPastDate(undefined, { required: false, refDate })).toBeNull();
+
+      // Formato malformado
+      expect(validateNotPastDate('14-09-2026', { refDate })).toBe(
+        'Formato de fecha no válido (debe ser AAAA-MM-DD).'
+      );
+      expect(validateNotPastDate('2026-9-14', { refDate })).toBe(
+        'Formato de fecha no válido (debe ser AAAA-MM-DD).'
+      );
+      expect(validateNotPastDate('texto', { refDate })).toBe(
+        'Formato de fecha no válido (debe ser AAAA-MM-DD).'
+      );
+
+      // Fecha inválida en calendario (ej. 31 de febrero)
+      expect(validateNotPastDate('2026-02-31', { refDate })).toBe(
+        'Fecha no válida en el calendario.'
+      );
+    });
+
     it('isDateBeforeToday y validateFechaLimite deben rechazar fechas pasadas y aceptar hoy y futuras', () => {
       const refDate = new Date(2026, 8, 14, 12, 0, 0); // 14 Sept 2026
 
       // Fecha pasada (ayer)
       expect(isDateBeforeToday('2026-09-13', refDate)).toBe(true);
       expect(validateFechaLimite('2026-09-13', undefined, undefined, refDate)).toBe(
-        'La fecha límite no puede ser anterior a la fecha de la solicitud.'
+        DEFAULT_PAST_DATE_ERROR_MESSAGE
       );
 
       // Fecha de hoy (misma fecha local) -> VÁLIDA
@@ -370,6 +418,151 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       expect(validateFechaLimite('', undefined, undefined, refDate)).toBe(
         'Indicá la fecha límite de entrega.'
       );
+    });
+
+    it('validateStep2: debe aplicar consistentemente la regla de fecha no pasada a los 9 campos operativos de todos los servicios', () => {
+      const yesterday = '2026-09-13';
+      const today = getLocalTodayDateString();
+
+      // 1. Diseño Gráfico -> Flyer
+      const stateFlyerPast: Partial<FormWizardState> = {
+        selected_categorias: ['diseno_grafico'],
+        diseno_piezas: ['flyer_rrss'],
+        diseno_data: { flyer_rrss: { formato: '1:1', texto: 'Texto válido', fecha_limite: yesterday } },
+      };
+      expect(validateStep2(stateFlyerPast as FormWizardState)['flyer_rrss.fecha_limite']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      stateFlyerPast.diseno_data!.flyer_rrss!.fecha_limite = today;
+      expect(validateStep2(stateFlyerPast as FormWizardState)['flyer_rrss.fecha_limite']).toBeUndefined();
+
+      // 2. Diseño Gráfico -> Invitación Digital
+      const stateInvPast: Partial<FormWizardState> = {
+        selected_categorias: ['diseno_grafico'],
+        diseno_piezas: ['invitacion_digital'],
+        diseno_data: {
+          invitacion_digital: {
+            nombre_evento: 'Acto Oficial',
+            fecha: yesterday,
+            hora: '10:00',
+            lugar: 'Casa de Gobierno',
+            modalidad: 'Presencial',
+            programa: 'Cronograma completo',
+          },
+        },
+      };
+      expect(validateStep2(stateInvPast as FormWizardState)['invitacion_digital.fecha']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      stateInvPast.diseno_data!.invitacion_digital!.fecha = today;
+      expect(validateStep2(stateInvPast as FormWizardState)['invitacion_digital.fecha']).toBeUndefined();
+
+      // 3. Cobertura de Eventos
+      const stateCobPast: Partial<FormWizardState> = {
+        selected_categorias: ['cobertura_eventos'],
+        cobertura_data: {
+          fecha: yesterday,
+          hora_inicio: '10:00',
+          lugar: 'Gimnasio Petrina',
+          ciudad: 'Ushuaia',
+          autoridades: 'Gobernador',
+          requerimientos: 'Fotografía y video institucional',
+        },
+      };
+      expect(validateStep2(stateCobPast as FormWizardState)['cobertura.fecha']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      stateCobPast.cobertura_data!.fecha = today;
+      expect(validateStep2(stateCobPast as FormWizardState)['cobertura.fecha']).toBeUndefined();
+
+      // 4. Redes Sociales
+      const stateRedesPast: Partial<FormWizardState> = {
+        selected_categorias: ['redes_sociales'],
+        redes_data: {
+          fecha_sugerida: yesterday,
+          texto_copy: 'Texto del post con hashtags #TDF',
+        },
+      };
+      expect(validateStep2(stateRedesPast as FormWizardState)['redes.fecha_sugerida']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      stateRedesPast.redes_data!.fecha_sugerida = today;
+      expect(validateStep2(stateRedesPast as FormWizardState)['redes.fecha_sugerida']).toBeUndefined();
+
+      // 5. Producción Audiovisual -> Fecha límite
+      const stateAvPast: Partial<FormWizardState> = {
+        selected_categorias: ['produccion_audiovisual'],
+        audiovisual_data: {
+          requiere_asesoramiento: false,
+          tipo_produccion: 'Video institucional',
+          descripcion_objetivo: 'Objetivo del video institucional',
+          formato: '16:9',
+          fecha_limite: yesterday,
+        },
+      };
+      expect(validateStep2(stateAvPast as FormWizardState)['audiovisual.fecha_limite']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      stateAvPast.audiovisual_data!.fecha_limite = today;
+      expect(validateStep2(stateAvPast as FormWizardState)['audiovisual.fecha_limite']).toBeUndefined();
+
+      // 6. Producción Audiovisual -> Grabación
+      const stateAvGrabPast: Partial<FormWizardState> = {
+        selected_categorias: ['produccion_audiovisual'],
+        audiovisual_data: {
+          requiere_asesoramiento: false,
+          tipo_produccion: 'Video institucional',
+          descripcion_objetivo: 'Objetivo del video institucional',
+          formato: '16:9',
+          fecha_limite: today,
+          requiere_grabacion: true,
+          grabacion_fecha: yesterday,
+          grabacion_hora: '14:00',
+          grabacion_lugar: 'Despacho',
+          grabacion_ciudad: 'Ushuaia',
+        },
+      };
+      expect(validateStep2(stateAvGrabPast as FormWizardState)['audiovisual.grabacion_fecha']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      stateAvGrabPast.audiovisual_data!.grabacion_fecha = today;
+      expect(validateStep2(stateAvGrabPast as FormWizardState)['audiovisual.grabacion_fecha']).toBeUndefined();
+
+      // 7. Motion Graphics
+      const stateMotionPast: Partial<FormWizardState> = {
+        selected_categorias: ['motion_graphics'],
+        motion_data: {
+          requiere_asesoramiento: false,
+          tipo_motion: 'Placa animada',
+          texto_contenido: 'Texto animado',
+          descripcion: 'Descripción del motion graphics',
+          formato: '16:9',
+          fecha_limite: yesterday,
+        },
+      };
+      expect(validateStep2(stateMotionPast as FormWizardState)['motion.fecha_limite']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      stateMotionPast.motion_data!.fecha_limite = today;
+      expect(validateStep2(stateMotionPast as FormWizardState)['motion.fecha_limite']).toBeUndefined();
+
+      // 8. Streaming
+      const stateStreamingPast: Partial<FormWizardState> = {
+        selected_categorias: ['streaming'],
+        streaming_data: {
+          requiere_asesoramiento: false,
+          tipo_streaming: 'Transmisión en vivo de un evento',
+          nombre_evento: 'Sesión Inaugural',
+          fecha: yesterday,
+          hora_inicio: '11:00',
+          modalidad: 'Virtual',
+          descripcion_requerimientos: 'Transmisión por YouTube y Facebook Live',
+        },
+      };
+      expect(validateStep2(stateStreamingPast as FormWizardState)['streaming.fecha']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      stateStreamingPast.streaming_data!.fecha = today;
+      expect(validateStep2(stateStreamingPast as FormWizardState)['streaming.fecha']).toBeUndefined();
+
+      // 9. Sitios Web
+      const stateWebPast: Partial<FormWizardState> = {
+        selected_categorias: ['sitios_web'],
+        web_data: {
+          requiere_asesoramiento: false,
+          tipo_web: 'Crear una página',
+          descripcion_objetivo: 'Nueva página para programa provincial',
+          contenido_cambios: 'Secciones institucionales y formulario',
+          fecha_limite: yesterday,
+        },
+      };
+      expect(validateStep2(stateWebPast as FormWizardState)['web.fecha_limite']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      stateWebPast.web_data!.fecha_limite = today;
+      expect(validateStep2(stateWebPast as FormWizardState)['web.fecha_limite']).toBeUndefined();
     });
 
     it('validateMinLength debe distinguir entre campo vacío y contenido menor al mínimo', () => {

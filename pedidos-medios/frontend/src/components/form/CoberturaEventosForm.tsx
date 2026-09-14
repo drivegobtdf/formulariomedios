@@ -1,6 +1,6 @@
 import React from 'react';
 import { CoberturaEventosData } from '../../types/form';
-import { ValidationErrors } from '../../validation/formValidation';
+import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
 
 interface CoberturaEventosFormProps {
   data: CoberturaEventosData;
@@ -26,12 +26,15 @@ export const CoberturaEventosForm: React.FC<CoberturaEventosFormProps> = ({ data
           <input
             type="date"
             id="cob_fecha"
+            min={getLocalTodayDateString()}
             className={`pedidos-input ${errors['cobertura.fecha'] ? 'error' : ''}`}
             value={data.fecha || ''}
             onChange={(e) => onChange({ fecha: e.target.value })}
+            aria-invalid={!!errors['cobertura.fecha']}
+            aria-describedby={errors['cobertura.fecha'] ? 'cob_fecha_error' : undefined}
           />
           {errors['cobertura.fecha'] && (
-            <span className="pedidos-error-text" role="alert">{errors['cobertura.fecha']}</span>
+            <span id="cob_fecha_error" className="pedidos-error-text" role="alert">{errors['cobertura.fecha']}</span>
           )}
         </div>
 
