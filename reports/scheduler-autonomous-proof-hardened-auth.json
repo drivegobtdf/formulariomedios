@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-09-14T02:49:43.083Z",
+  "event": "autonomous_scheduled_dispatch_with_hardened_auth",
+  "envio_id": "853561df-8ebb-4254-87ee-b4e0fe9e5c70",
+  "pedido_visible": "PED-2026-D000143",
+  "destinatario": "pablosaldiviainfo@gmail.com",
+  "communication_id": "3fcd6677-ec6a-44ec-a089-d42f57dc26d7",
+  "status": "enviada",
+  "provider_message_id": "1a09dd1f17025c09",
+  "sent_at": "2026-09-14T02:49:37.084645+00:00",
+  "claim_id": "376cd21e-a89c-4d11-8a53-cdada8cd506a",
+  "auth_header": "x-pedidos-dispatch-secret"
+}

@@ -8,7 +8,7 @@
   "weweb_workflow_id": "G46ZPsUEzYopGtTd",
   "weweb_workflow_status": "inactive (preserved intact since 2026-09-08)",
   "git": {
-    "headCommit": "a0bba1e28bb0eb96658e1dc89c4b6502142337bc",
+    "headCommit": "97234203fcb6400f77cd750b239fc567dd3cb5d2",
     "branch": "feature/f7-f8-tracking-and-management",
     "dirty": true
   },
@@ -134,17 +134,17 @@
       ]
     }
   },
-  "started_at": "2026-09-14T02:14:26.252Z",
-  "completed_at": "2026-09-14T02:15:35.913Z",
+  "started_at": "2026-09-14T02:47:55.952Z",
+  "completed_at": "2026-09-14T02:49:17.148Z",
   "criteria": [
     {
       "id": "C01-TRANSACTIONAL-OUTBOX",
       "name": "Transactional Outbox Ledger atómico con garantía de consistencia relacional",
       "status": "PASS",
-      "details": "Envío e027c74c-1c92-410d-a920-c306b830bf43 registró pedido y outbox ledger en la misma transacción relacional.",
+      "details": "Envío fd8d15fb-dcd6-4a02-9a09-51961f0663b1 registró pedido y outbox ledger en la misma transacción relacional.",
       "evidence": {
-        "envio_id": "e027c74c-1c92-410d-a920-c306b830bf43",
-        "outbox_id": "cb1bde57-ec10-4c0f-83e9-98977e00db0f",
+        "envio_id": "fd8d15fb-dcd6-4a02-9a09-51961f0663b1",
+        "outbox_id": "4c271602-6a73-4103-8662-df9c4a7ed366",
         "estado": "pendiente"
       },
       "assertions": [
@@ -157,9 +157,9 @@
       "id": "C02-AUTOMATED-EXECUTION",
       "name": "Despachador de cola automatizable mediante Edge Function, Scheduler Daemon y RPCs de procesamiento",
       "status": "PASS",
-      "details": "Scheduler daemon operativo (PID 22152), ciclos ejecutados: 1, procesados: 1.",
+      "details": "Scheduler daemon operativo (PID 44292), ciclos ejecutados: 1, procesados: 1.",
       "evidence": {
-        "scheduler_pid": 22152,
+        "scheduler_pid": 44292,
         "metrics": {
           "total_cycles": 1,
           "total_processed": 1,
@@ -168,7 +168,7 @@
           "total_uncertain": 0,
           "total_swept": 0
         },
-        "heartbeat": "2026-09-14T02:14:35.263Z"
+        "heartbeat": "2026-09-14T02:48:08.752Z"
       },
       "assertions": [
         "comunicacion_claim_batch utiliza FOR UPDATE SKIP LOCKED para concurrencia atómica",
@@ -181,13 +181,13 @@
       "id": "C03-GROUPED-SUBMISSION",
       "name": "Envío multi-pedido genera exactamente 1 notificación inicial consolidada con botón \"Ver mis solicitudes\"",
       "status": "PASS",
-      "details": "Envío 8f26cfb0-d75a-478b-8fe7-b711e835880f con 2 pedidos generó 1 único correo consolidado con tabla de códigos (PED-2026-D000132, PED-2026-C000133) y botón único \"Ver mis solicitudes\".",
+      "details": "Envío f174e517-bcbe-4d83-a664-ad4dc15a7639 con 2 pedidos generó 1 único correo consolidado con tabla de códigos (PED-2026-D000141, PED-2026-C000142) y botón único \"Ver mis solicitudes\".",
       "evidence": {
-        "envio_id": "8f26cfb0-d75a-478b-8fe7-b711e835880f",
+        "envio_id": "f174e517-bcbe-4d83-a664-ad4dc15a7639",
         "total_pedidos": 2,
         "codigos": [
-          "PED-2026-D000132",
-          "PED-2026-C000133"
+          "PED-2026-D000141",
+          "PED-2026-C000142"
         ],
         "cta_button": "Ver mis solicitudes"
       },
@@ -337,18 +337,29 @@
     },
     {
       "id": "C12-POLP-SECURITY-BOUNDARIES",
-      "name": "Límites de seguridad PoLP: RPCs restringidos a service_role y denegación estricta 42501 para anon/auth",
+      "name": "Límites de seguridad PoLP: RPCs restringidos a service_role y autenticación dedicada del despachador (N8N_DISPATCH_SECRET)",
       "status": "PASS",
-      "details": "Todos los RPCs de control de cola, reclamo, barrido, reconciliación y testing deniegan acceso a usuarios anónimos con 42501.",
+      "details": "Todos los RPCs administrativos deniegan acceso con 42501. Edge Function comunicaciones-dispatch exige x-pedidos-dispatch-secret, rechaza anon_key/secreto inverso con 401/403 y n8n scheduler configurado con el secreto dedicado.",
       "evidence": {
         "anon_claim_batch": "42501",
         "anon_sweep": "42501",
-        "anon_reconcile": "42501"
+        "anon_reconcile": "42501",
+        "dispatch_no_auth": 401,
+        "dispatch_empty_auth": 401,
+        "dispatch_wrong_secret": 403,
+        "dispatch_reverse_secret": 403,
+        "dispatch_anon_only": 401,
+        "dispatch_authorized": 200,
+        "n8n_workflow_dispatch_header_configured": true
       },
       "assertions": [
         "REVOKE ALL ON FUNCTION ... FROM PUBLIC, anon, authenticated aplicado a todos los RPCs administrativos",
-        "GRANT EXECUTE restringido exclusivamente a service_role",
-        "Intentos de ejecución por roles no privilegiados retornan error 42501 (permission denied)"
+        "GRANT EXECUTE restringido exclusivamente a service_role (error 42501)",
+        "Autenticación dedicada en comunicaciones-dispatch: cabecera x-pedidos-dispatch-secret requerida",
+        "Llamada con anon_key únicamente rechazada con HTTP 401",
+        "Llamada con secreto inverso N8N_INTEGRATION_SECRET rechazada con HTTP 403",
+        "Llamada con secreto incorrecto rechazada con HTTP 403 mediante comparación en tiempo constante",
+        "Workflow n8n S5zEKvdsTHPmUQWm configurado con cabecera x-pedidos-dispatch-secret en nodo HTTP"
       ]
     },
     {
@@ -380,7 +391,7 @@
         "weweb_workflow_updated_at": "2026-09-08T04:35:18.000Z",
         "pedidos_workflow_id": "S5zEKvdsTHPmUQWm",
         "pedidos_workflow_active": true,
-        "pedidos_workflow_updated_at": "2026-09-14T02:07:16.151Z"
+        "pedidos_workflow_updated_at": "2026-09-14T02:44:21.776Z"
       },
       "assertions": [
         "30 migraciones SQL versionadas y aplicadas tanto en Supabase Local como en Supabase Cloud",

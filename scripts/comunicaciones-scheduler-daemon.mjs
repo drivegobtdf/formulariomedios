@@ -201,7 +201,8 @@ async function main() {
     console.log('[SCHEDULER] Single run completed:', result);
     isRunning = false;
     updateStatusFile({ status: 'completed_once', completed_at: new Date().toISOString() });
-    process.exit(0);
+    process.exitCode = 0;
+    return;
   }
 
   // Continuous loop

@@ -2,7 +2,7 @@
 
 **Sistema:** PEDIDOS — Secretaría de Medios  
 **Revisión Contractual:** 3.1  
-**Fecha / Hora:** 2026-09-14T02:14:48.958Z  
+**Fecha / Hora:** 2026-09-14T02:49:50.973Z  
 **Entorno:** Supabase Cloud (sa-east-1 / São Paulo) (`yqfkzgqvezarzhlwiilo`)  
 **Resultado Global:** **PASS**  
 
@@ -100,7 +100,7 @@
 
 ### CRIT-05-INFO-RESPONSE: SRS-INF-004: Respuesta a Info con Texto, Enlaces Genéricos y Adjuntos — [PASS]
 
-- [x] **5.1 Edge Function solicitante-info-respond acepta texto, enlaces genéricos y archivos** _({"estado":"respondida","success":true,"solicitud_id":"a9dde748-beec-4fa6-9415-afbcb5772238"})_
+- [x] **5.1 Edge Function solicitante-info-respond acepta texto, enlaces genéricos y archivos** _({"estado":"respondida","success":true,"solicitud_id":"fe64aea4-e794-44d0-b9e8-aee0fd63d660"})_
 - [x] **5.2 Archivo adjuntado en respuesta queda vinculado a archivo_pedido** 
 - [x] **5.3 Enlace externo genérico queda registrado en enlaces_material** 
 

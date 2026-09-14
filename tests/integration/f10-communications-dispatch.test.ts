@@ -355,7 +355,10 @@ describe('F10 Communications Outbox, Templates & Dispatcher - Integration Tests'
   });
 
   describe('4. Edge Function Handler: comunicaciones-dispatch (REQ-F10-05, REQ-F10-07)', () => {
-    it('dispatches communications and handles HTTP responses', async () => {
+    it('dispatches communications and handles HTTP responses with valid auth', async () => {
+      const testDispatchSecret = 'test_dispatch_secret_32_bytes_long_fixture!';
+      process.env.N8N_DISPATCH_SECRET = testDispatchSecret;
+
       // Clear previous items to isolate test item
       await serviceClient
         .from('comunicaciones_pedido')
@@ -397,7 +400,10 @@ describe('F10 Communications Outbox, Templates & Dispatcher - Integration Tests'
 
         const req = new Request('http://localhost/comunicaciones-dispatch', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-pedidos-dispatch-secret': testDispatchSecret,
+          },
           body: JSON.stringify({ batch_size: 100 }),
         });
 
@@ -405,7 +411,6 @@ describe('F10 Communications Outbox, Templates & Dispatcher - Integration Tests'
         expect(res.status).toBe(200);
 
         const data = await res.json();
-        console.log('TEST 4 DISPATCH DATA:', JSON.stringify(data, null, 2));
         expect(data.success).toBe(true);
         expect(data.processed).toBeGreaterThanOrEqual(1);
 
@@ -425,6 +430,207 @@ describe('F10 Communications Outbox, Templates & Dispatcher - Integration Tests'
       } finally {
         global.fetch = originalFetch;
       }
+    });
+  });
+
+  describe('5. Dispatcher Dedicated Authentication & Security Hardening (Tests A–G)', () => {
+    const validSecret = 'f10_dedicated_dispatch_secret_fixture_value_123';
+    const integrationSecret = 'f10_reverse_n8n_integration_secret_fixture_456';
+
+    beforeAll(() => {
+      process.env.N8N_DISPATCH_SECRET = validSecret;
+      process.env.N8N_INTEGRATION_SECRET = integrationSecret;
+    });
+
+    it('Test A: rejects invocation without authentication header with 401 and zero mutations', async () => {
+      // Insert a pending item
+      const pendingId = crypto.randomUUID();
+      await serviceClient.from('comunicaciones_pedido').insert({
+        id: pendingId,
+        pedido_id: pedido1Id,
+        envio_id: envioId,
+        tipo_comunicacion: 'informacion_faltante',
+        destinatario_email: testEmail,
+        estado: 'pendiente',
+        attempts: 0,
+        max_attempts: 3,
+        idempotency_key: `test_a:${pendingId}`,
+        payload: { test: 'test_a' },
+      });
+
+      const req = new Request('http://localhost/comunicaciones-dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batch_size: 10 }),
+      });
+
+      const res = await comunicacionesDispatchHandler(req);
+      expect(res.status).toBe(401);
+      const json = await res.json();
+      expect(json.error).toBe('UNAUTHORIZED');
+
+      // Verify zero DB modifications (item still pendiente, attempts = 0, claim_id = null)
+      const { data: item } = await serviceClient
+        .from('comunicaciones_pedido')
+        .select('estado, attempts, claim_id')
+        .eq('id', pendingId)
+        .single();
+
+      expect(item?.estado).toBe('pendiente');
+      expect(item?.attempts).toBe(0);
+      expect(item?.claim_id).toBeNull();
+    });
+
+    it('Test B: rejects invocation with empty header with 401 and zero mutations', async () => {
+      const pendingId = crypto.randomUUID();
+      await serviceClient.from('comunicaciones_pedido').insert({
+        id: pendingId,
+        pedido_id: pedido1Id,
+        envio_id: envioId,
+        tipo_comunicacion: 'informacion_faltante',
+        destinatario_email: testEmail,
+        estado: 'pendiente',
+        attempts: 0,
+        max_attempts: 3,
+        idempotency_key: `test_b:${pendingId}`,
+        payload: { test: 'test_b' },
+      });
+
+      const req = new Request('http://localhost/comunicaciones-dispatch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-pedidos-dispatch-secret': '   ',
+        },
+        body: JSON.stringify({ batch_size: 10 }),
+      });
+
+      const res = await comunicacionesDispatchHandler(req);
+      expect(res.status).toBe(401);
+      const json = await res.json();
+      expect(json.error).toBe('UNAUTHORIZED');
+
+      const { data: item } = await serviceClient
+        .from('comunicaciones_pedido')
+        .select('estado, attempts, claim_id')
+        .eq('id', pendingId)
+        .single();
+
+      expect(item?.estado).toBe('pendiente');
+      expect(item?.attempts).toBe(0);
+      expect(item?.claim_id).toBeNull();
+    });
+
+    it('Test C: rejects invocation with wrong secret with 403 and zero mutations', async () => {
+      const pendingId = crypto.randomUUID();
+      await serviceClient.from('comunicaciones_pedido').insert({
+        id: pendingId,
+        pedido_id: pedido1Id,
+        envio_id: envioId,
+        tipo_comunicacion: 'informacion_faltante',
+        destinatario_email: testEmail,
+        estado: 'pendiente',
+        attempts: 0,
+        max_attempts: 3,
+        idempotency_key: `test_c:${pendingId}`,
+        payload: { test: 'test_c' },
+      });
+
+      const req = new Request('http://localhost/comunicaciones-dispatch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-pedidos-dispatch-secret': 'incorrect_malicious_secret_value',
+        },
+        body: JSON.stringify({ batch_size: 10 }),
+      });
+
+      const res = await comunicacionesDispatchHandler(req);
+      expect(res.status).toBe(403);
+      const json = await res.json();
+      expect(json.error).toBe('FORBIDDEN');
+
+      const { data: item } = await serviceClient
+        .from('comunicaciones_pedido')
+        .select('estado, attempts, claim_id')
+        .eq('id', pendingId)
+        .single();
+
+      expect(item?.estado).toBe('pendiente');
+      expect(item?.attempts).toBe(0);
+      expect(item?.claim_id).toBeNull();
+    });
+
+    it('Test D: rejects invocation with reverse N8N_INTEGRATION_SECRET with 403', async () => {
+      const req = new Request('http://localhost/comunicaciones-dispatch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-pedidos-dispatch-secret': integrationSecret,
+        },
+        body: JSON.stringify({ batch_size: 10 }),
+      });
+
+      const res = await comunicacionesDispatchHandler(req);
+      expect(res.status).toBe(403);
+      const json = await res.json();
+      expect(json.error).toBe('FORBIDDEN');
+    });
+
+    it('Test E: rejects invocation with Supabase anon key only without dispatch header with 401', async () => {
+      const req = new Request('http://localhost/comunicaciones-dispatch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${LOCAL_ANON_KEY}`,
+          apikey: LOCAL_ANON_KEY,
+        },
+        body: JSON.stringify({ batch_size: 10 }),
+      });
+
+      const res = await comunicacionesDispatchHandler(req);
+      expect(res.status).toBe(401);
+      const json = await res.json();
+      expect(json.error).toBe('UNAUTHORIZED');
+    });
+
+    it('Test F: returns 500 CONFIGURATION_ERROR if server secret is not configured', async () => {
+      const originalSecret = process.env.N8N_DISPATCH_SECRET;
+      delete process.env.N8N_DISPATCH_SECRET;
+
+      try {
+        const req = new Request('http://localhost/comunicaciones-dispatch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-pedidos-dispatch-secret': 'some_secret',
+          },
+          body: JSON.stringify({ batch_size: 10 }),
+        });
+
+        const res = await comunicacionesDispatchHandler(req);
+        expect(res.status).toBe(500);
+        const json = await res.json();
+        expect(json.error).toBe('CONFIGURATION_ERROR');
+      } finally {
+        process.env.N8N_DISPATCH_SECRET = originalSecret;
+      }
+    });
+
+    it('Test G: accepts authorized request with valid secret with 200', async () => {
+      const req = new Request('http://localhost/comunicaciones-dispatch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-pedidos-dispatch-secret': validSecret,
+        },
+        body: JSON.stringify({ batch_size: 10 }),
+      });
+
+      const res = await comunicacionesDispatchHandler(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
     });
   });
 });

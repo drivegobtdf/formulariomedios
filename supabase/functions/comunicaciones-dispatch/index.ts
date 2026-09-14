@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
-import { getCorsHeaders, getSupabaseConfig, getEnv, decryptTokenEnvelope } from '../_shared/security.ts';
+import { getCorsHeaders, getSupabaseConfig, getEnv, decryptTokenEnvelope, timingSafeEqualString } from '../_shared/security.ts';
 import { renderEmailForCommunication } from '../_shared/emailTemplates.ts';
 
 interface ClaimedCommItem {
@@ -25,6 +25,39 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(
       JSON.stringify({ error: 'METHOD_NOT_ALLOWED', message: 'Método no permitido. Utilice POST o GET' }),
       { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // 0. Autenticación dedicada del despachador (Pre-Operation Guard)
+  const serverDispatchSecret = getEnv('N8N_DISPATCH_SECRET');
+  if (!serverDispatchSecret || serverDispatchSecret.trim().length === 0) {
+    return new Response(
+      JSON.stringify({
+        error: 'CONFIGURATION_ERROR',
+        message: 'N8N_DISPATCH_SECRET no está configurado en el servidor.',
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const clientDispatchSecret = req.headers.get('x-pedidos-dispatch-secret');
+  if (!clientDispatchSecret || clientDispatchSecret.trim().length === 0) {
+    return new Response(
+      JSON.stringify({
+        error: 'UNAUTHORIZED',
+        message: 'Cabecera x-pedidos-dispatch-secret requerida para invocar el despachador.',
+      }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (!timingSafeEqualString(clientDispatchSecret, serverDispatchSecret)) {
+    return new Response(
+      JSON.stringify({
+        error: 'FORBIDDEN',
+        message: 'Secreto de autorización de despacho inválido.',
+      }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 

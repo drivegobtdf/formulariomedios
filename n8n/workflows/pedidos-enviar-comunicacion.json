@@ -292,6 +292,10 @@
               "value": "application/json"
             },
             {
+              "name": "x-pedidos-dispatch-secret",
+              "value": "<N8N_DISPATCH_SECRET_PLACEHOLDER>"
+            },
+            {
               "name": "Authorization",
               "value": "Bearer <SUPABASE_ANON_KEY_PLACEHOLDER>"
             }

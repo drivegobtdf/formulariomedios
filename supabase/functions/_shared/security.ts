@@ -45,7 +45,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0] || 'http://localhost:5173',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-capability-token, x-solicitante-session',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-capability-token, x-solicitante-session, x-pedidos-dispatch-secret',
     'Access-Control-Expose-Headers': 'Content-Disposition, Content-Type, Content-Length, Cache-Control, X-Content-Type-Options',
     'Access-Control-Max-Age': '86400',
   };
@@ -208,3 +208,27 @@ export function decryptTokenEnvelope(
 
   return decrypted;
 }
+
+/**
+ * Compara dos cadenas de texto de manera segura en tiempo constante contra ataques de temporización (timing attacks)
+ */
+export function timingSafeEqualString(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const encoder = new TextEncoder();
+  const aBuf = encoder.encode(a);
+  const bBuf = encoder.encode(b);
+  if (aBuf.byteLength !== bBuf.byteLength) return false;
+  if (typeof crypto !== 'undefined' && typeof (crypto as any).timingSafeEqual === 'function') {
+    try {
+      return (crypto as any).timingSafeEqual(aBuf, bBuf);
+    } catch {
+      // fallback
+    }
+  }
+  let mismatch = 0;
+  for (let i = 0; i < aBuf.byteLength; i++) {
+    mismatch |= aBuf[i] ^ bBuf[i];
+  }
+  return mismatch === 0;
+}
+

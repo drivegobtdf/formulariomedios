@@ -1,8 +1,8 @@
 {
-  "daemon_pid": 22152,
+  "daemon_pid": 44292,
   "status": "completed_once",
-  "started_at": "2026-09-14T02:14:33.251Z",
-  "last_heartbeat": "2026-09-14T02:14:35.263Z",
+  "started_at": "2026-09-14T02:48:04.967Z",
+  "last_heartbeat": "2026-09-14T02:48:08.752Z",
   "interval_ms": 5000,
   "batch_size": 10,
   "lease_seconds": 300,
@@ -14,5 +14,5 @@
     "total_uncertain": 0,
     "total_swept": 0
   },
-  "completed_at": "2026-09-14T02:14:35.263Z"
+  "completed_at": "2026-09-14T02:48:08.752Z"
 }

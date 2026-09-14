@@ -5,7 +5,7 @@
     "version_revision": "3.1",
     "entorno": "Supabase Cloud (sa-east-1 / São Paulo)",
     "project_ref": "yqfkzgqvezarzhlwiilo",
-    "timestamp": "2026-09-14T02:14:48.958Z",
+    "timestamp": "2026-09-14T02:49:50.973Z",
     "overall_status": "PASS"
   },
   "criterios": {
@@ -170,7 +170,7 @@
         {
           "name": "5.1 Edge Function solicitante-info-respond acepta texto, enlaces genéricos y archivos",
           "status": "PASS",
-          "details": "{\"estado\":\"respondida\",\"success\":true,\"solicitud_id\":\"a9dde748-beec-4fa6-9415-afbcb5772238\"}"
+          "details": "{\"estado\":\"respondida\",\"success\":true,\"solicitud_id\":\"fe64aea4-e794-44d0-b9e8-aee0fd63d660\"}"
         },
         {
           "name": "5.2 Archivo adjuntado en respuesta queda vinculado a archivo_pedido",

@@ -76,8 +76,9 @@ function getN8nConfig() {
   }
 
   const integrationSecret = env.N8N_INTEGRATION_SECRET || crypto.createHash('sha256').update(n8nApiKey + ':pedidos-integration-salt').digest('hex');
+  const dispatchSecret = env.N8N_DISPATCH_SECRET || '';
 
-  return { n8nBaseUrl, n8nApiKey, integrationSecret };
+  return { n8nBaseUrl, n8nApiKey, integrationSecret, dispatchSecret };
 }
 
 function getGitMetadata() {
@@ -188,7 +189,7 @@ async function runF10ClosureControl() {
   console.log('================================================================\n');
 
   const { anonKey, serviceKey } = getCloudKeysInMemory();
-  const { n8nBaseUrl, n8nApiKey, integrationSecret } = getN8nConfig();
+  const { n8nBaseUrl, n8nApiKey, integrationSecret, dispatchSecret } = getN8nConfig();
   const gitMeta = getGitMetadata();
 
   const serviceClient = createClient(SUPABASE_PROJECT_URL, serviceKey, {
@@ -1003,20 +1004,122 @@ async function runF10ClosureControl() {
       throw new Error('Usuario anónimo pudo ejecutar comunicacion_reconcile_uncertain');
     }
 
+    // 2. Comprobar autorización dedicada del despachador Edge Function (comunicaciones-dispatch)
+    const edgeDispatchUrl = `${SUPABASE_PROJECT_URL}/functions/v1/comunicaciones-dispatch`;
+
+    // A. Llamada sin cabecera de autenticación -> 401
+    const resNoAuth = await fetch(edgeDispatchUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch_size: 1 }),
+    });
+    if (resNoAuth.status !== 401) {
+      throw new Error(`Edge Function no rechazó llamada sin cabecera con 401 (obtenido ${resNoAuth.status})`);
+    }
+
+    // B. Llamada con cabecera vacía -> 401
+    const resEmptyAuth = await fetch(edgeDispatchUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-pedidos-dispatch-secret': '' },
+      body: JSON.stringify({ batch_size: 1 }),
+    });
+    if (resEmptyAuth.status !== 401) {
+      throw new Error(`Edge Function no rechazó cabecera vacía con 401 (obtenido ${resEmptyAuth.status})`);
+    }
+
+    // C. Llamada con secreto incorrecto -> 403
+    const resWrongAuth = await fetch(edgeDispatchUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-pedidos-dispatch-secret': 'invalid_secret_fixture_999' },
+      body: JSON.stringify({ batch_size: 1 }),
+    });
+    if (resWrongAuth.status !== 403) {
+      throw new Error(`Edge Function no rechazó secreto incorrecto con 403 (obtenido ${resWrongAuth.status})`);
+    }
+
+    // D. Llamada con N8N_INTEGRATION_SECRET (secreto inverso) -> 403
+    const resReverseAuth = await fetch(edgeDispatchUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-pedidos-dispatch-secret': integrationSecret },
+      body: JSON.stringify({ batch_size: 1 }),
+    });
+    if (resReverseAuth.status !== 403) {
+      throw new Error(`Edge Function no rechazó secreto inverso N8N_INTEGRATION_SECRET con 403 (obtenido ${resReverseAuth.status})`);
+    }
+
+    // E. Llamada únicamente con anon_key de Supabase -> 401
+    const resAnonOnly = await fetch(edgeDispatchUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${anonKey}`,
+        apikey: anonKey,
+      },
+      body: JSON.stringify({ batch_size: 1 }),
+    });
+    if (resAnonOnly.status !== 401) {
+      throw new Error(`Edge Function permitió ejecución con anon_key de Supabase únicamente (obtenido ${resAnonOnly.status})`);
+    }
+
+    // F. Llamada autorizada con N8N_DISPATCH_SECRET -> 200
+    if (!dispatchSecret) {
+      throw new Error('N8N_DISPATCH_SECRET no está definido en el archivo de entorno privado');
+    }
+    const resAuthorized = await fetch(edgeDispatchUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-pedidos-dispatch-secret': dispatchSecret,
+      },
+      body: JSON.stringify({ batch_size: 5 }),
+    });
+    if (resAuthorized.status !== 200) {
+      throw new Error(`Edge Function rechazó llamada autorizada con N8N_DISPATCH_SECRET (obtenido ${resAuthorized.status})`);
+    }
+
+    // G. Comprobar que el workflow n8n S5zEKvdsTHPmUQWm tiene configurada la cabecera x-pedidos-dispatch-secret
+    const n8nWfRes = await fetch(`${n8nBaseUrl}/api/v1/workflows/S5zEKvdsTHPmUQWm`, {
+      headers: { 'X-N8N-API-KEY': n8nApiKey },
+    });
+    const n8nWf = await n8nWfRes.json();
+    const httpNode = n8nWf.nodes.find((n) => n.name === 'Invocar despachador Edge Function');
+    const headerParams = httpNode?.parameters?.headerParameters?.parameters || [];
+    const hasDispatchHeader = headerParams.some(
+      (p) => p.name === 'x-pedidos-dispatch-secret' && p.value === dispatchSecret
+    );
+    if (!hasDispatchHeader) {
+      throw new Error('El workflow n8n S5zEKvdsTHPmUQWm no tiene configurada la cabecera x-pedidos-dispatch-secret en el nodo HTTP');
+    }
+
     addCriteria(
       'C12-POLP-SECURITY-BOUNDARIES',
-      'Límites de seguridad PoLP: RPCs restringidos a service_role y denegación estricta 42501 para anon/auth',
+      'Límites de seguridad PoLP: RPCs restringidos a service_role y autenticación dedicada del despachador (N8N_DISPATCH_SECRET)',
       true,
-      'Todos los RPCs de control de cola, reclamo, barrido, reconciliación y testing deniegan acceso a usuarios anónimos con 42501.',
-      { anon_claim_batch: '42501', anon_sweep: '42501', anon_reconcile: '42501' },
+      'Todos los RPCs administrativos deniegan acceso con 42501. Edge Function comunicaciones-dispatch exige x-pedidos-dispatch-secret, rechaza anon_key/secreto inverso con 401/403 y n8n scheduler configurado con el secreto dedicado.',
+      {
+        anon_claim_batch: '42501',
+        anon_sweep: '42501',
+        anon_reconcile: '42501',
+        dispatch_no_auth: resNoAuth.status,
+        dispatch_empty_auth: resEmptyAuth.status,
+        dispatch_wrong_secret: resWrongAuth.status,
+        dispatch_reverse_secret: resReverseAuth.status,
+        dispatch_anon_only: resAnonOnly.status,
+        dispatch_authorized: resAuthorized.status,
+        n8n_workflow_dispatch_header_configured: true,
+      },
       [
         'REVOKE ALL ON FUNCTION ... FROM PUBLIC, anon, authenticated aplicado a todos los RPCs administrativos',
-        'GRANT EXECUTE restringido exclusivamente a service_role',
-        'Intentos de ejecución por roles no privilegiados retornan error 42501 (permission denied)'
+        'GRANT EXECUTE restringido exclusivamente a service_role (error 42501)',
+        'Autenticación dedicada en comunicaciones-dispatch: cabecera x-pedidos-dispatch-secret requerida',
+        'Llamada con anon_key únicamente rechazada con HTTP 401',
+        'Llamada con secreto inverso N8N_INTEGRATION_SECRET rechazada con HTTP 403',
+        'Llamada con secreto incorrecto rechazada con HTTP 403 mediante comparación en tiempo constante',
+        'Workflow n8n S5zEKvdsTHPmUQWm configurado con cabecera x-pedidos-dispatch-secret en nodo HTTP'
       ]
     );
   } catch (err) {
-    addCriteria('C12-POLP-SECURITY-BOUNDARIES', 'Límites de seguridad PoLP', false, err.message, null, []);
+    addCriteria('C12-POLP-SECURITY-BOUNDARIES', 'Límites de seguridad PoLP y autenticación del despachador', false, err.message, null, []);
   }
 
   // ===========================================================================
