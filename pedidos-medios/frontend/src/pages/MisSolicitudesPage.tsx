@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   solicitanteRequestAccess,
   solicitanteSessionExchange,
@@ -11,37 +10,47 @@ import {
   SolicitantePedidoDetailDTO,
 } from '../services/trackingApi';
 
-export const MisSolicitudesPage: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+function extractUrlToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  // 1. Check URL Hash: #token=... or #access_token=...
+  if (window.location.hash) {
+    const rawHash = window.location.hash.replace(/^#\/?/, '');
+    const hashParams = new URLSearchParams(rawHash);
+    const hashToken = hashParams.get('token') || hashParams.get('access_token');
+    if (hashToken && hashToken.trim()) return hashToken.trim();
+  }
+  // 2. Check URL Search Query: ?token=... or ?access_token=...
+  if (window.location.search) {
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryToken = searchParams.get('token') || searchParams.get('access_token');
+    if (queryToken && queryToken.trim()) return queryToken.trim();
+  }
+  return null;
+}
 
-  // Authentication & Session State
-  const [email, setEmail] = useState('');
-  const [sessionToken, setSessionToken] = useState<string | null>(() => {
-    return sessionStorage.getItem('solicitante_session_token') || null;
+type ViewMode = 'INITIAL_EXCHANGE' | 'REQUEST_FORM' | 'AUTHENTICATED' | 'EXCHANGE_ERROR';
+
+export const MisSolicitudesPage: React.FC = () => {
+  // Synchronous extraction of token on initial load
+  const initialToken = useMemo(() => extractUrlToken(), []);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    return initialToken ? 'INITIAL_EXCHANGE' : 'REQUEST_FORM';
   });
-  const [sessionEmail, setSessionEmail] = useState<string | null>(() => {
-    return sessionStorage.getItem('solicitante_session_email') || null;
-  });
+
+  // Authentication & Session State (STRICTLY IN MEMORY ONLY - NO BROWSER STORAGE)
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const exchangedRef = useRef(false);
 
   // Request Link State
+  const [email, setEmail] = useState('');
   const [requestLoading, setRequestLoading] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
 
-  // Exchange State
-  const [exchangeLoading, setExchangeLoading] = useState(false);
+  // Exchange Error State
   const [exchangeError, setExchangeError] = useState<string | null>(null);
-  const exchangingTokenRef = React.useRef<string | null>(null);
-
-  // Cooldown countdown timer
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const interval = setInterval(() => {
-      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [cooldown]);
 
   // Pedidos List State
   const [pedidos, setPedidos] = useState<SolicitantePedidoListItem[]>([]);
@@ -61,24 +70,95 @@ export const MisSolicitudesPage: React.FC = () => {
   const [responseError, setResponseError] = useState<string | null>(null);
   const [responseSuccess, setResponseSuccess] = useState<string | null>(null);
 
-  // Automatic Magic Token Exchange on URL query param (?token=...) or URL hash (#token=...)
+  // Cooldown countdown timer
   useEffect(() => {
-    let hashToken: string | null = null;
-    if (typeof window !== 'undefined' && window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.replace(/^#\/?/, ''));
-      hashToken = hashParams.get('token') || hashParams.get('access_token');
-    }
-    const magicToken = searchParams.get('token') || searchParams.get('access_token') || hashToken;
-    if (magicToken && !sessionToken && exchangingTokenRef.current !== magicToken) {
-      handleExchange(magicToken);
-    }
-  }, [searchParams, sessionToken]);
+    if (cooldown <= 0) return;
+    const interval = setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldown]);
 
-  // Load Pedidos when Session Token is present
-  useEffect(() => {
-    if (sessionToken) {
-      loadPedidos(sessionToken);
+  const loadPedidos = async (st: string, fallbackEmail?: string) => {
+    setLoadingPedidos(true);
+    setPedidosError(null);
+    try {
+      const res = await solicitanteGetPedidos(st);
+      setPedidos(res.pedidos || []);
+      if (res.correo) {
+        setSessionEmail(res.correo);
+      } else if (fallbackEmail && !sessionEmail) {
+        setSessionEmail(fallbackEmail);
+      }
+    } catch (err: any) {
+      if (err.status === 401 || err.code === 'SESSION_INVALID') {
+        await handleLogout();
+        setExchangeError('Su sesión ha expirado o es inválida. Por favor solicite un nuevo enlace de acceso.');
+        setViewMode('EXCHANGE_ERROR');
+      } else {
+        setPedidosError(err.message || 'Error al cargar el listado de pedidos.');
+      }
+    } finally {
+      setLoadingPedidos(false);
     }
+  };
+
+  const handlePerformExchange = async (token: string) => {
+    if (exchangedRef.current) return;
+    exchangedRef.current = true;
+    setViewMode('INITIAL_EXCHANGE');
+
+    // Immediately sanitize browser address bar so raw token is never exposed in address bar/history
+    if (typeof window !== 'undefined' && (window.location.hash || window.location.search)) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
+    try {
+      const res = await solicitanteSessionExchange(token);
+      const resolvedEmail = res.correo || res.email || '';
+      setSessionToken(res.session_token);
+      setSessionEmail(resolvedEmail);
+      setViewMode('AUTHENTICATED');
+      await loadPedidos(res.session_token, resolvedEmail);
+    } catch (err: any) {
+      const code = err?.code || '';
+      let msg = 'El enlace de acceso es inválido o ha expirado. Por favor solicite un nuevo enlace.';
+      if (code === 'TOKEN_EXPIRED') {
+        msg = 'Este enlace de acceso ha expirado. Por favor solicite un nuevo enlace para acceder.';
+      } else if (code === 'TOKEN_ALREADY_USED') {
+        msg = 'Este enlace de acceso ya ha sido utilizado previamente. Por favor solicite un nuevo enlace.';
+      } else if (code === 'TOKEN_NOT_FOUND' || code === 'TOKEN_INVALID') {
+        msg = 'El enlace de acceso no es válido o no existe. Por favor solicite un nuevo enlace.';
+      } else if (err?.message) {
+        msg = err.message;
+      }
+      setExchangeError(msg);
+      setViewMode('EXCHANGE_ERROR');
+    }
+  };
+
+  // Automatic Magic Token Exchange on Initial Load
+  useEffect(() => {
+    if (initialToken) {
+      handlePerformExchange(initialToken);
+    }
+  }, [initialToken]);
+
+  // Support in-page hashchange / popstate events
+  useEffect(() => {
+    const handleHashOrPopState = () => {
+      const currentToken = extractUrlToken();
+      if (currentToken && !sessionToken) {
+        exchangedRef.current = false;
+        handlePerformExchange(currentToken);
+      }
+    };
+    window.addEventListener('hashchange', handleHashOrPopState);
+    window.addEventListener('popstate', handleHashOrPopState);
+    return () => {
+      window.removeEventListener('hashchange', handleHashOrPopState);
+      window.removeEventListener('popstate', handleHashOrPopState);
+    };
   }, [sessionToken]);
 
   const handleRequestAccess = async (e: React.FormEvent) => {
@@ -105,70 +185,7 @@ export const MisSolicitudesPage: React.FC = () => {
     }
   };
 
-  const handleExchange = async (token: string) => {
-    if (exchangingTokenRef.current === token) return;
-    exchangingTokenRef.current = token;
-    setExchangeLoading(true);
-    setExchangeError(null);
 
-    // Clean hash and query params immediately to prevent repeat triggers on fast re-renders
-    if (typeof window !== 'undefined' && window.location.hash) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
-    if (searchParams.get('token') || searchParams.get('access_token')) {
-      setSearchParams({});
-    }
-
-    try {
-      const res = await solicitanteSessionExchange(token);
-      setSessionToken(res.session_token);
-      setSessionEmail(res.email);
-      sessionStorage.setItem('solicitante_session_token', res.session_token);
-      sessionStorage.setItem('solicitante_session_email', res.email);
-      setExchangeError(null);
-    } catch (err: any) {
-      // If we already have a valid session established in storage, do not override with error
-      if (sessionStorage.getItem('solicitante_session_token')) {
-        return;
-      }
-      const code = err?.code || '';
-      let msg = 'El enlace de acceso es inválido o ha expirado. Por favor solicite un nuevo enlace.';
-      if (code === 'TOKEN_EXPIRED') {
-        msg = 'Este enlace de acceso ha expirado. Por favor solicite un nuevo enlace para acceder.';
-      } else if (code === 'TOKEN_ALREADY_USED') {
-        msg = 'Este enlace de acceso ya ha sido utilizado previamente. Por favor solicite un nuevo enlace.';
-      } else if (code === 'TOKEN_NOT_FOUND' || code === 'TOKEN_INVALID') {
-        msg = 'El enlace de acceso no es válido o no existe. Por favor solicite un nuevo enlace.';
-      } else if (err?.message) {
-        msg = err.message;
-      }
-      setExchangeError(msg);
-    } finally {
-      setExchangeLoading(false);
-    }
-  };
-
-  const loadPedidos = async (st: string) => {
-    setLoadingPedidos(true);
-    setPedidosError(null);
-    try {
-      const res = await solicitanteGetPedidos(st);
-      setPedidos(res.pedidos || []);
-      if (res.correo) {
-        setSessionEmail(res.correo);
-        sessionStorage.setItem('solicitante_session_email', res.correo);
-      }
-    } catch (err: any) {
-      if (err.status === 401 || err.code === 'SESSION_INVALID') {
-        handleLogout();
-        setExchangeError('Su sesión ha expirado o es inválida. Por favor solicite un nuevo enlace de acceso.');
-      } else {
-        setPedidosError(err.message || 'Error al cargar el listado de pedidos.');
-      }
-    } finally {
-      setLoadingPedidos(false);
-    }
-  };
 
   const handleSelectPedido = async (pedidoRef: string) => {
     if (!sessionToken) return;
@@ -223,20 +240,19 @@ export const MisSolicitudesPage: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    if (sessionToken) {
+    const tokenToRevoke = sessionToken;
+    setSessionToken(null);
+    setSessionEmail(null);
+    setPedidos([]);
+    setSelectedPedido(null);
+    setViewMode('REQUEST_FORM');
+    if (tokenToRevoke) {
       try {
-        await solicitanteSessionRevoke(sessionToken);
+        await solicitanteSessionRevoke(tokenToRevoke);
       } catch {
         // Ignore logout network error
       }
     }
-    setSessionToken(null);
-    setSessionEmail(null);
-    sessionStorage.removeItem('solicitante_session_token');
-    sessionStorage.removeItem('solicitante_session_email');
-    exchangingTokenRef.current = null;
-    setPedidos([]);
-    setSelectedPedido(null);
   };
 
   const getEstadoBadge = (estado: string) => {
@@ -279,11 +295,11 @@ export const MisSolicitudesPage: React.FC = () => {
           </p>
         </div>
 
-        {sessionToken && sessionEmail && (
+        {sessionToken && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: '#f8fafc', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
             <div>
               <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', fontWeight: 600 }}>Sesión Verificada</span>
-              <strong style={{ fontSize: '0.875rem', color: '#0f172a' }}>{sessionEmail}</strong>
+              <strong style={{ fontSize: '0.875rem', color: '#0f172a' }}>{sessionEmail || 'Solicitante'}</strong>
             </div>
             <button
               type="button"
@@ -305,121 +321,135 @@ export const MisSolicitudesPage: React.FC = () => {
         )}
       </div>
 
-      {/* VIEW 1: NO ACTIVE SESSION -> Request Email Form / Exchange In Progress */}
-      {!sessionToken && (
+      {/* VIEW 1: INITIAL EXCHANGE IN PROGRESS */}
+      {viewMode === 'INITIAL_EXCHANGE' && (
         <div style={{ maxWidth: '520px', margin: '2rem auto' }}>
-          {exchangeLoading && (
-            <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }}>
-              <div style={{ display: 'inline-block', width: '2.5rem', height: '2.5rem', border: '3px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              <h3 style={{ marginTop: '1rem', color: '#1e293b', fontSize: '1.125rem' }}>Verificando enlace seguro...</h3>
-              <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Iniciando sesión segura de solicitante.</p>
-            </div>
-          )}
-
-          {!exchangeLoading && (
-            <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '3.5rem', height: '3.5rem', borderRadius: '50%', backgroundColor: '#eff6ff', color: '#2563eb', fontSize: '1.5rem', marginBottom: '1rem' }}>
-                  ✉️
-                </div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
-                  Ingreso sin Contraseña
-                </h2>
-                <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>
-                  Ingrese el correo electrónico que utilizó al enviar sus pedidos. Le enviaremos un enlace seguro directo a su bandeja de entrada.
-                </p>
-              </div>
-
-              {exchangeError && (
-                <div style={{ padding: '0.875rem 1rem', backgroundColor: '#fee2e2', border: '1px solid #f87171', borderRadius: '0.5rem', color: '#991b1b', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
-                  <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Aviso de Acceso</div>
-                  <div style={{ marginBottom: '0.5rem' }}>{exchangeError}</div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExchangeError(null);
-                      exchangingTokenRef.current = null;
-                    }}
-                    style={{
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #dc2626',
-                      color: '#dc2626',
-                      padding: '0.35rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Solicitar un nuevo enlace
-                  </button>
-                </div>
-              )}
-
-              {requestMessage && (
-                <div style={{ padding: '1rem', backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '0.5rem', color: '#166534', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
-                  <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>Enlace de acceso enviado</p>
-                  <p style={{ margin: '0 0 0.25rem 0' }}>{requestMessage}</p>
-                  {cooldown > 0 && (
-                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: '#15803d' }}>
-                      Podrás solicitar otro enlace en {cooldown} segundos.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {requestError && (
-                <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fee2e2', border: '1px solid #f87171', borderRadius: '0.5rem', color: '#991b1b', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
-                  {requestError}
-                </div>
-              )}
-
-              <form onSubmit={handleRequestAccess}>
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <label htmlFor="solicitante-email" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
-                    Correo Electrónico
-                  </label>
-                  <input
-                    id="solicitante-email"
-                    type="email"
-                    required
-                    placeholder="usuario@ejemplo.gob.ar"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={{ width: '100%', padding: '0.625rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.95rem', boxSizing: 'border-box' }}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={requestLoading || cooldown > 0}
-                  style={{
-                    width: '100%',
-                    backgroundColor: cooldown > 0 ? '#94a3b8' : '#2563eb',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '0.75rem',
-                    borderRadius: '0.5rem',
-                    fontWeight: 600,
-                    fontSize: '0.95rem',
-                    cursor: requestLoading || cooldown > 0 ? 'not-allowed' : 'pointer',
-                    opacity: requestLoading ? 0.7 : 1,
-                  }}
-                >
-                  {requestLoading
-                    ? 'Enviando enlace...'
-                    : cooldown > 0
-                    ? `Podrás solicitar otro enlace en ${cooldown}s`
-                    : 'Recibir Enlace Seguro de Acceso'}
-                </button>
-              </form>
-            </div>
-          )}
+          <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'inline-block', width: '2.5rem', height: '2.5rem', border: '3px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            <h3 style={{ marginTop: '1rem', color: '#1e293b', fontSize: '1.125rem', fontWeight: 700 }}>Estamos abriendo tus solicitudes...</h3>
+            <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0.25rem 0 0 0' }}>Verificando enlace seguro de acceso.</p>
+          </div>
         </div>
       )}
 
-      {/* VIEW 2: ACTIVE SESSION -> List of Pedidos + Inspection Drawer */}
-      {sessionToken && (
+      {/* VIEW 2: EXCHANGE ERROR */}
+      {viewMode === 'EXCHANGE_ERROR' && (
+        <div style={{ maxWidth: '520px', margin: '2rem auto' }}>
+          <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '3.5rem', height: '3.5rem', borderRadius: '50%', backgroundColor: '#fef2f2', color: '#dc2626', fontSize: '1.5rem', marginBottom: '1rem' }}>
+                ⚠️
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+                Aviso de Acceso
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>
+                {exchangeError || 'El enlace de acceso es inválido o ha expirado.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setExchangeError(null);
+                setViewMode('REQUEST_FORM');
+              }}
+              style={{
+                width: '100%',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+              }}
+            >
+              Solicitar un nuevo enlace
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 3: REQUEST ACCESS EMAIL FORM */}
+      {viewMode === 'REQUEST_FORM' && (
+        <div style={{ maxWidth: '520px', margin: '2rem auto' }}>
+          <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '3.5rem', height: '3.5rem', borderRadius: '50%', backgroundColor: '#eff6ff', color: '#2563eb', fontSize: '1.5rem', marginBottom: '1rem' }}>
+                ✉️
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+                Ingreso sin Contraseña
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0 }}>
+                Ingrese el correo electrónico que utilizó al enviar sus pedidos. Le enviaremos un enlace seguro directo a su bandeja de entrada.
+              </p>
+            </div>
+
+            {requestMessage && (
+              <div style={{ padding: '1rem', backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '0.5rem', color: '#166534', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
+                <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>Enlace de acceso enviado</p>
+                <p style={{ margin: '0 0 0.25rem 0' }}>{requestMessage}</p>
+                {cooldown > 0 && (
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: '#15803d' }}>
+                    Podrás solicitar otro enlace en {cooldown} segundos.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {requestError && (
+              <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fee2e2', border: '1px solid #f87171', borderRadius: '0.5rem', color: '#991b1b', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
+                {requestError}
+              </div>
+            )}
+
+            <form onSubmit={handleRequestAccess}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label htmlFor="solicitante-email" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                  Correo Electrónico
+                </label>
+                <input
+                  id="solicitante-email"
+                  type="email"
+                  required
+                  placeholder="usuario@ejemplo.gob.ar"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{ width: '100%', padding: '0.625rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={requestLoading || cooldown > 0}
+                style={{
+                  width: '100%',
+                  backgroundColor: cooldown > 0 ? '#94a3b8' : '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                  cursor: requestLoading || cooldown > 0 ? 'not-allowed' : 'pointer',
+                  opacity: requestLoading ? 0.7 : 1,
+                }}
+              >
+                {requestLoading
+                  ? 'Enviando enlace...'
+                  : cooldown > 0
+                  ? `Podrás solicitar otro enlace en ${cooldown}s`
+                  : 'Recibir Enlace Seguro de Acceso'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 4: ACTIVE SESSION -> List of Pedidos + Inspection Drawer */}
+      {viewMode === 'AUTHENTICATED' && sessionToken && (
         <div>
           {/* Summary Indicators */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -430,7 +460,7 @@ export const MisSolicitudesPage: React.FC = () => {
             <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
               <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, textTransform: 'uppercase' }}>Requieren Información (48h)</span>
               <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#b45309', marginTop: '0.25rem' }}>
-                {pedidos.filter((p) => p.solicitudes_pendientes > 0).length}
+                {pedidos.filter((p) => (p.solicitudes_pendientes_count || p.solicitudes_pendientes || 0) > 0).length}
               </div>
             </div>
             <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
@@ -496,54 +526,57 @@ export const MisSolicitudesPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {pedidos.map((p) => (
-                      <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '1rem 1.25rem', fontWeight: 700, color: '#0f172a' }}>
-                          {p.pedido_visible}
-                        </td>
-                        <td style={{ padding: '1rem 1.25rem' }}>
-                          <div style={{ fontWeight: 600, color: '#334155' }}>{p.categoria_nombre}</div>
-                          <div style={{ color: '#64748b', fontSize: '0.8125rem' }}>{p.tipo_nombre}</div>
-                        </td>
-                        <td style={{ padding: '1rem 1.25rem', color: '#475569' }}>
-                          {new Date(p.created_at).toLocaleDateString()}
-                        </td>
-                        <td style={{ padding: '1rem 1.25rem' }}>
-                          {getEstadoBadge(p.estado)}
-                        </td>
-                        <td style={{ padding: '1rem 1.25rem' }}>
-                          {p.solicitudes_pendientes > 0 ? (
-                            <span style={{ backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 700 }}>
-                              ⚠️ Responder Info ({p.solicitudes_pendientes})
-                            </span>
-                          ) : p.tiene_entrega ? (
-                            <span style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 700 }}>
-                              ✓ Entrega Disponible
-                            </span>
-                          ) : (
-                            <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Al día</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleSelectPedido(p.pedido_visible)}
-                            style={{
-                              backgroundColor: '#eff6ff',
-                              color: '#2563eb',
-                              border: '1px solid #bfdbfe',
-                              padding: '0.35rem 0.75rem',
-                              borderRadius: '0.375rem',
-                              fontWeight: 600,
-                              fontSize: '0.8125rem',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Ver Detalle
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {pedidos.map((p) => {
+                      const pendingInfoCount = p.solicitudes_pendientes_count || p.solicitudes_pendientes || 0;
+                      return (
+                        <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '1rem 1.25rem', fontWeight: 700, color: '#0f172a' }}>
+                            {p.pedido_visible}
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem' }}>
+                            <div style={{ fontWeight: 600, color: '#334155' }}>{p.categoria_nombre}</div>
+                            <div style={{ color: '#64748b', fontSize: '0.8125rem' }}>{p.tipo_nombre}</div>
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem', color: '#475569' }}>
+                            {new Date(p.created_at).toLocaleDateString()}
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem' }}>
+                            {getEstadoBadge(p.estado)}
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem' }}>
+                            {pendingInfoCount > 0 ? (
+                              <span style={{ backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                                ⚠️ Responder Info ({pendingInfoCount})
+                              </span>
+                            ) : p.tiene_entrega ? (
+                              <span style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '0.2rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                                ✓ Entrega Disponible
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Al día</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectPedido(p.pedido_visible)}
+                              style={{
+                                backgroundColor: '#eff6ff',
+                                color: '#2563eb',
+                                border: '1px solid #bfdbfe',
+                                padding: '0.35rem 0.75rem',
+                                borderRadius: '0.375rem',
+                                fontWeight: 600,
+                                fontSize: '0.8125rem',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Ver Detalle
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -10,7 +10,8 @@ export interface SolicitantePedidoListItem {
   created_at: string;
   updated_at: string;
   tiene_entrega: boolean;
-  solicitudes_pendientes: number;
+  solicitudes_pendientes?: number;
+  solicitudes_pendientes_count?: number;
 }
 
 export interface SolicitantePedidosResponse {
@@ -89,12 +90,16 @@ export async function solicitanteRequestAccess(email: string): Promise<{ ok: boo
 }
 
 // 2. Exchange magic access token for opaque session token
-export async function solicitanteSessionExchange(token: string): Promise<{
-  ok: boolean;
+export interface SolicitanteExchangeResponse {
+  ok?: boolean;
+  success?: boolean;
   session_token: string;
+  correo: string;
   email: string;
   expires_at: string;
-}> {
+}
+
+export async function solicitanteSessionExchange(token: string): Promise<SolicitanteExchangeResponse> {
   const config = getPublicConfig();
   const endpoint = `${config.supabaseUrl}/functions/v1/solicitante-session-exchange`;
 
@@ -116,7 +121,13 @@ export async function solicitanteSessionExchange(token: string): Promise<{
     (err as any).status = res.status;
     throw err;
   }
-  return data;
+  const emailResolved = data.correo || data.email || '';
+  return {
+    ...data,
+    session_token: data.session_token,
+    correo: emailResolved,
+    email: emailResolved,
+  };
 }
 
 // 3. List all pedidos for authenticated solicitante session
