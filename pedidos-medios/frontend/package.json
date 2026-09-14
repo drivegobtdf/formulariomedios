@@ -11,7 +11,7 @@
     "build:preview": "tsc && vite build --mode preview",
     "build:preview:cloud": "tsc && vite build --mode preview-cloud",
     "preview": "vite preview",
-    "preview:cloud": "vite preview",
+    "preview:cloud": "npm run build:preview:cloud && vite preview",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
