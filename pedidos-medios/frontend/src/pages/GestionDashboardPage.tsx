@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { fetchPedidos, PedidoListItem } from '../services/gestionApi';
 
 export const GestionDashboardPage: React.FC = () => {
-  const { user, isObserver, isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const { user, isLoading: authLoading, isApproved, isAdmin, isObserver, signOut } = useAuth();
+
   const [pedidos, setPedidos] = useState<PedidoListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +21,7 @@ export const GestionDashboardPage: React.FC = () => {
   const pageSize = 15;
 
   const loadData = useCallback(async () => {
+    if (!isApproved) return;
     setLoading(true);
     setError(null);
     try {
@@ -32,31 +35,176 @@ export const GestionDashboardPage: React.FC = () => {
       setPedidos(pedidosData);
       setCurrentPage(1);
     } catch (err: unknown) {
-      setError((err as Error)?.message || 'Error cargando datos del tablero.');
+      setError('No se pudieron cargar las solicitudes del sistema. Por favor intente nuevamente.');
     } finally {
       setLoading(false);
     }
-  }, [tabFilter, searchTerm, user?.userId]);
+  }, [tabFilter, searchTerm, user?.userId, isApproved]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (isApproved) {
+      loadData();
+    }
+  }, [loadData, isApproved]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     loadData();
   };
 
-  // Canonical states for Kanban board
+  // Canonical states for Kanban board (4 active in a single horizontal row)
   const estadosKanban = ['Nuevo', 'En revisión', 'En proceso', 'Esperando información'];
-  const estadoTitles: Record<string, { label: string; color: string; bg: string }> = {
-    'Nuevo': { label: 'Nuevo', color: '#0369a1', bg: '#e0f2fe' },
-    'En revisión': { label: 'En Revisión', color: '#b45309', bg: '#fef3c7' },
-    'En proceso': { label: 'En Proceso', color: '#4338ca', bg: '#e0e7ff' },
-    'Esperando información': { label: 'Esperando Información', color: '#a16207', bg: '#fefce8' },
-    'Finalizado': { label: 'Finalizado', color: '#15803d', bg: '#dcfce7' },
-    'Cancelado': { label: 'Cancelado', color: '#b91c1c', bg: '#fee2e2' },
+  const estadoTitles: Record<string, { label: string; color: string; bg: string; border: string }> = {
+    'Nuevo': { label: 'Nuevo', color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
+    'En revisión': { label: 'En Revisión', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
+    'En proceso': { label: 'En Proceso', color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' },
+    'Esperando información': { label: 'Esperando Información', color: '#a16207', bg: '#fefce8', border: '#fef08a' },
+    'Finalizado': { label: 'Finalizado', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
+    'Cancelado': { label: 'Cancelado', color: '#b91c1c', bg: '#fef2f2', border: '#fecaca' },
   };
+
+  // Auth Loading State
+  if (authLoading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#64748b' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
+        <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>Verificando credenciales...</h3>
+        <p style={{ margin: 0, fontSize: '0.875rem' }}>Conectando con el servidor de autenticación institucional.</p>
+      </div>
+    );
+  }
+
+  // Unauthenticated Gate
+  if (!user) {
+    return (
+      <div style={{ maxWidth: '480px', margin: '3rem auto', padding: '0 1rem' }}>
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '0.75rem',
+            border: '1px solid #e2e8f0',
+            padding: '2rem',
+            textAlign: 'center',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+          }}
+        >
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              backgroundColor: '#e0f2fe',
+              color: '#0284c7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.25rem',
+              fontSize: '1.75rem',
+            }}
+          >
+            🔒
+          </div>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+            Acceso Restringido a Personal Interno
+          </h2>
+          <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.5, margin: '0 0 1.5rem 0' }}>
+            Para acceder al panel de gestión y visualizar las solicitudes operativas, debe iniciar sesión con una cuenta institucional autorizada.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              borderRadius: '0.375rem',
+              border: 'none',
+              backgroundColor: '#0284c7',
+              color: '#ffffff',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Iniciar Sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Not Approved States (Pendiente / Rechazado / Revocado)
+  if (!isApproved) {
+    const estado = user.estadoAcceso;
+    const isPendiente = estado === 'pendiente';
+    const isRechazado = estado === 'rechazado';
+    const isRevocado = estado === 'revocado';
+
+    return (
+      <div style={{ maxWidth: '520px', margin: '3rem auto', padding: '0 1rem' }}>
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '0.75rem',
+            border: '1px solid #e2e8f0',
+            padding: '2.5rem 2rem',
+            textAlign: 'center',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+          }}
+        >
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              backgroundColor: isPendiente ? '#fef3c7' : '#fee2e2',
+              color: isPendiente ? '#b45309' : '#b91c1c',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.25rem',
+              fontSize: '1.75rem',
+            }}
+          >
+            {isPendiente ? '⏳' : isRechazado ? '❌' : '🚫'}
+          </div>
+
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+            {isPendiente
+              ? 'Solicitud de Acceso Pendiente'
+              : isRechazado
+              ? 'Solicitud No Aprobada'
+              : 'Acceso Revocado'}
+          </h2>
+
+          <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.6, margin: '0 0 1.5rem 0' }}>
+            {isPendiente &&
+              `Hola, ${user.nombre}. Tu cuenta (@${user.nombreUsuario}) fue registrada correctamente y está en espera de aprobación por un Administrador.`}
+            {isRechazado &&
+              `Hola, ${user.nombre}. Tu solicitud de acceso al panel de gestión no ha sido aprobada.`}
+            {isRevocado &&
+              `Hola, ${user.nombre}. Tu acceso al sistema de gestión interna ha sido revocado.`}
+          </p>
+
+          <button
+            type="button"
+            onClick={signOut}
+            style={{
+              padding: '0.65rem 1.5rem',
+              borderRadius: '0.375rem',
+              border: '1px solid #cbd5e1',
+              backgroundColor: '#ffffff',
+              color: '#334155',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Cerrar Sesión / Cambiar Cuenta
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Stats calculation
   const stats = {
@@ -73,12 +221,12 @@ export const GestionDashboardPage: React.FC = () => {
   const paginatedPedidos = pedidos.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: '1440px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ width: '100%', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Header & Role Info */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
               Gestión Interna de Pedidos
             </h1>
             <span style={{
@@ -94,8 +242,8 @@ export const GestionDashboardPage: React.FC = () => {
               {isObserver ? 'Observador (Solo Lectura)' : isAdmin ? 'Administrador' : 'Equipo'}
             </span>
           </div>
-          <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0.25rem 0 0 0' }}>
-            Secretaría de Medios · {user?.nombre ? `${user.nombre} ${user.apellido} (${user.nombreUsuario})` : 'Cargando usuario...'}
+          <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '0.25rem 0 0 0' }}>
+            Secretaría de Medios · {user.nombre} {user.apellido} (@{user.nombreUsuario})
           </p>
         </div>
 
@@ -104,68 +252,70 @@ export const GestionDashboardPage: React.FC = () => {
             type="button"
             onClick={() => setViewMode('board')}
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.45rem 0.9rem',
               borderRadius: '0.375rem',
               border: '1px solid #cbd5e1',
               background: viewMode === 'board' ? '#0284c7' : '#ffffff',
               color: viewMode === 'board' ? '#ffffff' : '#334155',
               fontWeight: 600,
               cursor: 'pointer',
-              fontSize: '0.875rem',
+              fontSize: '0.85rem',
             }}
           >
-            Tablero Kanban
+            📊 Tablero Kanban
           </button>
           <button
             type="button"
             onClick={() => setViewMode('table')}
             style={{
-              padding: '0.5rem 1rem',
+              padding: '0.45rem 0.9rem',
               borderRadius: '0.375rem',
               border: '1px solid #cbd5e1',
               background: viewMode === 'table' ? '#0284c7' : '#ffffff',
               color: viewMode === 'table' ? '#ffffff' : '#334155',
               fontWeight: 600,
               cursor: 'pointer',
-              fontSize: '0.875rem',
+              fontSize: '0.85rem',
             }}
           >
-            Vista Tabla
+            📋 Vista Tabla
           </button>
         </div>
       </div>
 
-      {/* Metric Cards Banner */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div style={{ padding: '1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-          <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Listados</span>
-          <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: '0.25rem 0 0 0' }}>{stats.total}</p>
+      {/* Metric Cards Banner (only if no error) */}
+      {!error && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Solicitudes</span>
+            <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: '0.15rem 0 0 0' }}>{stats.total}</p>
+          </div>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+            <span style={{ fontSize: '0.7rem', color: '#0369a1', fontWeight: 600, textTransform: 'uppercase' }}>Nuevos</span>
+            <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0369a1', margin: '0.15rem 0 0 0' }}>{stats.nuevos}</p>
+          </div>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+            <span style={{ fontSize: '0.7rem', color: '#b45309', fontWeight: 600, textTransform: 'uppercase' }}>En Revisión</span>
+            <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#b45309', margin: '0.15rem 0 0 0' }}>{stats.enRevision}</p>
+          </div>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+            <span style={{ fontSize: '0.7rem', color: '#4338ca', fontWeight: 600, textTransform: 'uppercase' }}>En Proceso</span>
+            <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#4338ca', margin: '0.15rem 0 0 0' }}>{stats.enProceso}</p>
+          </div>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+            <span style={{ fontSize: '0.7rem', color: '#a16207', fontWeight: 600, textTransform: 'uppercase' }}>Esperando Info (48h)</span>
+            <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#a16207', margin: '0.15rem 0 0 0' }}>{stats.esperandoInfo}</p>
+          </div>
+          <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+            <span style={{ fontSize: '0.7rem', color: '#b91c1c', fontWeight: 600, textTransform: 'uppercase' }}>Sin Asignar</span>
+            <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#b91c1c', margin: '0.15rem 0 0 0' }}>{stats.sinAsignar}</p>
+          </div>
         </div>
-        <div style={{ padding: '1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-          <span style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 600, textTransform: 'uppercase' }}>Nuevos</span>
-          <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0369a1', margin: '0.25rem 0 0 0' }}>{stats.nuevos}</p>
-        </div>
-        <div style={{ padding: '1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-          <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, textTransform: 'uppercase' }}>En Revisión</span>
-          <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#b45309', margin: '0.25rem 0 0 0' }}>{stats.enRevision}</p>
-        </div>
-        <div style={{ padding: '1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-          <span style={{ fontSize: '0.75rem', color: '#4338ca', fontWeight: 600, textTransform: 'uppercase' }}>En Proceso</span>
-          <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#4338ca', margin: '0.25rem 0 0 0' }}>{stats.enProceso}</p>
-        </div>
-        <div style={{ padding: '1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-          <span style={{ fontSize: '0.75rem', color: '#a16207', fontWeight: 600, textTransform: 'uppercase' }}>Esperando Info (48h)</span>
-          <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#a16207', margin: '0.25rem 0 0 0' }}>{stats.esperandoInfo}</p>
-        </div>
-        <div style={{ padding: '1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-          <span style={{ fontSize: '0.75rem', color: '#b91c1c', fontWeight: 600, textTransform: 'uppercase' }}>Sin Asignar</span>
-          <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#b91c1c', margin: '0.25rem 0 0 0' }}>{stats.sinAsignar}</p>
-        </div>
-      </div>
+      )}
 
       {/* Filter Tabs & Search Controls */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem', backgroundColor: '#ffffff', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem', backgroundColor: '#ffffff', padding: '0.65rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
           {[
             { id: 'todos', label: 'Todos' },
             { id: 'mis_pedidos', label: 'Mis Pedidos' },
@@ -178,13 +328,13 @@ export const GestionDashboardPage: React.FC = () => {
               type="button"
               onClick={() => setTabFilter(t.id as any)}
               style={{
-                padding: '0.4rem 0.85rem',
+                padding: '0.35rem 0.75rem',
                 borderRadius: '0.375rem',
                 border: 'none',
                 background: tabFilter === t.id ? '#0f172a' : 'transparent',
                 color: tabFilter === t.id ? '#ffffff' : '#64748b',
                 fontWeight: 600,
-                fontSize: '0.85rem',
+                fontSize: '0.825rem',
                 cursor: 'pointer',
               }}
             >
@@ -200,23 +350,23 @@ export const GestionDashboardPage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
-              padding: '0.4rem 0.75rem',
+              padding: '0.35rem 0.65rem',
               borderRadius: '0.375rem',
               border: '1px solid #cbd5e1',
-              fontSize: '0.875rem',
-              minWidth: '240px',
+              fontSize: '0.825rem',
+              minWidth: '220px',
             }}
           />
           <button
             type="submit"
             style={{
-              padding: '0.4rem 0.85rem',
+              padding: '0.35rem 0.75rem',
               backgroundColor: '#0284c7',
               color: '#ffffff',
               border: 'none',
               borderRadius: '0.375rem',
               fontWeight: 600,
-              fontSize: '0.85rem',
+              fontSize: '0.825rem',
               cursor: 'pointer',
             }}
           >
@@ -225,40 +375,97 @@ export const GestionDashboardPage: React.FC = () => {
         </form>
       </div>
 
-      {/* Notifications / Errors */}
+      {/* Error state with retry */}
       {error && (
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', borderRadius: '0.375rem', marginBottom: '1.5rem' }}>
-          {error}
+        <div
+          style={{
+            padding: '1.25rem',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '0.5rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
+          <div>
+            <h4 style={{ margin: '0 0 0.25rem 0', color: '#991b1b', fontSize: '0.95rem' }}>
+              Error al consultar el tablero
+            </h4>
+            <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.85rem' }}>{error}</p>
+          </div>
+          <button
+            type="button"
+            onClick={loadData}
+            style={{
+              padding: '0.45rem 1rem',
+              backgroundColor: '#b91c1c',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '0.375rem',
+              fontWeight: 600,
+              fontSize: '0.825rem',
+              cursor: 'pointer',
+            }}
+          >
+            ↻ Reintentar
+          </button>
         </div>
       )}
 
       {/* Loading state */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+        <div style={{ textAlign: 'center', padding: '3.5rem', color: '#64748b' }}>
+          <div style={{ fontSize: '1.75rem', marginBottom: '0.75rem' }}>🔄</div>
           Cargando pedidos...
         </div>
       ) : viewMode === 'board' ? (
-        /* Kanban Board View */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', alignItems: 'flex-start' }}>
+        /* Kanban Board View - 4 Columns Single Horizontal Row with Internal Scroll */
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, minmax(280px, 1fr))',
+            gap: '1rem',
+            alignItems: 'flex-start',
+            overflowX: 'auto',
+            paddingBottom: '1rem',
+            width: '100%',
+          }}
+        >
           {estadosKanban.map((estado) => {
             const columnPedidos = pedidos.filter((p) => p.estado === estado);
-            const styleInfo = estadoTitles[estado] || { label: estado, color: '#334155', bg: '#f1f5f9' };
+            const styleInfo = estadoTitles[estado] || { label: estado, color: '#334155', bg: '#f1f5f9', border: '#cbd5e1' };
 
             return (
               <div
                 key={estado}
                 style={{
                   backgroundColor: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  border: `1px solid ${styleInfo.border}`,
                   borderRadius: '0.5rem',
-                  padding: '0.75rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '0.75rem',
+                  maxHeight: 'calc(100vh - 300px)',
+                  minWidth: '280px',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
                 }}
               >
-                {/* Column Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid #e2e8f0' }}>
+                {/* Column Header (Fixed) */}
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    backgroundColor: '#ffffff',
+                    borderTopLeftRadius: '0.5rem',
+                    borderTopRightRadius: '0.5rem',
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span
                       style={{
@@ -277,18 +484,29 @@ export const GestionDashboardPage: React.FC = () => {
                     style={{
                       fontSize: '0.75rem',
                       fontWeight: 700,
-                      backgroundColor: '#e2e8f0',
-                      color: '#475569',
-                      padding: '0.1rem 0.5rem',
+                      backgroundColor: styleInfo.bg,
+                      color: styleInfo.color,
+                      padding: '0.15rem 0.5rem',
                       borderRadius: '9999px',
+                      border: `1px solid ${styleInfo.border}`,
                     }}
                   >
                     {columnPedidos.length}
                   </span>
                 </div>
 
-                {/* Column Cards */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', minHeight: '120px' }}>
+                {/* Column Cards (Vertical Scroll) */}
+                <div
+                  style={{
+                    padding: '0.75rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    overflowY: 'auto',
+                    flex: 1,
+                    minHeight: '160px',
+                  }}
+                >
                   {columnPedidos.map((ped) => (
                     <Link
                       key={ped.id}
@@ -296,39 +514,72 @@ export const GestionDashboardPage: React.FC = () => {
                       style={{
                         backgroundColor: '#ffffff',
                         border: '1px solid #cbd5e1',
-                        borderRadius: '0.375rem',
-                        padding: '0.75rem',
+                        borderRadius: '0.5rem',
+                        padding: '0.85rem',
                         textDecoration: 'none',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '0.4rem',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                        transition: 'transform 0.1s ease, box-shadow 0.1s ease',
+                        gap: '0.45rem',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                        transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#0284c7';
+                        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.08)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
                       }}
                     >
+                      {/* Top Bar: PED & Date */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
                           {ped.pedido_visible}
                         </span>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        <span style={{ fontSize: '0.725rem', color: '#64748b' }}>
                           {new Date(ped.created_at).toLocaleDateString()}
                         </span>
                       </div>
 
-                      <div style={{ fontSize: '0.8rem', color: '#475569' }}>
-                        <strong>{ped.categoria_nombre || 'General'}</strong> · {ped.tipo_nombre || 'Pieza'}
+                      {/* Service Category & Type */}
+                      <div style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 500 }}>
+                        {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.35rem', fontSize: '0.75rem' }}>
-                        <span style={{ color: ped.responsable_user_id ? '#334155' : '#b91c1c', fontWeight: 500 }}>
-                          {ped.responsable_nombre || '⚠️ Sin Asignar'}
+                      {/* 48h Info Request Badge if applicable */}
+                      {ped.estado === 'Esperando información' && (
+                        <div
+                          style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            color: '#a16207',
+                            backgroundColor: '#fefce8',
+                            border: '1px solid #fef08a',
+                            borderRadius: '0.25rem',
+                            padding: '0.2rem 0.4rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            width: 'fit-content',
+                          }}
+                        >
+                          ⏳ 48h Info Pendiente
+                        </div>
+                      )}
+
+                      {/* Footer: Responsable & Action */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.4rem', borderTop: '1px solid #f1f5f9' }}>
+                        <span style={{ color: ped.responsable_nombre ? '#334155' : '#b91c1c', fontWeight: 500 }}>
+                          {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
                         </span>
-                        <span style={{ color: '#0284c7', fontWeight: 600 }}>Ver detalle →</span>
+                        <span style={{ color: '#0284c7', fontWeight: 600 }}>Ver detalle &rarr;</span>
                       </div>
                     </Link>
                   ))}
+
                   {columnPedidos.length === 0 && (
-                    <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem' }}>
+                    <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem', border: '1px dashed #e2e8f0', borderRadius: '0.375rem', margin: 'auto 0' }}>
                       Sin pedidos en este estado
                     </div>
                   )}
@@ -341,7 +592,7 @@ export const GestionDashboardPage: React.FC = () => {
         /* Table View */
         <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 600 }}>
                   <th style={{ padding: '0.75rem 1rem' }}>Código PED</th>
@@ -361,7 +612,7 @@ export const GestionDashboardPage: React.FC = () => {
                         {ped.pedido_visible}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: '#334155' }}>
-                        <div>{ped.categoria_nombre || 'General'}</div>
+                        <div style={{ fontWeight: 500 }}>{ped.categoria_nombre || 'General'}</div>
                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{ped.tipo_nombre || 'Pieza'}</div>
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
@@ -369,8 +620,8 @@ export const GestionDashboardPage: React.FC = () => {
                           {styleInfo.label}
                         </span>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: ped.responsable_user_id ? '#334155' : '#b91c1c', fontWeight: 500 }}>
-                        {ped.responsable_nombre || '⚠️ Sin Asignar'}
+                      <td style={{ padding: '0.75rem 1rem', color: ped.responsable_nombre ? '#334155' : '#b91c1c', fontWeight: 500 }}>
+                        {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: '#64748b', fontSize: '0.8rem' }}>
                         {new Date(ped.created_at).toLocaleDateString()}
@@ -380,7 +631,7 @@ export const GestionDashboardPage: React.FC = () => {
                           to={`/gestion/pedidos/${ped.id}`}
                           style={{ color: '#0284c7', fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}
                         >
-                          Ver Detalle
+                          Ver Detalle &rarr;
                         </Link>
                       </td>
                     </tr>
@@ -388,7 +639,7 @@ export const GestionDashboardPage: React.FC = () => {
                 })}
                 {paginatedPedidos.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <td colSpan={6} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
                       No se encontraron pedidos con los filtros seleccionados.
                     </td>
                   </tr>

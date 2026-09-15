@@ -15,6 +15,11 @@
   padding: 1.5rem 1rem;
 }
 
+.pedidos-app.pedidos-app-wide {
+  max-width: 1600px;
+  padding: 1rem 1.5rem;
+}
+
 .pedidos-app *,
 .pedidos-app *::before,
 .pedidos-app *::after {

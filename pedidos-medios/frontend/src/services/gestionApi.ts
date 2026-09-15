@@ -9,6 +9,23 @@ export interface InternalUser {
   estado_acceso: 'aprobado' | 'pendiente' | 'rechazado' | 'revocado';
 }
 
+export interface AdminUserListItem {
+  user_id: string;
+  nombre: string;
+  apellido: string;
+  nombre_usuario: string;
+  app_role: 'administrador' | 'equipo' | 'observador';
+  estado_acceso: 'aprobado' | 'pendiente' | 'rechazado' | 'revocado';
+  solicitado_at: string;
+  aprobado_at?: string | null;
+  aprobado_por?: string | null;
+  rechazado_at?: string | null;
+  revocado_at?: string | null;
+  motivo_revocacion?: string | null;
+  updated_at: string;
+  email?: string;
+}
+
 export interface PedidoListItem {
   id: string;
   pedido_visible: string;
@@ -107,6 +124,82 @@ export async function fetchInternalUsers(): Promise<InternalUser[]> {
   return data || [];
 }
 
+export async function fetchAdminUsers(): Promise<AdminUserListItem[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('usuarios_acceso')
+    .select('user_id, nombre, apellido, nombre_usuario, app_role, estado_acceso, solicitado_at, aprobado_at, aprobado_por, rechazado_at, revocado_at, motivo_revocacion, updated_at')
+    .order('solicitado_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function adminApproveUser(
+  userId: string,
+  role: 'administrador' | 'equipo' | 'observador'
+): Promise<{ success: boolean; user_id: string; estado_acceso: string; app_role: string }> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('admin_approve_user', {
+    p_user_id: userId,
+    p_role: role,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function adminRejectUser(
+  userId: string,
+  motivo?: string
+): Promise<{ success: boolean; user_id: string; estado_acceso: string }> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('admin_reject_user', {
+    p_user_id: userId,
+    p_motivo: motivo || null,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function adminRevokeUser(
+  userId: string,
+  motivo: string
+): Promise<{ success: boolean; user_id: string; estado_acceso: string }> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('admin_revoke_user', {
+    p_user_id: userId,
+    p_motivo: motivo,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function adminChangeUserRole(
+  userId: string,
+  newRole: 'administrador' | 'equipo' | 'observador'
+): Promise<{ success: boolean; user_id: string; app_role: string }> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('admin_change_user_role', {
+    p_user_id: userId,
+    p_new_role: newRole,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function adminChangeUsername(
+  userId: string,
+  newUsername: string
+): Promise<{ success: boolean; user_id: string; nombre_usuario: string }> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('admin_change_username', {
+    p_user_id: userId,
+    p_new_username: newUsername,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function fetchPedidos(filters?: {
   estado?: string;
   responsable_user_id?: string;
@@ -133,9 +226,8 @@ export async function fetchPedidos(filters?: {
       archivado,
       created_at,
       updated_at,
-      categorias_servicio ( nombre ),
-      tipos_servicio ( nombre ),
-      usuarios_acceso:responsable_user_id ( nombre, apellido )
+      categorias_servicio!pedidos_categoria_id_fkey ( nombre ),
+      tipos_servicio!pedidos_tipo_servicio_id_fkey ( nombre )
     `);
 
   if (filters?.archivado !== undefined) {
@@ -163,10 +255,16 @@ export async function fetchPedidos(filters?: {
 
   query = query.order('created_at', { ascending: false });
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  const [pedidosRes, users] = await Promise.all([
+    query,
+    fetchInternalUsers().catch(() => []),
+  ]);
 
-  return (data || []).map((p: any) => ({
+  if (pedidosRes.error) throw new Error(pedidosRes.error.message);
+
+  const userMap = new Map((users || []).map((u) => [u.user_id, `${u.nombre} ${u.apellido}`.trim()]));
+
+  return (pedidosRes.data || []).map((p: any) => ({
     id: p.id,
     pedido_visible: p.pedido_visible,
     anio: p.anio,
@@ -178,7 +276,7 @@ export async function fetchPedidos(filters?: {
     categoria_nombre: p.categorias_servicio?.nombre,
     tipo_nombre: p.tipos_servicio?.nombre,
     responsable_user_id: p.responsable_user_id,
-    responsable_nombre: p.usuarios_acceso ? `${p.usuarios_acceso.nombre} ${p.usuarios_acceso.apellido}` : undefined,
+    responsable_nombre: p.responsable_user_id ? (userMap.get(p.responsable_user_id) || 'Usuario Asignado') : undefined,
     informacion_especifica: p.informacion_especifica || {},
     version: p.version,
     archivado: p.archivado,
@@ -208,10 +306,9 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       archivado,
       created_at,
       updated_at,
-      categorias_servicio ( nombre ),
-      tipos_servicio ( nombre ),
-      envios_formulario ( id, nombre_apellido, telefono, correo, area_solicitante ),
-      usuarios_acceso:responsable_user_id ( nombre, apellido )
+      categorias_servicio!pedidos_categoria_id_fkey ( nombre ),
+      tipos_servicio!pedidos_tipo_servicio_id_fkey ( nombre ),
+      envios_formulario ( id, nombre_apellido, telefono, correo, area_solicitante )
     `);
 
   if (isUuid) {
@@ -220,10 +317,18 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     query = query.eq('pedido_visible', idOrVisible.toUpperCase());
   }
 
-  const { data: p, error } = await query.single();
-  if (error || !p) throw new Error(error?.message || 'Pedido no encontrado');
+  const [pedidoRes, users] = await Promise.all([
+    query.single(),
+    fetchInternalUsers().catch(() => []),
+  ]);
 
+  if (pedidoRes.error || !pedidoRes.data) {
+    throw new Error(pedidoRes.error?.message || 'Pedido no encontrado');
+  }
+
+  const p = pedidoRes.data;
   const pedidoId = p.id;
+  const userMap = new Map((users || []).map((u) => [u.user_id, `${u.nombre} ${u.apellido}`.trim()]));
 
   // Asignaciones
   const { data: asignaciones } = await supabase
@@ -235,14 +340,14 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
   // Notas
   const { data: notas } = await supabase
     .from('notas_pedido')
-    .select('id, autor_user_id, visibilidad, texto, created_at, usuarios_acceso:autor_user_id ( nombre, apellido )')
+    .select('id, autor_user_id, visibilidad, texto, created_at')
     .eq('pedido_id', pedidoId)
     .order('created_at', { ascending: false });
 
   // Solicitudes de información
   const { data: solicitudes } = await supabase
     .from('solicitudes_informacion')
-    .select('id, solicitada_por, mensaje, estado, expires_at, respuesta_texto, responded_at, created_at, usuarios_acceso:solicitada_por ( nombre, apellido )')
+    .select('id, solicitada_por, mensaje, estado, expires_at, respuesta_texto, responded_at, created_at')
     .eq('pedido_id', pedidoId)
     .order('created_at', { ascending: false });
 
@@ -261,7 +366,7 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
   // Entregas
   const { data: entregas } = await supabase
     .from('entregas_pedido')
-    .select('id, version, es_vigente, archivo_id, enlace_externo, nota, entregado_por, created_at, usuarios_acceso:entregado_por ( nombre, apellido )')
+    .select('id, version, es_vigente, archivo_id, enlace_externo, nota, entregado_por, created_at')
     .eq('pedido_id', pedidoId)
     .order('version', { ascending: false });
 
@@ -277,7 +382,7 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     categoria_nombre: (p.categorias_servicio as any)?.nombre,
     tipo_nombre: (p.tipos_servicio as any)?.nombre,
     responsable_user_id: p.responsable_user_id,
-    responsable_nombre: (p.usuarios_acceso as any) ? `${(p.usuarios_acceso as any).nombre} ${(p.usuarios_acceso as any).apellido}` : undefined,
+    responsable_nombre: p.responsable_user_id ? (userMap.get(p.responsable_user_id) || 'Usuario Asignado') : undefined,
     informacion_especifica: p.informacion_especifica || {},
     version: p.version,
     archivado: p.archivado,
@@ -295,7 +400,7 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     notas: (notas || []).map((n: any) => ({
       id: n.id,
       autor_user_id: n.autor_user_id,
-      autor_nombre: n.usuarios_acceso ? `${n.usuarios_acceso.nombre} ${n.usuarios_acceso.apellido}` : undefined,
+      autor_nombre: userMap.get(n.autor_user_id) || undefined,
       visibilidad: n.visibilidad,
       texto: n.texto,
       created_at: n.created_at,
@@ -303,7 +408,7 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     solicitudes: (solicitudes || []).map((s: any) => ({
       id: s.id,
       solicitada_por: s.solicitada_por,
-      solicitada_por_nombre: s.usuarios_acceso ? `${s.usuarios_acceso.nombre} ${s.usuarios_acceso.apellido}` : undefined,
+      solicitada_por_nombre: userMap.get(s.solicitada_por) || undefined,
       mensaje: s.mensaje,
       estado: s.estado,
       expires_at: s.expires_at,
@@ -322,7 +427,7 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       enlace_externo: e.enlace_externo,
       nota: e.nota,
       entregado_por: e.entregado_por,
-      entregado_por_nombre: e.usuarios_acceso ? `${e.usuarios_acceso.nombre} ${e.usuarios_acceso.apellido}` : undefined,
+      entregado_por_nombre: userMap.get(e.entregado_por) || undefined,
       created_at: e.created_at,
     })),
   };

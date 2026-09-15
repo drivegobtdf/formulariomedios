@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserProfile } from './types';
 import { getMyAccess, isApproved, isAdmin, isTeamOrAdmin, isObserver, signOut as authSignOut } from '../services/auth';
+import { getSupabaseClient } from '../services/supabaseClient';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -45,6 +46,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     refreshUser();
+
+    try {
+      const supabase = getSupabaseClient();
+      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          refreshUser();
+        } else {
+          setUser(null);
+          setIsLoading(false);
+        }
+      });
+
+      return () => {
+        authListener?.subscription?.unsubscribe();
+      };
+    } catch {
+      // Ignorar fallo de cliente en entornos de test sin Supabase
+    }
   }, []);
 
   const handleSignOut = async () => {

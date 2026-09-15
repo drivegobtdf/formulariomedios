@@ -1,10 +1,13 @@
 import React from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { getPublicConfig } from '../services/config';
+import { useAuth } from '../auth/AuthContext';
 
 export const Layout: React.FC = () => {
   const config = getPublicConfig();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAdmin, signOut } = useAuth();
   const isProductionPreview = config.uiMode === 'production-preview' || config.environment === 'production';
 
   const isInternalPath =
@@ -20,20 +23,64 @@ export const Layout: React.FC = () => {
     location.pathname === '/formulariomedios/' ||
     location.pathname === '';
 
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   return (
-    <div className="pedidos-app">
+    <div className={`pedidos-app ${isInternalPath ? 'pedidos-app-wide' : ''}`}>
       <header className="pedidos-header">
         {isProductionPreview ? (
           /* Cabecera Institucional Limpia (Modo Production Preview) */
           <div className="pedidos-header-institutional">
-            <div className="pedidos-header-brand">
-              <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#0f172a' }}>PEDIDOS</h1>
-              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.95rem', fontWeight: 600, color: '#1e293b' }}>
-                Secretaría de Medios
-              </p>
-              <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.8125rem', color: '#64748b' }}>
-                Gobierno de Tierra del Fuego AIAS
-              </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+              <div className="pedidos-header-brand">
+                <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#0f172a' }}>PEDIDOS</h1>
+                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.95rem', fontWeight: 600, color: '#1e293b' }}>
+                  Secretaría de Medios
+                </p>
+                <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.8125rem', color: '#64748b' }}>
+                  Gobierno de Tierra del Fuego AIAS
+                </p>
+              </div>
+
+              {isInternalPath && user && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+                  <span style={{ color: '#334155', fontWeight: 500 }}>
+                    👤 {user.nombre} {user.apellido}
+                  </span>
+                  <span
+                    style={{
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      backgroundColor: isAdmin ? '#fef3c7' : user.appRole === 'equipo' ? '#e0e7ff' : '#f1f5f9',
+                      color: isAdmin ? '#b45309' : user.appRole === 'equipo' ? '#4338ca' : '#475569',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {user.appRole}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    style={{
+                      padding: '0.3rem 0.6rem',
+                      fontSize: '0.8rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid #cbd5e1',
+                      backgroundColor: '#ffffff',
+                      color: '#64748b',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Cerrar Sesión
+                  </button>
+                </div>
+              )}
             </div>
 
             {isInternalPath ? (
@@ -41,9 +88,16 @@ export const Layout: React.FC = () => {
                 <NavLink to="/gestion" className={({ isActive }) => (isActive ? 'active' : '')}>
                   Gestión de Pedidos
                 </NavLink>
-                <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
-                  Usuarios y Roles
-                </NavLink>
+                {isAdmin && (
+                  <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
+                    Usuarios y Roles
+                  </NavLink>
+                )}
+                {!user && (
+                  <NavLink to="/login" className={({ isActive }) => (isActive ? 'active' : '')}>
+                    Acceso Interno
+                  </NavLink>
+                )}
                 <NavLink to="/" className={({ isActive }) => (isActive ? 'active' : '')}>
                   Portal Público
                 </NavLink>
@@ -74,10 +128,51 @@ export const Layout: React.FC = () => {
         ) : (
           /* Shell de Desarrollo y QA Completo */
           <>
-            <h1>PEDIDOS — Secretaría de Medios</h1>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-              Gobierno de Tierra del Fuego AIAS · Revisión {config.contractVersion} · v{config.pluginVersion} ({config.environment})
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h1>PEDIDOS — Secretaría de Medios</h1>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                  Gobierno de Tierra del Fuego AIAS · Revisión {config.contractVersion} · v{config.pluginVersion} ({config.environment})
+                </p>
+              </div>
+
+              {user && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+                  <span style={{ color: '#334155', fontWeight: 500 }}>
+                    👤 {user.nombre} {user.apellido}
+                  </span>
+                  <span
+                    style={{
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      backgroundColor: isAdmin ? '#fef3c7' : user.appRole === 'equipo' ? '#e0e7ff' : '#f1f5f9',
+                      color: isAdmin ? '#b45309' : user.appRole === 'equipo' ? '#4338ca' : '#475569',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {user.appRole}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    style={{
+                      padding: '0.3rem 0.6rem',
+                      fontSize: '0.8rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid #cbd5e1',
+                      backgroundColor: '#ffffff',
+                      color: '#64748b',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Cerrar Sesión
+                  </button>
+                </div>
+              )}
+            </div>
 
             <nav className="pedidos-nav" aria-label="Navegación principal de desarrollo y QA">
               <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
