@@ -580,6 +580,15 @@ export async function dispatchBatch(batchSize = 10, leaseSeconds = 300) {
             console.warn(`[DISPATCHER] Could not decrypt envelope for item ${item.id}:`, e.message);
           }
         }
+
+        const finalToken = (payloadToRender.magic_token || payloadToRender.raw_token || '');
+        if (!finalToken || typeof finalToken !== 'string' || finalToken.trim().length === 0) {
+          throw {
+            semanticType: 'PERMANENT_VALIDATION_ERROR',
+            status: 422,
+            message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token de acceso válido. Despacho cancelado para evitar envío de enlace vacío.`
+          };
+        }
       }
 
       const rendered = renderEmail(item.tipo_comunicacion, payloadToRender);

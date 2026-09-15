@@ -10,31 +10,57 @@ import {
   SolicitantePedidoDetailDTO,
 } from '../services/trackingApi';
 
-function extractUrlToken(): string | null {
-  if (typeof window === 'undefined') return null;
+interface UrlTokenResult {
+  token: string | null;
+  isMalformedOrEmpty: boolean;
+}
+
+function parseUrlToken(): UrlTokenResult {
+  if (typeof window === 'undefined') return { token: null, isMalformedOrEmpty: false };
+  
+  let hasTokenParam = false;
+  let rawVal: string | null = null;
+
   // 1. Check URL Hash: #token=... or #access_token=...
   if (window.location.hash) {
     const rawHash = window.location.hash.replace(/^#\/?/, '');
     const hashParams = new URLSearchParams(rawHash);
-    const hashToken = hashParams.get('token') || hashParams.get('access_token');
-    if (hashToken && hashToken.trim()) return hashToken.trim();
+    if (hashParams.has('token') || hashParams.has('access_token')) {
+      hasTokenParam = true;
+      rawVal = hashParams.get('token') || hashParams.get('access_token');
+    }
   }
+
   // 2. Check URL Search Query: ?token=... or ?access_token=...
-  if (window.location.search) {
+  if (!hasTokenParam && window.location.search) {
     const searchParams = new URLSearchParams(window.location.search);
-    const queryToken = searchParams.get('token') || searchParams.get('access_token');
-    if (queryToken && queryToken.trim()) return queryToken.trim();
+    if (searchParams.has('token') || searchParams.has('access_token')) {
+      hasTokenParam = true;
+      rawVal = searchParams.get('token') || searchParams.get('access_token');
+    }
   }
-  return null;
+
+  if (hasTokenParam) {
+    const trimmed = (rawVal || '').trim();
+    if (trimmed.length > 0) {
+      return { token: trimmed, isMalformedOrEmpty: false };
+    }
+    return { token: null, isMalformedOrEmpty: true };
+  }
+
+  return { token: null, isMalformedOrEmpty: false };
 }
 
 type ViewMode = 'INITIAL_EXCHANGE' | 'REQUEST_FORM' | 'AUTHENTICATED' | 'EXCHANGE_ERROR';
 
 export const MisSolicitudesPage: React.FC = () => {
   // Synchronous extraction of token on initial load
-  const initialToken = useMemo(() => extractUrlToken(), []);
+  const initialTokenResult = useMemo(() => parseUrlToken(), []);
+  const initialToken = initialTokenResult.token;
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    return initialToken ? 'INITIAL_EXCHANGE' : 'REQUEST_FORM';
+    if (initialTokenResult.token) return 'INITIAL_EXCHANGE';
+    if (initialTokenResult.isMalformedOrEmpty) return 'EXCHANGE_ERROR';
+    return 'REQUEST_FORM';
   });
 
   // Authentication & Session State (STRICTLY IN MEMORY ONLY - NO BROWSER STORAGE)
@@ -50,7 +76,12 @@ export const MisSolicitudesPage: React.FC = () => {
   const [cooldown, setCooldown] = useState(0);
 
   // Exchange Error State
-  const [exchangeError, setExchangeError] = useState<string | null>(null);
+  const [exchangeError, setExchangeError] = useState<string | null>(() => {
+    if (initialTokenResult.isMalformedOrEmpty) {
+      return 'El enlace de acceso recibido está incompleto o es inválido. Por favor solicite un nuevo enlace.';
+    }
+    return null;
+  });
 
   // Pedidos List State
   const [pedidos, setPedidos] = useState<SolicitantePedidoListItem[]>([]);
@@ -147,10 +178,13 @@ export const MisSolicitudesPage: React.FC = () => {
   // Support in-page hashchange / popstate events
   useEffect(() => {
     const handleHashOrPopState = () => {
-      const currentToken = extractUrlToken();
-      if (currentToken && !sessionToken) {
+      const parsed = parseUrlToken();
+      if (parsed.token && !sessionToken) {
         exchangedRef.current = false;
-        handlePerformExchange(currentToken);
+        handlePerformExchange(parsed.token);
+      } else if (parsed.isMalformedOrEmpty && !sessionToken) {
+        setExchangeError('El enlace de acceso recibido está incompleto o es inválido. Por favor solicite un nuevo enlace.');
+        setViewMode('EXCHANGE_ERROR');
       }
     };
     window.addEventListener('hashchange', handleHashOrPopState);

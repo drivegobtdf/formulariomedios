@@ -289,22 +289,24 @@ BEGIN
         v_norm_email, v_token_hash, v_expires_at, now()
     ) RETURNING id INTO v_token_id;
 
-    -- Encolar comunicación con el sobre cifrado si fue provisto
-    INSERT INTO public.comunicaciones_pedido (
-        destinatario_email, tipo_comunicacion, estado, idempotency_key, payload, created_at
-    ) VALUES (
-        v_norm_email,
-        'magic_link_access',
-        'pendiente',
-        'magic_link:' || v_token_id::text,
-        jsonb_build_object(
-            'solicitante_nombre', v_nombre,
-            'token_id', v_token_id,
-            'expires_at', v_expires_at,
-            'encrypted_envelope', p_encrypted_envelope
-        ),
-        now()
-    );
+    -- Encolar comunicación SOLO si el sobre cifrado fue provisto
+    IF p_encrypted_envelope IS NOT NULL THEN
+        INSERT INTO public.comunicaciones_pedido (
+            destinatario_email, tipo_comunicacion, estado, idempotency_key, payload, created_at
+        ) VALUES (
+            v_norm_email,
+            'magic_link_access',
+            'pendiente',
+            'magic_link:' || v_token_id::text,
+            jsonb_build_object(
+                'solicitante_nombre', v_nombre,
+                'token_id', v_token_id,
+                'expires_at', v_expires_at,
+                'encrypted_envelope', p_encrypted_envelope
+            ),
+            now()
+        );
+    END IF;
 
     -- Retornar magic_token ÚNICAMENTE en memoria al llamador
     RETURN jsonb_build_object(
@@ -313,13 +315,53 @@ BEGIN
         'token_id', v_token_id,
         'magic_token', v_raw_token,
         'expires_at', v_expires_at,
-        'ttl_seconds', v_ttl_seconds
+        'ttl_seconds', v_ttl_seconds,
+        'solicitante_nombre', v_nombre
     );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.solicitante_enqueue_access_email(
+    p_token_id uuid,
+    p_correo text,
+    p_nombre text,
+    p_expires_at timestamptz,
+    p_encrypted_envelope jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, private, extensions, auth, pg_temp
+AS $$
+BEGIN
+    INSERT INTO public.comunicaciones_pedido (
+        destinatario_email, tipo_comunicacion, estado, idempotency_key, payload, created_at
+    ) VALUES (
+        lower(trim(p_correo)),
+        'magic_link_access',
+        'pendiente',
+        'magic_link:' || p_token_id::text,
+        jsonb_build_object(
+            'solicitante_nombre', COALESCE(p_nombre, 'Solicitante'),
+            'token_id', p_token_id,
+            'expires_at', p_expires_at,
+            'encrypted_envelope', p_encrypted_envelope
+        ),
+        now()
+    )
+    ON CONFLICT (idempotency_key) DO UPDATE
+    SET payload = EXCLUDED.payload,
+        updated_at = now();
+
+    RETURN jsonb_build_object('success', true);
 END;
 $$;
 
 -- 4. Permisos y PoLP (C12)
 -- -----------------------------------------------------------------------------
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.comunicaciones_pedido TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.solicitante_access_tokens TO service_role;
+
 REVOKE ALL ON FUNCTION public.comunicacion_mark_result(uuid, uuid, boolean, text, text, integer, boolean) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.comunicacion_mark_result(uuid, uuid, boolean, text, text, integer, boolean) TO service_role;
 
@@ -328,3 +370,7 @@ GRANT EXECUTE ON FUNCTION public.comunicacion_reconcile_uncertain(uuid, text, te
 
 REVOKE ALL ON FUNCTION public.solicitante_request_access(text, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.solicitante_request_access(text, jsonb) TO anon, authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.solicitante_enqueue_access_email(uuid, text, text, timestamptz, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.solicitante_enqueue_access_email(uuid, text, text, timestamptz, jsonb) TO anon, authenticated, service_role;
+

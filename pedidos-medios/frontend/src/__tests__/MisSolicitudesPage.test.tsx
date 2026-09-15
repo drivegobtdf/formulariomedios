@@ -162,4 +162,16 @@ describe('MisSolicitudesPage: Flujo de Acceso, Canje en Memoria y Anti-Bucle', (
     expect(screen.queryByText('PED-2026-D000146')).not.toBeInTheDocument();
     expect(screen.queryByText('Sesión Verificada')).not.toBeInTheDocument();
   });
+
+  it('5. Con parámetro token vacío (#token=): Muestra directamente el aviso de enlace incompleto sin mostrar login silencioso', () => {
+    window.history.pushState({}, '', '/formulariomedios/mis-solicitudes#token=');
+
+    render(<MisSolicitudesPage />);
+
+    expect(screen.getByText('Aviso de Acceso')).toBeInTheDocument();
+    expect(screen.getByText(/El enlace de acceso recibido está incompleto o es inválido/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Solicitar un nuevo enlace/i })).toBeInTheDocument();
+    expect(screen.queryByText('Ingreso sin Contraseña')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Estamos abriendo tus solicitudes/i)).not.toBeInTheDocument();
+  });
 });

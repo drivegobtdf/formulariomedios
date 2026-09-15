@@ -376,9 +376,12 @@ export function renderEmail(
     // -------------------------------------------------------------------------
     case 'magic_link_access':
     case 'access_requested': {
+      const rawToken = (payload.magic_token || payload.raw_token || '') as string;
+      if (!rawToken || typeof rawToken !== 'string' || rawToken.trim().length === 0) {
+        throw new Error('Error al renderizar email de acceso: el token de seguridad es requerido y no puede estar vacío');
+      }
       const subject = `[PEDIDOS] Enlace Seguro de Acceso a Mis Solicitudes`;
-      const rawToken = payload.magic_token || payload.raw_token || '';
-      const accessUrl = `${cleanAppUrl}/mis-solicitudes#token=${encodeURIComponent(rawToken)}`;
+      const accessUrl = `${cleanAppUrl}/mis-solicitudes#token=${encodeURIComponent(rawToken.trim())}`;
 
       const contentHtml = `
         <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">

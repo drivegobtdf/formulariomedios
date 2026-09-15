@@ -80,24 +80,32 @@ export default async function handler(req: Request): Promise<Response> {
         idempotencyKey
       );
 
-      // Persistir el sobre cifrado en la fila de outbox (sin almacenar jamás el token en texto plano)
-      const { data: outboxRow } = await supabase
-        .from('comunicaciones_pedido')
-        .select('id, payload')
-        .eq('idempotency_key', idempotencyKey)
-        .single();
+      // Encolar de forma atómica en outbox con el sobre cifrado listo (sin almacenar jamás el token en texto plano)
+      const { error: enqueueErr } = await supabase.rpc('solicitante_enqueue_access_email', {
+        p_token_id: data.token_id,
+        p_correo: email,
+        p_nombre: data.solicitante_nombre || 'Solicitante',
+        p_expires_at: data.expires_at,
+        p_encrypted_envelope: encryptedEnvelope,
+      });
 
-      if (outboxRow?.id) {
-        const updatedPayload = {
-          ...(outboxRow.payload || {}),
-          token_id: data.token_id,
-          expires_at: data.expires_at,
-          encrypted_envelope: encryptedEnvelope,
-        };
+      if (enqueueErr) {
+        // Fallback directo con el cliente service_role si la RPC no estuviera disponible
         await supabase
           .from('comunicaciones_pedido')
-          .update({ payload: updatedPayload })
-          .eq('id', outboxRow.id);
+          .upsert({
+            destinatario_email: email,
+            tipo_comunicacion: 'magic_link_access',
+            estado: 'pendiente',
+            idempotency_key: idempotencyKey,
+            payload: {
+              solicitante_nombre: data.solicitante_nombre || 'Solicitante',
+              token_id: data.token_id,
+              expires_at: data.expires_at,
+              encrypted_envelope: encryptedEnvelope,
+            },
+            created_at: new Date().toISOString(),
+          }, { onConflict: 'idempotency_key' });
       }
     }
 

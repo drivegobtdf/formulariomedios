@@ -168,6 +168,16 @@ export default async function handler(req: Request): Promise<Response> {
               console.warn(`[DISPATCHER] Error descifrando sobre para ${item.id}:`, (decErr as Error)?.message);
             }
           }
+
+          // Hard guard: NUNCA despachar un magic link sin token válido y no vacío
+          const finalToken = (payloadToRender.magic_token || payloadToRender.raw_token || '') as string;
+          if (!finalToken || typeof finalToken !== 'string' || finalToken.trim().length === 0) {
+            throw {
+              semanticType: 'PERMANENT_VALIDATION_ERROR',
+              status: 422,
+              message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token de acceso válido. Despacho cancelado para evitar envío de enlace vacío.`,
+            };
+          }
         }
 
         const rendered = renderEmailForCommunication(

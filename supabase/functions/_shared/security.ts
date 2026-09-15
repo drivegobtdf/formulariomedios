@@ -148,7 +148,13 @@ export async function verifyUserRole(
  * Obtiene la clave de cifrado AES-256 de 32 bytes para sobres de magic links
  */
 export function getEncryptionKey(customKey?: string): Buffer {
-  const rawSecret = customKey || getEnv('MAGIC_LINK_ENCRYPTION_KEY') || getEnv('SUPABASE_SERVICE_ROLE_KEY') || 'pedidos-default-envelope-secret-key-32-bytes!';
+  let fallbackKey = '';
+  try {
+    fallbackKey = getSupabaseConfig().serviceRoleKey;
+  } catch {
+    // ignore
+  }
+  const rawSecret = customKey || getEnv('MAGIC_LINK_ENCRYPTION_KEY') || fallbackKey || getEnv('SUPABASE_SERVICE_ROLE_KEY') || 'pedidos-default-envelope-secret-key-32-bytes!';
   return crypto.createHash('sha256').update(rawSecret + ':pedidos-magic-envelope-key-v1').digest();
 }
 
