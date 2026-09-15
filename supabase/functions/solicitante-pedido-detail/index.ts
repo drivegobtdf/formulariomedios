@@ -61,7 +61,7 @@ export default async function handler(req: Request): Promise<Response> {
       let statusCode = 500;
       let errorCode = error.code || 'DETAIL_ERROR';
 
-      if (error.code === '42203' || error.message.includes('SESSION_INVALID') || error.message.includes('SESSION_EXPIRED') || error.message.includes('SESSION_REVOKED')) {
+      if (error.code === '42203' || error.code === '42501' || error.message.includes('SESSION_INVALID') || error.message.includes('SESSION_NOT_FOUND') || error.message.includes('SESSION_EXPIRED') || error.message.includes('SESSION_REVOKED')) {
         statusCode = 401;
         errorCode = 'SESSION_INVALID';
       } else if (error.code === 'P0002' || error.message.includes('PEDIDO_NOT_FOUND')) {

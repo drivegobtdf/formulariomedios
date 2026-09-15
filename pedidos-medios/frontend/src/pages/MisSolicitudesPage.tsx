@@ -9,6 +9,12 @@ import {
   SolicitantePedidoListItem,
   SolicitantePedidoDetailDTO,
 } from '../services/trackingApi';
+import {
+  getStoredSolicitanteSession,
+  saveStoredSolicitanteSession,
+  clearStoredSolicitanteSession,
+  isSessionStorageAvailable,
+} from '../services/sessionStorageService';
 
 interface UrlTokenResult {
   token: string | null;
@@ -57,16 +63,35 @@ export const MisSolicitudesPage: React.FC = () => {
   // Synchronous extraction of token on initial load
   const initialTokenResult = useMemo(() => parseUrlToken(), []);
   const initialToken = initialTokenResult.token;
+
+  // Synchronous extraction of stored session if no token in URL
+  const storedSession = useMemo(() => {
+    if (initialTokenResult.token || initialTokenResult.isMalformedOrEmpty) {
+      return null;
+    }
+    return getStoredSolicitanteSession();
+  }, [initialTokenResult]);
+
+  const isRestoringRef = useRef<boolean>(Boolean(!initialTokenResult.token && storedSession?.session_token));
+
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (initialTokenResult.token) return 'INITIAL_EXCHANGE';
     if (initialTokenResult.isMalformedOrEmpty) return 'EXCHANGE_ERROR';
+    if (storedSession?.session_token) return 'INITIAL_EXCHANGE';
     return 'REQUEST_FORM';
   });
 
-  // Authentication & Session State (STRICTLY IN MEMORY ONLY - NO BROWSER STORAGE)
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  // Authentication & Session State (Scoped in memory and persisted in sessionStorage)
+  const [sessionToken, setSessionToken] = useState<string | null>(() => {
+    return storedSession?.session_token || null;
+  });
+  const [sessionEmail, setSessionEmail] = useState<string | null>(() => {
+    return storedSession?.correo || null;
+  });
+  const [storageBlockedWarning, setStorageBlockedWarning] = useState<boolean>(false);
+
   const exchangedRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   // Request Link State
   const [email, setEmail] = useState('');
@@ -110,48 +135,114 @@ export const MisSolicitudesPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [cooldown]);
 
-  const loadPedidos = async (st: string, fallbackEmail?: string) => {
+  const loadPedidos = async (st: string, fallbackEmail?: string, reqId?: number) => {
+    const activeReqId = reqId ?? ++requestIdRef.current;
     setLoadingPedidos(true);
     setPedidosError(null);
+
     try {
       const res = await solicitanteGetPedidos(st);
+      if (activeReqId !== requestIdRef.current) return;
+
       setPedidos(res.pedidos || []);
       if (res.correo) {
         setSessionEmail(res.correo);
+        // Sincronizar correo en sessionStorage si no estaba presente
+        const currentStored = getStoredSolicitanteSession();
+        if (currentStored && currentStored.session_token === st && !currentStored.correo) {
+          saveStoredSolicitanteSession({
+            ...currentStored,
+            correo: res.correo,
+          });
+        }
       } else if (fallbackEmail && !sessionEmail) {
         setSessionEmail(fallbackEmail);
       }
+      setViewMode('AUTHENTICATED');
     } catch (err: any) {
-      if (err.status === 401 || err.code === 'SESSION_INVALID') {
-        await handleLogout();
+      if (activeReqId !== requestIdRef.current) return;
+
+      const code = err?.code || '';
+      const status = err?.status;
+      const isAuthError =
+        status === 401 ||
+        code === 'SESSION_INVALID' ||
+        code === 'SESSION_NOT_FOUND' ||
+        code === 'SESSION_EXPIRED' ||
+        code === 'SESSION_REVOKED' ||
+        (err?.message && (
+          err.message.includes('SESSION_INVALID') ||
+          err.message.includes('SESSION_NOT_FOUND') ||
+          err.message.includes('SESSION_EXPIRED') ||
+          err.message.includes('SESSION_REVOKED') ||
+          err.message.includes('Token de sesión') ||
+          err.message.includes('Sesión no encontrada')
+        ));
+
+      if (isAuthError) {
+        // Sesión vencida o inválida confirmada por backend: borrar almacenamiento local
+        clearStoredSolicitanteSession();
+        setSessionToken(null);
+        setSessionEmail(null);
+        setPedidos([]);
+        setSelectedPedido(null);
         setExchangeError('Su sesión ha expirado o es inválida. Por favor solicite un nuevo enlace de acceso.');
         setViewMode('EXCHANGE_ERROR');
       } else {
-        setPedidosError(err.message || 'Error al cargar el listado de pedidos.');
+        // Fallo de red, timeout o error transitorio: NO borrar sesión, permitir reintento
+        setPedidosError(err.message || 'Error de conexión al cargar el listado de pedidos.');
+        setViewMode('AUTHENTICATED');
       }
     } finally {
-      setLoadingPedidos(false);
+      if (activeReqId === requestIdRef.current) {
+        setLoadingPedidos(false);
+      }
     }
   };
 
   const handlePerformExchange = async (token: string) => {
     if (exchangedRef.current) return;
     exchangedRef.current = true;
+    isRestoringRef.current = false;
     setViewMode('INITIAL_EXCHANGE');
 
-    // Immediately sanitize browser address bar so raw token is never exposed in address bar/history
+    // Iniciar nuevo request y limpiar datos previos para no mezclar identidades
+    const currentReqId = ++requestIdRef.current;
+    clearStoredSolicitanteSession();
+    setSessionToken(null);
+    setSessionEmail(null);
+    setPedidos([]);
+    setSelectedPedido(null);
+    setPedidosError(null);
+
+    // Sanitizar inmediatamente la barra de direcciones (nunca persistir token de enlace)
     if (typeof window !== 'undefined' && (window.location.hash || window.location.search)) {
       window.history.replaceState(null, '', window.location.pathname);
     }
 
     try {
       const res = await solicitanteSessionExchange(token);
+      if (currentReqId !== requestIdRef.current) return;
+
       const resolvedEmail = res.correo || res.email || '';
-      setSessionToken(res.session_token);
+      const sessionTok = res.session_token;
+
+      // Guardar sesión opaca en sessionStorage
+      const saved = saveStoredSolicitanteSession({
+        session_token: sessionTok,
+        correo: resolvedEmail,
+        expires_at: res.expires_at,
+      });
+      if (!saved && !isSessionStorageAvailable()) {
+        setStorageBlockedWarning(true);
+      }
+
+      setSessionToken(sessionTok);
       setSessionEmail(resolvedEmail);
-      setViewMode('AUTHENTICATED');
-      await loadPedidos(res.session_token, resolvedEmail);
+      await loadPedidos(sessionTok, resolvedEmail, currentReqId);
     } catch (err: any) {
+      if (currentReqId !== requestIdRef.current) return;
+      clearStoredSolicitanteSession();
       const code = err?.code || '';
       let msg = 'El enlace de acceso es inválido o ha expirado. Por favor solicite un nuevo enlace.';
       if (code === 'TOKEN_EXPIRED') {
@@ -168,19 +259,33 @@ export const MisSolicitudesPage: React.FC = () => {
     }
   };
 
-  // Automatic Magic Token Exchange on Initial Load
+  const handleRestoreSession = async (token: string, fallbackEmail?: string) => {
+    const currentReqId = ++requestIdRef.current;
+    setViewMode('INITIAL_EXCHANGE');
+    setSessionToken(token);
+    if (fallbackEmail) setSessionEmail(fallbackEmail);
+    await loadPedidos(token, fallbackEmail, currentReqId);
+  };
+
+  // Inicialización: canje si viene token en URL, o restauración si existe sesión guardada
   useEffect(() => {
     if (initialToken) {
       handlePerformExchange(initialToken);
+    } else {
+      const stored = getStoredSolicitanteSession();
+      if (stored?.session_token) {
+        handleRestoreSession(stored.session_token, stored.correo);
+      }
     }
   }, [initialToken]);
 
-  // Support in-page hashchange / popstate events
+  // Soporte de eventos in-page hashchange / popstate
   useEffect(() => {
     const handleHashOrPopState = () => {
       const parsed = parseUrlToken();
-      if (parsed.token && !sessionToken) {
+      if (parsed.token) {
         exchangedRef.current = false;
+        isRestoringRef.current = false;
         handlePerformExchange(parsed.token);
       } else if (parsed.isMalformedOrEmpty && !sessionToken) {
         setExchangeError('El enlace de acceso recibido está incompleto o es inválido. Por favor solicite un nuevo enlace.');
@@ -218,8 +323,6 @@ export const MisSolicitudesPage: React.FC = () => {
       setRequestLoading(false);
     }
   };
-
-
 
   const handleSelectPedido = async (pedidoRef: string) => {
     if (!sessionToken) return;
@@ -274,17 +377,21 @@ export const MisSolicitudesPage: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    // Incrementar ID para invalidar respuestas asíncronas tardías
+    requestIdRef.current++;
     const tokenToRevoke = sessionToken;
+    clearStoredSolicitanteSession();
     setSessionToken(null);
     setSessionEmail(null);
     setPedidos([]);
     setSelectedPedido(null);
+    setStorageBlockedWarning(false);
     setViewMode('REQUEST_FORM');
     if (tokenToRevoke) {
       try {
         await solicitanteSessionRevoke(tokenToRevoke);
       } catch {
-        // Ignore logout network error
+        // Ignorar fallo de red en revocación remota
       }
     }
   };
@@ -355,13 +462,24 @@ export const MisSolicitudesPage: React.FC = () => {
         )}
       </div>
 
-      {/* VIEW 1: INITIAL EXCHANGE IN PROGRESS */}
+      {/* Storage Blocked Warning Banner */}
+      {storageBlockedWarning && sessionToken && (
+        <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', color: '#92400e', fontSize: '0.875rem' }}>
+          ⚠️ El almacenamiento de sesión está deshabilitado en su navegador. La sesión permanecerá activa en memoria, pero no podrá conservarse si recarga o cierra esta pestaña.
+        </div>
+      )}
+
+      {/* VIEW 1: INITIAL EXCHANGE OR SESSION RESTORE IN PROGRESS */}
       {viewMode === 'INITIAL_EXCHANGE' && (
         <div style={{ maxWidth: '520px', margin: '2rem auto' }}>
           <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'inline-block', width: '2.5rem', height: '2.5rem', border: '3px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            <h3 style={{ marginTop: '1rem', color: '#1e293b', fontSize: '1.125rem', fontWeight: 700 }}>Estamos abriendo tus solicitudes...</h3>
-            <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0.25rem 0 0 0' }}>Verificando enlace seguro de acceso.</p>
+            <h3 style={{ marginTop: '1rem', color: '#1e293b', fontSize: '1.125rem', fontWeight: 700 }}>
+              {isRestoringRef.current ? 'Estamos recuperando tu sesión...' : 'Estamos abriendo tus solicitudes...'}
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0.25rem 0 0 0' }}>
+              {isRestoringRef.current ? 'Validando credenciales de acceso.' : 'Verificando enlace seguro de acceso.'}
+            </p>
           </div>
         </div>
       )}
@@ -519,7 +637,7 @@ export const MisSolicitudesPage: React.FC = () => {
               </h2>
               <button
                 type="button"
-                onClick={() => loadPedidos(sessionToken)}
+                onClick={() => loadPedidos(sessionToken, sessionEmail || undefined)}
                 disabled={loadingPedidos}
                 style={{ background: 'transparent', border: '1px solid #cbd5e1', padding: '0.35rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
               >
@@ -534,8 +652,28 @@ export const MisSolicitudesPage: React.FC = () => {
             )}
 
             {pedidosError && (
-              <div style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#991b1b', margin: '1rem', borderRadius: '0.5rem' }}>
-                {pedidosError}
+              <div style={{ padding: '1rem 1.25rem', backgroundColor: '#fee2e2', border: '1px solid #fca5a5', color: '#991b1b', margin: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <strong style={{ display: 'block', fontSize: '0.875rem' }}>Error al comunicarse con el servidor</strong>
+                  <span style={{ fontSize: '0.8125rem' }}>{pedidosError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadPedidos(sessionToken, sessionEmail || undefined)}
+                  disabled={loadingPedidos}
+                  style={{
+                    backgroundColor: '#dc2626',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    cursor: loadingPedidos ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {loadingPedidos ? 'Reintentando...' : 'Reintentar'}
+                </button>
               </div>
             )}
 
