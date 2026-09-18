@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getMyAccess } from '../services/auth';
+import { getMyAccess, updatePassword } from '../services/auth';
 import { getSupabaseClient } from '../services/supabaseClient';
 
 const AUTH_RETURN_PARAMS = [
@@ -147,6 +147,40 @@ export const ConfirmarEmailPage: React.FC = () => {
     };
   }, [authReturn]);
 
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas no coinciden.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    setPasswordError(null);
+
+    try {
+      const res = await updatePassword(newPassword);
+      if (res.success) {
+        setPasswordSuccess(true);
+      } else {
+        setPasswordError(res.error || 'Error al actualizar contraseña.');
+      }
+    } catch (err: any) {
+      setPasswordError(err?.message || 'Error al conectar con el servidor.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   const isPending = state.kind === 'success' && state.accessState === 'pendiente';
   const isApproved = state.kind === 'success' && state.accessState === 'aprobado';
 
@@ -210,7 +244,7 @@ export const ConfirmarEmailPage: React.FC = () => {
                   borderRadius: '0.5rem',
                 }}
               >
-                Tu cuenta ya tiene acceso aprobado. Podés continuar al panel de gestión.
+                Tu cuenta ya tiene acceso aprobado. Podés establecer tu contraseña o continuar al panel.
               </p>
             )}
             {!isPending && !isApproved && (
@@ -226,12 +260,131 @@ export const ConfirmarEmailPage: React.FC = () => {
                 al administrador antes de ingresar.
               </p>
             )}
-            <Link
-              to={isApproved ? '/gestion' : '/login'}
-              style={{ color: '#0369a1', fontWeight: 700 }}
+
+            {/* Formulario para establecer o cambiar contraseña */}
+            <div
+              style={{
+                marginTop: '1.5rem',
+                padding: '1.25rem',
+                background: '#f8fafc',
+                borderRadius: '0.5rem',
+                border: '1px solid #e2e8f0',
+                textAlign: 'left',
+              }}
             >
-              {isApproved ? 'Continuar a Gestión' : 'Ir al inicio de sesión'}
-            </Link>
+              <h3 style={{ fontSize: '1.1rem', color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+                Establecer contraseña de acceso
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+                Ingresá tu contraseña para acceder a la plataforma.
+              </p>
+
+              {passwordSuccess ? (
+                <div
+                  style={{
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    color: '#166534',
+                    padding: '0.75rem',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    marginBottom: '1rem',
+                  }}
+                >
+                  ✓ Contraseña establecida exitosamente.
+                </div>
+              ) : (
+                <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  {passwordError && (
+                    <div
+                      style={{
+                        backgroundColor: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        color: '#991b1b',
+                        padding: '0.75rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      {passwordError}
+                    </div>
+                  )}
+                  <div>
+                    <label
+                      htmlFor="new-password"
+                      style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}
+                    >
+                      Nueva contraseña (mínimo 6 caracteres)
+                    </label>
+                    <input
+                      type="password"
+                      id="new-password"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="confirm-password"
+                      style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}
+                    >
+                      Confirmar nueva contraseña
+                    </label>
+                    <input
+                      type="password"
+                      id="confirm-password"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.9rem',
+                        boxSizing: 'border-box',
+                      }}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={passwordLoading}
+                    style={{
+                      marginTop: '0.5rem',
+                      padding: '0.6rem 1rem',
+                      backgroundColor: '#0284c7',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '0.375rem',
+                      fontWeight: 600,
+                      cursor: passwordLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {passwordLoading ? 'Guardando...' : 'Guardar contraseña'}
+                  </button>
+                </form>
+              )}
+            </div>
+
+            <div style={{ marginTop: '1.5rem' }}>
+              <Link
+                to={isApproved ? '/gestion' : '/login'}
+                style={{ color: '#0369a1', fontWeight: 700 }}
+              >
+                {isApproved ? 'Continuar a Gestión →' : 'Ir al inicio de sesión →'}
+              </Link>
+            </div>
           </>
         )}
       </section>

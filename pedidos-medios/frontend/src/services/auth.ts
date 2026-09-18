@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Servicio de Autenticación y Autorización Frontend
  * Proyecto: PEDIDOS — Secretaría de Medios (Revisión 3.0)
  *
@@ -194,11 +194,23 @@ export function isAdmin(profile: UserProfile | null): boolean {
   return isApproved(profile) && profile?.appRole === 'administrador';
 }
 
-/**
- * Determina si el perfil cuenta con privilegios de equipo operativo o administrador aprobado.
- */
 export function isTeamOrAdmin(profile: UserProfile | null): boolean {
   return isApproved(profile) && (profile?.appRole === 'equipo' || profile?.appRole === 'administrador');
+}
+
+/**
+ * Actualiza la contraseña del usuario actualmente autenticado (p. ej. tras ingresar por recovery link).
+ */
+export async function updatePassword(newPassword: string): Promise<AuthResult> {
+  if (!newPassword || newPassword.length < 6) {
+    return { success: false, error: 'La contraseña debe tener al menos 6 caracteres.' };
+  }
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    return { success: false, error: error.message };
+  }
+  return { success: true };
 }
 
 /**
@@ -207,3 +219,4 @@ export function isTeamOrAdmin(profile: UserProfile | null): boolean {
 export function isObserver(profile: UserProfile | null): boolean {
   return isApproved(profile) && profile?.appRole === 'observador';
 }
+
