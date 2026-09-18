@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getPublicTracking, requestTrackingRecovery, exchangeTrackingToken, TrackingPublicDTO } from '../services/trackingApi';
+import { getPublicConfig } from '../services/config';
 
 export const SeguimientoPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -131,11 +132,8 @@ export const SeguimientoPage: React.FC = () => {
     <div style={{ maxWidth: '850px', margin: '0 auto', padding: '1.5rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.5rem' }}>
-          Seguimiento de Pedido
+          Seguimiento de pedido
         </h1>
-        <p style={{ color: '#64748b', fontSize: '0.95rem' }}>
-          Consulte el estado, comunicaciones, solicitudes de información y entregas de su solicitud.
-        </p>
       </div>
 
       {/* Consulta Form */}
@@ -204,7 +202,7 @@ export const SeguimientoPage: React.FC = () => {
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? 'Consultando...' : 'Consultar Estado'}
+              {loading ? 'Consultando...' : 'Consultar'}
             </button>
           </div>
         </form>
@@ -221,7 +219,7 @@ export const SeguimientoPage: React.FC = () => {
       {loading && (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
           <div style={{ display: 'inline-block', width: '2rem', height: '2rem', border: '3px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-          <p style={{ marginTop: '1rem' }}>Obteniendo datos de seguimiento seguro...</p>
+          <p style={{ marginTop: '1rem' }}>Obteniendo datos...</p>
         </div>
       )}
 
@@ -232,7 +230,7 @@ export const SeguimientoPage: React.FC = () => {
           <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', backgroundColor: '#f8fafc' }}>
             <div>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Solicitud Oficial
+                Detalle de solicitud
               </span>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: '0.25rem 0 0 0' }}>
                 {data.pedido_visible}
@@ -264,7 +262,7 @@ export const SeguimientoPage: React.FC = () => {
             {data.solicitudes_informacion && data.solicitudes_informacion.length > 0 && (
               <div style={{ border: '1px solid #fef08a', backgroundColor: '#fefce8', borderRadius: '0.5rem', padding: '1.25rem' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#854d0e', margin: '0 0 0.75rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  ⚠️ Solicitud de Información Faltante
+                  Información solicitada · 48 h
                 </h3>
                 {data.solicitudes_informacion.map((s) => {
                   const isExpired = Date.now() >= new Date(s.expires_at).getTime();
@@ -272,15 +270,15 @@ export const SeguimientoPage: React.FC = () => {
                     <div key={s.id} style={{ backgroundColor: '#ffffff', padding: '1rem', borderRadius: '0.375rem', border: '1px solid #fde047', marginBottom: '0.75rem' }}>
                       <p style={{ margin: '0 0 0.5rem 0', color: '#334155', fontWeight: 500 }}>{s.mensaje}</p>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.8rem', color: '#64748b' }}>
-                        <span>Vigencia contractual: 48 horas corridas ({new Date(s.expires_at).toLocaleString()})</span>
+                        <span>Vence: {new Date(s.expires_at).toLocaleString()} (48 h)</span>
                         <span style={{ fontWeight: 600, color: s.estado === 'respondida' ? '#15803d' : isExpired ? '#b91c1c' : '#b45309' }}>
-                          Estado: {s.estado === 'respondida' ? 'Respondida' : isExpired ? 'Vencida' : 'Pendiente de Respuesta'}
+                          {s.estado === 'respondida' ? '✓ Respondida' : isExpired ? '✕ Vencida' : '⏳ Pendiente'}
                         </span>
                       </div>
                       {s.estado === 'pendiente' && !isExpired && (
                         <div style={{ marginTop: '0.75rem' }}>
                           <a
-                            href={`/formulariomedios/solicitud-informacion?token=${trackingToken}&ped=${data.pedido_visible}`}
+                            href={`${getPublicConfig().basePath}/solicitud-informacion?token=${trackingToken}&ped=${data.pedido_visible}`}
                             style={{
                               display: 'inline-block',
                               backgroundColor: '#ca8a04',
@@ -292,7 +290,7 @@ export const SeguimientoPage: React.FC = () => {
                               textDecoration: 'none',
                             }}
                           >
-                            Responder Solicitud Ahora
+                            Responder
                           </a>
                         </div>
                       )}
@@ -306,7 +304,7 @@ export const SeguimientoPage: React.FC = () => {
             {data.entrega && (
               <div style={{ border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', borderRadius: '0.5rem', padding: '1.25rem' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#166534', margin: '0 0 0.75rem 0' }}>
-                  🎉 Entrega del Trabajo Realizado
+                  Entrega final · v{data.entrega.version || 1}
                 </h3>
                 {data.entrega.nota_publica && (
                   <p style={{ margin: '0 0 0.75rem 0', color: '#1e293b' }}>{data.entrega.nota_publica}</p>
@@ -327,7 +325,7 @@ export const SeguimientoPage: React.FC = () => {
                         textDecoration: 'none',
                       }}
                     >
-                      Abrir Enlace de Entrega
+                      Abrir entrega
                     </a>
                   )}
                 </div>
@@ -338,7 +336,7 @@ export const SeguimientoPage: React.FC = () => {
             {data.archivos_adjuntos && data.archivos_adjuntos.length > 0 && (
               <div>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#334155', margin: '0 0 0.5rem 0' }}>
-                  Archivos Adjuntos
+                  Archivos
                 </h3>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {data.archivos_adjuntos.map((arch) => (

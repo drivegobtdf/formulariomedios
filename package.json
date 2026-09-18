@@ -1,11 +1,11 @@
 {
   "name": "formulariomedios-root",
-  "version": "0.1.0-alpha",
+  "version": "0.1.0-beta2",
   "private": true,
   "type": "module",
   "description": "Sistema PEDIDOS — Secretaría de Medios (Gobierno de Tierra del Fuego AIAS) - Monorepo & Toolchain",
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=20.12.0"
   },
   "workspaces": [
     "pedidos-medios/frontend"
@@ -17,6 +17,11 @@
     "build": "npm --workspace=pedidos-medios-frontend run build",
     "build:preview": "npm --workspace=pedidos-medios-frontend run build:preview",
     "build:preview:cloud": "npm --workspace=pedidos-medios-frontend run build:preview:cloud",
+    "build:wordpress": "npm --workspace=pedidos-medios-frontend run build:wordpress",
+    "package:wordpress": "node scripts/package-wordpress.mjs",
+    "build:standalone": "npm --workspace=pedidos-medios-frontend run build:standalone && node scripts/postbuild-standalone.mjs",
+    "preview:standalone": "node scripts/preview-standalone.mjs",
+    "package:standalone": "node scripts/package-standalone.mjs",
     "preview": "npm --workspace=pedidos-medios-frontend run preview",
     "preview:cloud": "npm --workspace=pedidos-medios-frontend run preview:cloud",
     "typecheck": "npm --workspace=pedidos-medios-frontend run typecheck",

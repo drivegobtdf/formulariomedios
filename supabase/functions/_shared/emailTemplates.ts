@@ -107,7 +107,6 @@ export function renderEmail(
         const pedVis = escapeHtml(p.pedido_visible || 'N/D');
         const cat = escapeHtml(p.categoria || 'Servicio');
         const tip = escapeHtml(p.tipo || 'General');
-        const trackingUrl = `${cleanAppUrl}/seguimiento?id=${encodeURIComponent(p.id || '')}&ref=${encodeURIComponent(p.pedido_visible || '')}`;
 
         rowsHtml += `
           <tr style="border-bottom: 1px solid #E5E7EB;">
@@ -118,7 +117,10 @@ export function renderEmail(
         rowsText += `* ${p.pedido_visible || 'N/D'} | ${p.categoria || ''} - ${p.tipo || ''}\n`;
       }
 
-      const portalUrl = `${cleanAppUrl}/mis-solicitudes`;
+      const rawToken = (payload.magic_token || payload.raw_token || payload.token || '').trim();
+      const portalUrl = rawToken
+        ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}`
+        : `${cleanAppUrl}/mis-solicitudes`;
       const areaSafe = escapeHtml(payload.area_solicitante || 'Gobierno');
 
       const contentHtml = `
@@ -169,7 +171,11 @@ export function renderEmail(
     case 'info_requested': {
       const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
       const subject = `[PEDIDOS] Requerimiento de Información (48h): ${payload.pedido_visible || 'PED'}`;
-      const portalUrl = `${cleanAppUrl}/mis-solicitudes`;
+      const rawToken = String(payload.token || payload.raw_token || payload.info_token || '').trim();
+      const actionUrl = rawToken
+        ? `${cleanAppUrl}/solicitud-informacion#token=${encodeURIComponent(rawToken)}`
+        : `${cleanAppUrl}/mis-solicitudes`;
+      const buttonText = 'Responder requerimiento';
       const rawMensaje = payload.mensaje || payload.motivo || 'Se requiere información complementaria para avanzar con el pedido.';
       const mensajeSafe = escapeHtml(rawMensaje);
       const catSafe = escapeHtml(payload.categoria || '');
@@ -203,13 +209,13 @@ export function renderEmail(
         </div>
 
         <div style="text-align: center; margin: 28px 0;">
-          <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
-            Responder Requerimiento en el Portal
+          <a href="${actionUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            ${buttonText}
           </a>
         </div>
       `;
 
-      const text = `REQUERIMIENTO DE INFORMACIÓN COMPLEMENTARIA (48 HORAS CORRIDAS)\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nSe requiere información adicional para su pedido ${payload.pedido_visible || 'PED'}:\n\n"${rawMensaje}"\n\nATENCIÓN: Dispone de 48 horas corridas (Vence: ${expiresAt}) para ingresar su respuesta.\n\nPara responder ingrese a: ${portalUrl}\n`;
+      const text = `REQUERIMIENTO DE INFORMACIÓN COMPLEMENTARIA (48 HORAS CORRIDAS)\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nSe requiere información adicional para su pedido ${payload.pedido_visible || 'PED'}:\n\n"${rawMensaje}"\n\nATENCIÓN: Dispone de 48 horas corridas (Vence: ${expiresAt}) para ingresar su respuesta.\n\nPara responder ingrese a: ${actionUrl}\n`;
 
       return {
         subject,
@@ -264,8 +270,12 @@ export function renderEmail(
     case 'finalizado':
     case 'pedido_finalizado': {
       const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
+      const rawPedVisible = (payload.pedido_visible || '').trim();
       const subject = `[PEDIDOS] Solicitud Finalizada: ${payload.pedido_visible || 'PED'}`;
-      const portalUrl = `${cleanAppUrl}/mis-solicitudes`;
+      const rawToken = (payload.magic_token || payload.raw_token || payload.token || '').trim();
+      const portalUrl = rawToken
+        ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}${rawPedVisible ? `&pedido=${encodeURIComponent(rawPedVisible)}` : ''}`
+        : `${cleanAppUrl}/mis-solicitudes`;
       const urlEntrega = payload.extra?.url_entrega || payload.url_entrega || '';
       // NOTA C13: Solo se usa nota_cierre pública, nunca notas_internas
       const notaCierreRaw = payload.nota_cierre || payload.nota || payload.extra?.nota_cierre || '';
@@ -380,30 +390,30 @@ export function renderEmail(
       if (!rawToken || typeof rawToken !== 'string' || rawToken.trim().length === 0) {
         throw new Error('Error al renderizar email de acceso: el token de seguridad es requerido y no puede estar vacío');
       }
-      const subject = `[PEDIDOS] Enlace Seguro de Acceso a Mis Solicitudes`;
-      const accessUrl = `${cleanAppUrl}/mis-solicitudes#token=${encodeURIComponent(rawToken.trim())}`;
+      const subject = `[PEDIDOS] Acceso a Mis Solicitudes`;
+      const accessUrl = `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken.trim())}`;
 
       const contentHtml = `
         <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
-          Acceso Seguro a Mis Solicitudes
+          Acceso a Mis Solicitudes
         </h2>
         <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
           Estimado/a <strong>${nombreSafe}</strong>,
         </p>
         <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.5;">
-          Hemos recibido una solicitud para acceder a la totalidad de sus trámites en el portal de la Secretaría de Medios. Utilice el siguiente botón seguro:
+          Usá el siguiente botón para acceder a tus solicitudes en el portal de la Secretaría de Medios:
         </p>
         <div style="text-align: center; margin: 28px 0;">
           <a href="${accessUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 700; font-size: 15px;">
-            Ingresar a Mis Solicitudes
+            Ver mis solicitudes
           </a>
         </div>
         <p style="margin: 0 0 8px 0; font-size: 12px; color: ${BRAND_MUTED}; text-align: center;">
-          Este enlace es de uso único y expira automáticamente por razones de seguridad.
+          Este enlace estará disponible mientras se encuentre vigente.
         </p>
       `;
 
-      const text = `ACCESO SEGURO A MIS SOLICITUDES\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nUtilice el siguiente enlace seguro para acceder a sus solicitudes:\n${accessUrl}\n\n(Este enlace es de uso único)\n`;
+      const text = `ACCESO A MIS SOLICITUDES\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nUsá el siguiente enlace para acceder a tus solicitudes:\n${accessUrl}\n\n(Este enlace estará disponible mientras se encuentre vigente)\n`;
 
       return {
         subject,
@@ -414,7 +424,53 @@ export function renderEmail(
     }
 
     // -------------------------------------------------------------------------
-    // 7. Cambio de Estado General — C04
+    // 7. Pedido en Proceso — C04, C06
+    // -------------------------------------------------------------------------
+    case 'en_proceso':
+    case 'pedido_en_proceso': {
+      const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
+      const rawPedVisible = (payload.pedido_visible || '').trim();
+      const subject = `[PEDIDOS] Tu solicitud ${payload.pedido_visible || 'PED'} está en proceso`;
+      const rawToken = (payload.magic_token || payload.raw_token || payload.token || '').trim();
+      const portalUrl = rawToken
+        ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}${rawPedVisible ? `&pedido=${encodeURIComponent(rawPedVisible)}` : ''}`
+        : `${cleanAppUrl}/mis-solicitudes`;
+
+      const contentHtml = `
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
+          Tu solicitud está en proceso
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
+          Estimado/a <strong>${nombreSafe}</strong>,
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+          Tu solicitud <strong>${pedVisible}</strong> ingresó a la etapa &ldquo;En proceso&rdquo;.
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+          El equipo de la Secretaría de Medios comenzó a trabajar en tu requerimiento.
+        </p>
+        <p style="margin: 0 0 20px 0; font-size: 14px; color: ${BRAND_MUTED}; line-height: 1.5;">
+          Podés consultar el estado actualizado desde el portal de Mis solicitudes.
+        </p>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Ver mis solicitudes
+          </a>
+        </div>
+      `;
+
+      const text = `TU SOLICITUD ESTÁ EN PROCESO\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nTu solicitud ${payload.pedido_visible || 'PED'} ingresó a la etapa "En proceso".\nEl equipo de la Secretaría de Medios comenzó a trabajar en tu requerimiento.\nPodés consultar el estado actualizado desde el portal de Mis solicitudes en:\n${portalUrl}\n`;
+
+      return {
+        subject,
+        html: wrapHtmlLayout('Tu solicitud está en proceso', contentHtml),
+        text,
+        n8nTipo: 'en_proceso',
+      };
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. Cambio de Estado General — C04
     // -------------------------------------------------------------------------
     default: {
       const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
@@ -476,6 +532,10 @@ export function renderCancelledEmail(payload: Record<string, any>, appBaseUrl?: 
 
 export function renderMagicLinkEmail(payload: Record<string, any>, appBaseUrl?: string): RenderedEmail {
   return renderEmail('magic_link_access', payload, appBaseUrl);
+}
+
+export function renderEnProcesoEmail(payload: Record<string, any>, appBaseUrl?: string): RenderedEmail {
+  return renderEmail('en_proceso', payload, appBaseUrl);
 }
 
 export const renderEmailForCommunication = renderEmail;

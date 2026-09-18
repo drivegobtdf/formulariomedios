@@ -28,8 +28,9 @@ class Plugin
 
     /**
      * Hook de activación: registra reglas de reescritura y las descarga a la base de datos UNA SOLA VEZ.
+     * En Multisite se activa a nivel de sitio individual.
      */
-    public static function activate(): void
+    public static function activate(bool $network_wide = false): void
     {
         Routes::add_rewrite_rules();
         if (function_exists('flush_rewrite_rules')) {
@@ -38,9 +39,9 @@ class Plugin
     }
 
     /**
-     * Hook de desactivación: limpia las reglas de reescritura.
+     * Hook de desactivación: limpia las reglas de reescritura del sitio actual.
      */
-    public static function deactivate(): void
+    public static function deactivate(bool $network_wide = false): void
     {
         if (function_exists('flush_rewrite_rules')) {
             flush_rewrite_rules();

@@ -72,7 +72,8 @@ const allowedTypes = [
   'informacion_respondida',
   'finalizado',
   'cancelado',
-  'magic_link_access'
+  'magic_link_access',
+  'en_proceso'
 ];
 
 if (!allowedTypes.includes(String(p.tipo))) {

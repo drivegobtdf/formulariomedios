@@ -10,7 +10,8 @@ describe('App Router Placeholder Routes', () => {
       'href',
       '/formulariomedios'
     );
-    expect(screen.getByRole('link', { name: /^Mis Solicitudes$/i })).toHaveAttribute(
+    const misSolicitudesLinks = screen.getAllByRole('link', { name: /^Mis Solicitudes$/i });
+    expect(misSolicitudesLinks[0]).toHaveAttribute(
       'href',
       '/formulariomedios/mis-solicitudes'
     );

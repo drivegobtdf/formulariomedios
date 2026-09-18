@@ -16,6 +16,49 @@ interface Step4ResumenProps {
   errors: ValidationErrors;
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  fecha_limite: 'Fecha límite',
+  hora_inicio: 'Hora de inicio',
+  hora_fin: 'Hora de fin',
+  nombre_evento: 'Nombre del evento',
+  nombre_actividad: 'Nombre de la actividad',
+  medidas_soporte: 'Medidas / Soporte',
+  referente_contacto: 'Referente de contacto',
+  telefono_contacto: 'Teléfono de contacto',
+  informacion_base: 'Información base',
+  fecha_sugerida: 'Fecha sugerida',
+  texto_copy: 'Texto / Copy',
+  enlaces_referencia: 'Enlaces de referencia',
+  tipo_produccion: 'Tipo de producción',
+  descripcion_objetivo: 'Descripción / Objetivo',
+  grabacion_fecha: 'Fecha de grabación',
+  grabacion_hora: 'Hora de grabación',
+  grabacion_lugar: 'Lugar de grabación',
+  grabacion_ciudad: 'Ciudad de grabación',
+  material_enlace: 'Enlace a material',
+  tipo_motion: 'Tipo de animación',
+  texto_contenido: 'Texto / Contenido',
+  duracion_aprox: 'Duración aprox.',
+  tipo_streaming: 'Tipo de transmisión',
+  descripcion_requerimientos: 'Requerimientos',
+  participantes_estimados: 'Participantes estimados',
+  tipo_web: 'Tipo de requerimiento web',
+  url_pagina: 'Página actual',
+  contenido_cambios: 'Contenido / Cambios',
+  requerimientos: 'Requerimientos',
+  lugar: 'Lugar',
+  ciudad: 'Ciudad',
+  fecha: 'Fecha',
+  hora: 'Hora',
+  formato: 'Formato',
+  texto: 'Texto',
+  programa: 'Programa',
+  firmantes: 'Firmantes',
+  destinatarios: 'Destinatarios',
+  descripcion: 'Descripción',
+  autoridades: 'Autoridades',
+};
+
 export const Step4Resumen: React.FC<Step4ResumenProps> = ({
   state,
   pieces,
@@ -28,10 +71,7 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
   return (
     <div className="pedidos-step-container">
       <div className="pedidos-step-header">
-        <h2>4. Resumen y Confirmación Final</h2>
-        <p>
-          Revisá cuidadosamente los datos ingresados antes de confirmar el envío oficial a la Secretaría de Medios.
-        </p>
+        <h2>4. Revisá y enviá</h2>
       </div>
 
       {state.submission_error && (
@@ -43,9 +83,9 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
       {/* Bloque 1: Datos de Contacto */}
       <div className="pedidos-summary-block">
         <div className="pedidos-summary-header">
-          <h3>1. Datos del Solicitante</h3>
+          <h3>Datos del solicitante</h3>
           <button type="button" className="pedidos-btn-link" onClick={() => onGoToStep(1)}>
-            Editar contacto
+            Editar
           </button>
         </div>
         <div className="pedidos-summary-grid">
@@ -71,9 +111,9 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
       {/* Bloque 2: Solicitudes y Piezas Requeridas (Multi-PED) */}
       <div className="pedidos-summary-block">
         <div className="pedidos-summary-header">
-          <h3>2. Solicitudes a Generar ({pieces.length} PED{pieces.length > 1 ? 's' : ''})</h3>
+          <h3>Solicitudes ({pieces.length} PED{pieces.length > 1 ? 's' : ''})</h3>
           <button type="button" className="pedidos-btn-link" onClick={() => onGoToStep(2)}>
-            Editar requerimientos
+            Editar
           </button>
         </div>
 
@@ -86,7 +126,6 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
               <div key={p.client_request_ref} className="pedidos-summary-piece-card">
                 <div className="pedidos-summary-piece-header">
                   <span className="pedidos-piece-number">#{idx + 1}</span>
-                  <span className="pedidos-cat-badge">{p.codigo_ped_prefijo}</span>
                   <strong className="pedidos-piece-title">{p.piece_title}</strong>
                 </div>
 
@@ -105,10 +144,19 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
                   ) : (
                     <ul className="pedidos-piece-fields-list">
                       {Object.entries(dataObj).map(([key, val]) => {
-                        if (!val || typeof val === 'object' || key === 'requiere_asesoramiento') return null;
+                        if (
+                          !val ||
+                          typeof val === 'object' ||
+                          key === 'requiere_asesoramiento' ||
+                          key === 'asiste_autoridades' ||
+                          (key === 'autoridades' && String(val).trim() === '')
+                        ) {
+                          return null;
+                        }
+                        const label = FIELD_LABELS[key] || key.replace(/_/g, ' ');
                         return (
                           <li key={key}>
-                            <span className="field-name">{key.replace(/_/g, ' ')}:</span>
+                            <span className="field-name">{label}:</span>
                             <span className="field-val">{String(val)}</span>
                           </li>
                         );
@@ -125,9 +173,9 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
       {/* Bloque 3: Archivos y Enlaces */}
       <div className="pedidos-summary-block">
         <div className="pedidos-summary-header">
-          <h3>3. Archivos Adjuntos y Enlaces</h3>
+          <h3>Archivos y enlaces</h3>
           <button type="button" className="pedidos-btn-link" onClick={() => onGoToStep(3)}>
-            Editar adjuntos
+            Editar
           </button>
         </div>
 
@@ -160,7 +208,7 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
 
           <div>
             <strong style={{ fontSize: '0.95rem', color: '#1e293b' }}>
-              Enlaces al material ({state.links.length}):
+              Enlaces ({state.links.length}):
             </strong>
             {state.links.length === 0 ? (
               <p style={{ color: '#64748b', fontSize: '0.875rem', fontStyle: 'italic', margin: '0.25rem 0 0 0' }}>
@@ -196,7 +244,7 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
             disabled={state.submitting}
           />
           <span className="pedidos-checkbox-text">
-            <strong>Confirmo que revisé los datos y que la información ingresada es correcta.</strong>
+            <strong>Revisé los datos y son correctos.</strong>
           </span>
         </label>
         {errors.confirmado && (
@@ -213,7 +261,7 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
           onClick={onBack}
           disabled={state.submitting}
         >
-          ← Volver a Adjuntos
+          Atrás
         </button>
         <button
           type="button"
@@ -222,7 +270,11 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
           disabled={state.submitting || !state.confirmado}
           style={{ minWidth: '200px' }}
         >
-          {state.submitting ? 'Enviando solicitudes...' : 'Enviar solicitudes'}
+          {state.submitting
+            ? 'Enviando...'
+            : pieces.length > 1
+            ? 'Enviar solicitudes'
+            : 'Enviar solicitud'}
         </button>
       </div>
     </div>

@@ -126,6 +126,18 @@ export const SolicitarAccesoPage: React.FC = () => {
             .
           </p>
 
+          <p
+            style={{
+              fontSize: '0.9rem',
+              color: '#475569',
+              lineHeight: 1.6,
+              margin: '0 0 1.5rem 0',
+            }}
+          >
+            Te enviamos un correo de confirmación. Abrí ese enlace para verificar tu dirección antes
+            de iniciar sesión.
+          </p>
+
           <div
             style={{
               backgroundColor: '#f8fafc',
@@ -142,6 +154,7 @@ export const SolicitarAccesoPage: React.FC = () => {
               📋 Próximos pasos:
             </p>
             <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+              <li>Confirme su dirección desde el correo enviado por Supabase Auth.</li>
               <li>Un Administrador revisará su solicitud en el panel de gestión.</li>
               <li>Se le asignará el rol correspondiente (Equipo u Observador).</li>
               <li>Una vez aprobado, podrá ingresar con su email y contraseña.</li>
@@ -385,12 +398,13 @@ export const SolicitarAccesoPage: React.FC = () => {
               padding: '0.75rem',
               borderRadius: '0.375rem',
               border: 'none',
-              backgroundColor: '#0284c7',
+              backgroundColor: 'var(--pedidos-brand-primary, #0b2746)',
               color: '#ffffff',
               fontSize: '0.875rem',
               fontWeight: 600,
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1,
+              boxShadow: '0 2px 4px rgba(11, 39, 70, 0.2)',
             }}
           >
             {loading ? 'Enviando solicitud...' : 'Enviar Solicitud de Acceso'}
@@ -411,7 +425,7 @@ export const SolicitarAccesoPage: React.FC = () => {
         >
           <Link
             to="/login"
-            style={{ color: '#0284c7', textDecoration: 'none', fontWeight: 500 }}
+            style={{ color: 'var(--pedidos-brand-secondary, #1e5aa0)', textDecoration: 'none', fontWeight: 600 }}
           >
             ¿Ya tienes cuenta aprobada? <strong>Iniciar Sesión</strong> &rarr;
           </Link>

@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import crypto, { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.116.0';
 import { getEnv, getSupabaseConfig, resolvePublicAppUrl } from './env.ts';
@@ -38,7 +38,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || '';
   const rawAllowed =
     getEnv('ALLOWED_ORIGINS') ||
-    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://localhost:8080,http://127.0.0.1:8080';
+    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://localhost:4174,http://127.0.0.1:4174,http://localhost:8080,http://127.0.0.1:8080';
   const allowedOrigins = rawAllowed
     .split(',')
     .map((o) => o.trim().toLowerCase())
@@ -49,7 +49,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
     'Access-Control-Allow-Headers':
-      'authorization, x-client-info, apikey, content-type, x-capability-token, x-solicitante-session, x-pedidos-dispatch-secret',
+      'authorization, x-client-info, apikey, content-type, x-capability-token, x-solicitante-session, x-pedidos-dispatch-secret, x-info-token, x-session-token, x-reservation-id',
     'Access-Control-Expose-Headers':
       'Content-Disposition, Content-Type, Content-Length, Cache-Control, X-Content-Type-Options',
     'Access-Control-Max-Age': '86400',
@@ -64,24 +64,46 @@ export function getCorsHeaders(req: Request): Record<string, string> {
 }
 
 /**
+ * Calcula el hash SHA-256 en formato hexadecimal mediante Web Crypto API standard
+ * (100% compatible con Browser, Deno y Node.js sin depender de node:crypto en runtime)
+ */
+export async function computeSha256Hex(data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  if (typeof crypto !== 'undefined' && crypto.subtle && typeof crypto.subtle.digest === 'function') {
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+    return Array.from(new Uint8Array(hashBuffer), (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  // Fallback seguro para entornos Node.js
+  const nodeCrypto = await import('node:crypto');
+  return nodeCrypto.createHash('sha256').update(data).digest('hex');
+}
+
+/**
  * Genera un capability token criptográfico y su hash sha256
  */
-export function generateCapabilityToken(submissionKey: string): { token: string; hash: string } {
-  const randomSecret = crypto.randomBytes(32).toString('hex');
+export async function generateCapabilityToken(submissionKey: string): Promise<{ token: string; hash: string }> {
+  const rawBytes = new Uint8Array(32);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(rawBytes);
+  } else {
+    const nodeCrypto = await import('node:crypto');
+    const bytes = nodeCrypto.randomBytes(32);
+    rawBytes.set(bytes);
+  }
+  const randomSecret = Array.from(rawBytes, (b) => b.toString(16).padStart(2, '0')).join('');
   const token = `${submissionKey}.${randomSecret}`;
-  const hash = crypto.createHash('sha256').update(token).digest('hex');
+  const hash = await computeSha256Hex(token);
   return { token, hash };
 }
 
 /**
  * Valida un capability token contra su hash esperado
  */
-export function verifyCapabilityToken(token: string, expectedHash: string): boolean {
+export async function verifyCapabilityToken(token: string, expectedHash: string): Promise<boolean> {
   if (!token || !expectedHash) return false;
-  const hash = crypto.createHash('sha256').update(token).digest('hex');
-  if (hash.length !== expectedHash.length) return false;
-  const enc = new TextEncoder();
-  return crypto.timingSafeEqual(enc.encode(hash), enc.encode(expectedHash));
+  const hash = await computeSha256Hex(token);
+  return timingSafeEqualString(hash, expectedHash);
 }
 
 /**
@@ -155,7 +177,7 @@ export function getEncryptionKey(customKey?: string): Buffer {
     // ignore
   }
   const rawSecret = customKey || getEnv('MAGIC_LINK_ENCRYPTION_KEY') || fallbackKey || getEnv('SUPABASE_SERVICE_ROLE_KEY') || 'pedidos-default-envelope-secret-key-32-bytes!';
-  return crypto.createHash('sha256').update(rawSecret + ':pedidos-magic-envelope-key-v1').digest();
+  return createHash('sha256').update(rawSecret + ':pedidos-magic-envelope-key-v1').digest();
 }
 
 export interface EncryptedTokenEnvelope {
@@ -178,8 +200,8 @@ export function encryptTokenEnvelope(
   customKey?: string
 ): EncryptedTokenEnvelope {
   const key = getEncryptionKey(customKey);
-  const iv = crypto.randomBytes(12); // 96-bit IV para GCM
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const iv = randomBytes(12); // 96-bit IV para GCM
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
 
   const aad = Buffer.from(`purpose:${purpose}|comm:${communicationId}`, 'utf8');
   cipher.setAAD(aad);
@@ -215,7 +237,7 @@ export function decryptTokenEnvelope(
   const key = getEncryptionKey(customKey);
   const iv = Buffer.from(envelope.iv, 'hex');
   const tag = Buffer.from(envelope.tag, 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  const decipher = createDecipheriv('aes-256-gcm', key, iv);
 
   const aad = Buffer.from(`purpose:${purpose}|comm:${communicationId}`, 'utf8');
   decipher.setAAD(aad);

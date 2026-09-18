@@ -2,7 +2,7 @@
 
 **Sistema:** PEDIDOS — Secretaría de Medios  
 **Revisión Contractual:** 3.1  
-**Fecha / Hora:** 2026-09-14T02:49:50.973Z  
+**Fecha / Hora:** 2026-09-17T18:11:14.184Z  
 **Entorno:** Supabase Cloud (sa-east-1 / São Paulo) (`yqfkzgqvezarzhlwiilo`)  
 **Resultado Global:** **PASS**  
 
@@ -56,6 +56,19 @@
 | `20260913000028` | `20260913000028_f10_hardened_lease_expiry_sweep_and_5xx_uncertainty.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
 | `20260913000029` | `20260913000029_clean_legacy_magic_token_payloads.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
 | `20260913000030` | `20260913000030_f10_hardened_concurrency_state_machine_and_durable_magic_link.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260915000031` | `20260915000031_f8_usuarios_acceso_approved_policy.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260916000032` | `20260916000032_f8_state_machine_en_proceso_to_en_revision.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260916000033` | `20260916000033_f10_info_requested_encrypted_envelope.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260916000034` | `20260916000034_f10_fix_comunicacion_enqueue_info_requested_overload.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260916000035` | `20260916000035_f10_fix_comunicacion_enqueue_returning_id.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260916000036` | `20260916000036_f10_atomic_info_request_with_envelope.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260916000037` | `20260916000037_f10_contextual_info_attachments_and_links.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260916000039` | `20260916000039_f8_mandatory_responsable_guard.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260916000040` | `20260916000040_f8_hardening_responsable_and_finalize.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260916000041` | `20260916000041_f8_fix_pedido_assign_overload.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260916000042` | `20260916000042_f7_solicitante_access_controlled_replay.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260917000043` | `20260917000043_f7_f9_pending_info_consistency_guard.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
+| `20260917000044` | `20260917000044_f7_f9_info_concurrency_hardening.sql` | ✓ | ✓ | ✓ | Sincronizada y aplicada en repo, local y Cloud |
 
 --- 
 
@@ -79,13 +92,13 @@
 - [x] **2.5 Configuración 2: Magic link emitido con TTL de 3600s (1h) demostrado en runtime** 
 - [x] **2.6 Solicitud de información faltante mantiene exactamente 48 horas corridas (172800s)** 
 - [x] **2.7 Primer canje genera sesión opaca exitosamente** 
-- [x] **2.8 Replay de token mágico ya usado es rechazado con 42202 TOKEN_ALREADY_USED** 
+- [x] **2.8 Replay controlado del mismo enlace dentro de su vigencia genera sesión válida** 
 - [x] **2.9 Revocación explícita de sesión ejecutada** 
 - [x] **2.10 Sesión revocada es rechazada con 42501 SESSION_REVOKED** 
 
 ### CRIT-03-MIGRATIONS: Reconciliación de Migraciones (Repo, Local, Cloud) — [PASS]
 
-- [x] **3.1 Migraciones base 001 a 025 (o superior) existen en repositorio** _(Encontradas: 30)_
+- [x] **3.1 Migraciones base 001 a 025 (o superior) existen en repositorio** _(Encontradas: 43)_
 - [x] **3.2 Historial local sincronizado al 100%** 
 - [x] **3.3 Historial Cloud sincronizado al 100%** 
 - [x] **3.4 Migración 025 formalmente aplicada con RBAC Equipo y TTLs configurables** 
@@ -100,7 +113,7 @@
 
 ### CRIT-05-INFO-RESPONSE: SRS-INF-004: Respuesta a Info con Texto, Enlaces Genéricos y Adjuntos — [PASS]
 
-- [x] **5.1 Edge Function solicitante-info-respond acepta texto, enlaces genéricos y archivos** _({"estado":"respondida","success":true,"solicitud_id":"fe64aea4-e794-44d0-b9e8-aee0fd63d660"})_
+- [x] **5.1 Edge Function solicitante-info-respond acepta texto, enlaces genéricos y archivos** _({"estado":"respondida","success":true,"solicitud_id":"4e141163-654f-4793-ad96-cfb947a0e6d9"})_
 - [x] **5.2 Archivo adjuntado en respuesta queda vinculado a archivo_pedido** 
 - [x] **5.3 Enlace externo genérico queda registrado en enlaces_material** 
 

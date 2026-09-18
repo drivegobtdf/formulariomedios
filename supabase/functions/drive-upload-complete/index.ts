@@ -3,6 +3,7 @@ import {
   getCorsHeaders,
   verifyCapabilityToken,
   getSupabaseConfig,
+  computeSha256Hex,
 } from '../_shared/security.ts';
 import { getDriveAdapter } from '../_shared/drive-adapter.ts';
 
@@ -28,59 +29,113 @@ export default async function handler(req: Request): Promise<Response> {
     });
 
     const body = await req.json();
-    const { session_id, capability_token, reservation_id } = body;
+    const { session_id, capability_token, info_token, session_token, reservation_id } = body;
 
-    if (!session_id || !capability_token || !reservation_id) {
+    if (!reservation_id || (!session_id && !info_token && !session_token)) {
       return new Response(
         JSON.stringify({
           error: 'BAD_REQUEST',
-          message: 'session_id, capability_token y reservation_id son obligatorios',
+          message: 'reservation_id y credencial de autorización son obligatorios',
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // 1. Obtener y validar sesión
-    const { data: session, error: sessionErr } = await supabase
-      .from('submission_sessions')
-      .select('*')
-      .eq('id', session_id)
-      .maybeSingle();
+    let targetSubmissionKey = '';
 
-    if (sessionErr || !session) {
-      return new Response(
-        JSON.stringify({ error: 'SESSION_NOT_FOUND', message: 'Sesión no encontrada' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    if (info_token) {
+      // 1A. Validación de token de solicitud de información
+      const tokenHash = await computeSha256Hex(String(info_token).trim());
+      const { data: sol, error: solErr } = await supabase
+        .from('solicitudes_informacion')
+        .select('id, pedido_id, estado, expires_at')
+        .eq('token_hash', tokenHash)
+        .maybeSingle();
 
-    if (session.estado !== 'abierta' || new Date(session.expires_at).getTime() <= Date.now()) {
-      return new Response(
-        JSON.stringify({ error: 'SESSION_EXPIRED', message: 'La sesión ha expirado o ya no está abierta' }),
-        { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      if (solErr || !sol) {
+        return new Response(
+          JSON.stringify({ error: 'SESSION_NOT_FOUND', message: 'Solicitud de información no encontrada' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    if (!verifyCapabilityToken(capability_token, session.capability_hash)) {
-      return new Response(
-        JSON.stringify({ error: 'INVALID_CAPABILITY', message: 'capability_token inválido' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      targetSubmissionKey = `info_${sol.id}`;
+    } else if (session_token) {
+      // 1B. Validación de sesión de solicitante
+      const tokenHash = await computeSha256Hex(String(session_token).trim());
+      const { data: solSession, error: sessErr } = await supabase
+        .from('solicitante_sessions')
+        .select('correo, expires_at')
+        .eq('session_token_hash', tokenHash)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+      if (sessErr || !solSession) {
+        return new Response(
+          JSON.stringify({ error: 'SESSION_INVALID', message: 'Sesión de solicitante no válida' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // 1C. Validación de sesión pública estándar
+      if (!session_id || !capability_token) {
+        return new Response(
+          JSON.stringify({ error: 'BAD_REQUEST', message: 'session_id y capability_token son obligatorios' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: session, error: sessionErr } = await supabase
+        .from('submission_sessions')
+        .select('*')
+        .eq('id', session_id)
+        .maybeSingle();
+
+      if (sessionErr || !session) {
+        return new Response(
+          JSON.stringify({ error: 'SESSION_NOT_FOUND', message: 'Sesión no encontrada' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (session.estado !== 'abierta' || new Date(session.expires_at).getTime() <= Date.now()) {
+        return new Response(
+          JSON.stringify({ error: 'SESSION_EXPIRED', message: 'La sesión ha expirado o ya no está abierta' }),
+          { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!(await verifyCapabilityToken(capability_token, session.capability_hash))) {
+        return new Response(
+          JSON.stringify({ error: 'INVALID_CAPABILITY', message: 'capability_token inválido' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      targetSubmissionKey = session.submission_key;
     }
 
     // 2. Obtener reserva
-    const { data: reservation, error: resErr } = await supabase
+    const resQuery = supabase
       .from('upload_reservations')
       .select('*, archivos(*)')
-      .eq('id', reservation_id)
-      .eq('session_id', session_id)
-      .maybeSingle();
+      .eq('id', reservation_id);
+
+    if (session_id) {
+      resQuery.eq('session_id', session_id);
+    }
+
+    const { data: reservation, error: resErr } = await resQuery.maybeSingle();
 
     if (resErr || !reservation) {
       return new Response(
         JSON.stringify({ error: 'RESERVATION_NOT_FOUND', message: 'Reserva de carga no encontrada' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    if (!targetSubmissionKey && reservation.solicitud_id) {
+      targetSubmissionKey = `info_${reservation.solicitud_id}`;
     }
 
     const client_file_ref = body.client_file_ref || reservation.client_file_ref;
@@ -107,7 +162,7 @@ export default async function handler(req: Request): Promise<Response> {
       size: Number(reservation.expected_size),
       mimeType: reservation.expected_mime,
       appProperties: {
-        submission_key: session.submission_key,
+        submission_key: targetSubmissionKey,
         client_file_ref: client_file_ref,
         reservation_id: reservation_id,
       },

@@ -70,7 +70,7 @@ SELECT has_index('public', 'comunicaciones_pedido', 'idx_comunicaciones_queue_di
 SELECT has_function('public', 'comunicacion_claim_batch', ARRAY['integer', 'integer'], 'RPC comunicacion_claim_batch existe');
 SELECT has_function('public', 'comunicacion_mark_result', ARRAY['uuid', 'uuid', 'boolean', 'text', 'text', 'integer', 'boolean'], 'RPC comunicacion_mark_result existe');
 SELECT has_function('public', 'comunicacion_enqueue_submission_created', ARRAY['uuid'], 'Helper comunicacion_enqueue_submission_created existe');
-SELECT has_function('public', 'comunicacion_enqueue_info_requested', ARRAY['uuid'], 'Helper comunicacion_enqueue_info_requested existe');
+SELECT has_function('public', 'comunicacion_enqueue_info_requested', ARRAY['uuid', 'jsonb'], 'Helper comunicacion_enqueue_info_requested existe con sobre cifrado opcional');
 SELECT has_function('public', 'comunicacion_enqueue_lifecycle', ARRAY['uuid', 'text', 'jsonb'], 'Helper comunicacion_enqueue_lifecycle existe');
 
 -- -----------------------------------------------------------------------------

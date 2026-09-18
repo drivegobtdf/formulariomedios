@@ -6,16 +6,19 @@ import {
   SOLICITANTE_SESSION_STORAGE_KEY,
   saveStoredSolicitanteSession,
   getStoredSolicitanteSession,
+  clearStoredSolicitanteSession,
 } from '../services/sessionStorageService';
 
 describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearStoredSolicitanteSession();
     sessionStorage.clear();
     localStorage.clear();
   });
 
   afterEach(() => {
+    clearStoredSolicitanteSession();
     sessionStorage.clear();
     localStorage.clear();
     vi.restoreAllMocks();
@@ -25,12 +28,11 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
     window.history.pushState({}, '', '/formulariomedios/mis-solicitudes');
     render(<MisSolicitudesPage />);
 
-    expect(screen.getByText('Mis Solicitudes')).toBeInTheDocument();
-    expect(screen.getByText('Ingreso sin Contraseña')).toBeInTheDocument();
+    expect(screen.getAllByText('Mis Solicitudes')[0]).toBeInTheDocument();
     expect(screen.getByLabelText(/Correo Electrónico/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Recibir Enlace Seguro de Acceso/i })).toBeInTheDocument();
-    expect(screen.queryByText(/Estamos abriendo tus solicitudes/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Estamos recuperando tu sesión/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Enviar enlace/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Abriendo solicitudes/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Recuperando sesión/i)).not.toBeInTheDocument();
   });
 
   it('2. [A] Canje válido: Guarda la sesión opaca en sessionStorage sin almacenar el magic token', async () => {
@@ -64,10 +66,10 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
 
     render(<MisSolicitudesPage />);
 
-    expect(screen.getByText('Estamos abriendo tus solicitudes...')).toBeInTheDocument();
+    expect(screen.getByText('Abriendo solicitudes...')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('PED-2026-D000146')).toBeInTheDocument();
+      expect(screen.getAllByText('PED-2026-D000146')[0]).toBeInTheDocument();
     });
 
     expect(exchangeSpy).toHaveBeenCalledWith('secret-magic-token-xyz');
@@ -84,7 +86,9 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
     const rawStorage = sessionStorage.getItem(SOLICITANTE_SESSION_STORAGE_KEY) || '';
     expect(rawStorage.includes('secret-magic-token-xyz')).toBe(false);
 
-    // NUNCA debe escribir en localStorage
+    // Escribe en sessionStorage (aislado por pestaña)
+    expect(sessionStorage.getItem(SOLICITANTE_SESSION_STORAGE_KEY)).not.toBeNull();
+    // NUNCA escribe en localStorage (cero credenciales en localStorage)
     expect(localStorage.getItem(SOLICITANTE_SESSION_STORAGE_KEY)).toBeNull();
   });
 
@@ -125,11 +129,11 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
     render(<MisSolicitudesPage />);
 
     // Inmediatamente muestra spinner de recuperación y NUNCA el formulario de login
-    expect(screen.getByText('Estamos recuperando tu sesión...')).toBeInTheDocument();
-    expect(screen.queryByText('Ingreso sin Contraseña')).not.toBeInTheDocument();
+    expect(screen.getByText('Recuperando sesión...')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Enviar enlace/i })).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('PED-2026-D000146')).toBeInTheDocument();
+      expect(screen.getAllByText('PED-2026-D000146')[0]).toBeInTheDocument();
     });
 
     // [D] NO ejecuta canje ni solicitud de email
@@ -219,7 +223,7 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
     fireEvent.click(screen.getByRole('button', { name: /Reintentar/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('PED-2026-D000146')).toBeInTheDocument();
+      expect(screen.getAllByText('PED-2026-D000146')[0]).toBeInTheDocument();
     });
 
     expect(getPedidosSpy).toHaveBeenCalledTimes(2);
@@ -232,7 +236,7 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
 
     render(<MisSolicitudesPage />);
 
-    expect(screen.getByText('Ingreso sin Contraseña')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Correo electrónico/i)).toBeInTheDocument();
     expect(sessionStorage.getItem(SOLICITANTE_SESSION_STORAGE_KEY)).toBeNull();
   });
 
@@ -284,14 +288,14 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
     const { unmount } = render(<MisSolicitudesPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Cerrar Sesión/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Cerrar sesión/i })).toBeInTheDocument();
     });
 
     // Clic en Cerrar Sesión
-    fireEvent.click(screen.getByRole('button', { name: /Cerrar Sesión/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Cerrar sesión/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Ingreso sin Contraseña')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Enviar enlace/i })).toBeInTheDocument();
     });
 
     expect(revokeSpy).toHaveBeenCalledWith('session-to-logout');
@@ -301,8 +305,8 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
     unmount();
     render(<MisSolicitudesPage />);
 
-    expect(screen.getByText('Ingreso sin Contraseña')).toBeInTheDocument();
-    expect(screen.queryByText('Estamos recuperando tu sesión...')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Enviar enlace/i })).toBeInTheDocument();
+    expect(screen.queryByText('Recuperando sesión...')).not.toBeInTheDocument();
   });
 
   it('9. [K] Respuesta asíncrona tardía no restaura sesión si el usuario ya cerró sesión', async () => {
@@ -348,14 +352,14 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
     });
 
     await waitFor(() => {
-      expect(screen.getByText('PED-2026-D000146')).toBeInTheDocument();
+      expect(screen.getAllByText('PED-2026-D000146')[0]).toBeInTheDocument();
     });
 
     // Ahora logout
-    fireEvent.click(screen.getByRole('button', { name: /Cerrar Sesión/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Cerrar sesión/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Ingreso sin Contraseña')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Enviar enlace/i })).toBeInTheDocument();
     });
 
     // Si entra otra respuesta tardía posterior, no debe repoblar
@@ -365,7 +369,7 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
       pedidos: [],
     });
 
-    expect(screen.getByText('Ingreso sin Contraseña')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Enviar enlace/i })).toBeInTheDocument();
   });
 
   it('10. [L] Enlace nuevo con sesión anterior abierta: Reemplaza limpiamente la sesión sin mezclar solicitantes', async () => {
@@ -406,7 +410,7 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
     render(<MisSolicitudesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('PED-2026-D000200')).toBeInTheDocument();
+      expect(screen.getAllByText('PED-2026-D000200')[0]).toBeInTheDocument();
       expect(screen.getByText('usuario_b@ejemplo.gob.ar')).toBeInTheDocument();
     });
 
@@ -426,7 +430,308 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
 
     expect(screen.getByText('Aviso de Acceso')).toBeInTheDocument();
     expect(screen.getByText(/El enlace de acceso recibido está incompleto o es inválido/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Solicitar un nuevo enlace/i })).toBeInTheDocument();
-    expect(screen.queryByText('Ingreso sin Contraseña')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Solicitar nuevo enlace/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Correo electrónico/i)).not.toBeInTheDocument();
+  });
+
+  it('12. Acceso directo desde correo de finalización (#access_token=...&pedido=PED-2026-D000155): Sanitiza URL, canjea sesión, persiste en sessionStorage y abre automáticamente el pedido finalizado', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/formulariomedios/mis-solicitudes#access_token=direct-finalized-token-155&pedido=PED-2026-D000155'
+    );
+
+    const exchangeSpy = vi.spyOn(trackingApi, 'solicitanteSessionExchange').mockResolvedValue({
+      ok: true,
+      success: true,
+      session_token: 'session-direct-155',
+      correo: 'solicitante.qa@tierradelfuego.gob.ar',
+      email: 'solicitante.qa@tierradelfuego.gob.ar',
+      expires_at: '2026-09-17T00:00:00.000Z',
+    });
+
+    const getPedidosSpy = vi.spyOn(trackingApi, 'solicitanteGetPedidos').mockResolvedValue({
+      correo: 'solicitante.qa@tierradelfuego.gob.ar',
+      total: 2,
+      pedidos: [
+        {
+          id: 'b0d38a6f-0c1b-404d-a565-a4593ffb3d81',
+          pedido_visible: 'PED-2026-D000155',
+          categoria_nombre: 'Diseño Gráfico',
+          tipo_nombre: 'Flyer Digital',
+          estado: 'Finalizado',
+          created_at: '2026-09-16T12:00:00.000Z',
+          updated_at: '2026-09-16T15:00:00.000Z',
+          tiene_entrega: true,
+        },
+        {
+          id: 'other-ped-uuid',
+          pedido_visible: 'PED-2026-D000150',
+          categoria_nombre: 'Video',
+          tipo_nombre: 'Edición',
+          estado: 'En proceso',
+          created_at: '2026-09-15T10:00:00.000Z',
+          updated_at: '2026-09-15T10:00:00.000Z',
+          tiene_entrega: false,
+        },
+      ],
+    });
+
+    const getDetailSpy = vi.spyOn(trackingApi, 'solicitanteGetPedidoDetail').mockResolvedValue({
+      id: 'b0d38a6f-0c1b-404d-a565-a4593ffb3d81',
+      pedido_visible: 'PED-2026-D000155',
+      anio: 2026,
+      numero: 155,
+      codigo_categoria: 'DIS',
+      categoria_nombre: 'Diseño Gráfico',
+      tipo_nombre: 'Flyer Digital',
+      estado: 'Finalizado',
+      created_at: '2026-09-16T12:00:00.000Z',
+      updated_at: '2026-09-16T15:00:00.000Z',
+      informacion_especifica: {},
+      notas_publicas: [],
+      entrega: {
+        id: 'entrega-uuid-155',
+        version: 1,
+        url_entrega: 'https://drive.google.com/drive/folders/sample-finalizado',
+        nota_publica: 'Entrega final aprobada.',
+        created_at: '2026-09-16T15:00:00.000Z',
+      },
+      solicitudes_informacion: [],
+      archivos_adjuntos: [],
+      timeline_publico: [],
+    });
+
+    render(<MisSolicitudesPage />);
+
+    // 1. Canje y carga completados
+    await waitFor(() => {
+      expect(screen.getAllByText('PED-2026-D000155')[0]).toBeInTheDocument();
+    });
+
+    expect(exchangeSpy).toHaveBeenCalledWith('direct-finalized-token-155');
+    expect(getPedidosSpy).toHaveBeenCalledWith('session-direct-155');
+
+    // 2. Apertura automática del modal/drawer para PED-2026-D000155
+    await waitFor(() => {
+      expect(getDetailSpy).toHaveBeenCalledWith('session-direct-155', 'PED-2026-D000155');
+      expect(screen.getByText('Entrega final aprobada.')).toBeInTheDocument();
+      expect(screen.getByText(/Entrega final · v1/i)).toBeInTheDocument();
+    });
+
+    // 3. Persistencia en sessionStorage
+    const stored = getStoredSolicitanteSession();
+    expect(stored?.session_token).toBe('session-direct-155');
+    expect(stored?.correo).toBe('solicitante.qa@tierradelfuego.gob.ar');
+
+    // 4. URL saneada (sin fragmento de token en barra de direcciones)
+    expect(window.location.hash).toBe('');
+  });
+
+  it('13. Acceso con sesión activa existente y deep-link (?pedido=PED-2026-D000155): Abre directamente el pedido sin solicitar canje ni pedir correo', async () => {
+    // Sesión activa previa en sessionStorage
+    saveStoredSolicitanteSession({
+      session_token: 'already-active-session',
+      correo: 'solicitante.qa@tierradelfuego.gob.ar',
+      expires_at: '2026-09-17T00:00:00.000Z',
+    });
+
+    window.history.pushState(
+      {},
+      '',
+      '/formulariomedios/mis-solicitudes?pedido=PED-2026-D000155'
+    );
+
+    const exchangeSpy = vi.spyOn(trackingApi, 'solicitanteSessionExchange');
+
+    const getPedidosSpy = vi.spyOn(trackingApi, 'solicitanteGetPedidos').mockResolvedValue({
+      correo: 'solicitante.qa@tierradelfuego.gob.ar',
+      total: 1,
+      pedidos: [
+        {
+          id: 'b0d38a6f-0c1b-404d-a565-a4593ffb3d81',
+          pedido_visible: 'PED-2026-D000155',
+          categoria_nombre: 'Diseño Gráfico',
+          tipo_nombre: 'Flyer Digital',
+          estado: 'Finalizado',
+          created_at: '2026-09-16T12:00:00.000Z',
+          updated_at: '2026-09-16T15:00:00.000Z',
+          tiene_entrega: true,
+        },
+      ],
+    });
+
+    const getDetailSpy = vi.spyOn(trackingApi, 'solicitanteGetPedidoDetail').mockResolvedValue({
+      id: 'b0d38a6f-0c1b-404d-a565-a4593ffb3d81',
+      pedido_visible: 'PED-2026-D000155',
+      anio: 2026,
+      numero: 155,
+      codigo_categoria: 'DIS',
+      categoria_nombre: 'Diseño Gráfico',
+      tipo_nombre: 'Flyer Digital',
+      estado: 'Finalizado',
+      created_at: '2026-09-16T12:00:00.000Z',
+      updated_at: '2026-09-16T15:00:00.000Z',
+      informacion_especifica: {},
+      notas_publicas: [],
+      entrega: {
+        id: 'entrega-uuid-155',
+        version: 1,
+        url_entrega: 'https://drive.google.com/drive/folders/sample-finalizado',
+        nota_publica: 'Detalle restaurado con sesión existente.',
+        created_at: '2026-09-16T15:00:00.000Z',
+      },
+      solicitudes_informacion: [],
+      archivos_adjuntos: [],
+      timeline_publico: [],
+    });
+
+    render(<MisSolicitudesPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('PED-2026-D000155')[0]).toBeInTheDocument();
+    });
+
+    // NO debe llamar a canje porque ya tenía sesión
+    expect(exchangeSpy).not.toHaveBeenCalled();
+    expect(getPedidosSpy).toHaveBeenCalledWith('already-active-session');
+
+    // Abre automáticamente el pedido
+    await waitFor(() => {
+      expect(getDetailSpy).toHaveBeenCalledWith('already-active-session', 'PED-2026-D000155');
+      expect(screen.getByText('Detalle restaurado con sesión existente.')).toBeInTheDocument();
+    });
+  });
+
+  it('14. Token expirado (#access_token=...): Muestra mensaje amigable con botón para solicitar nuevo enlace', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/formulariomedios/mis-solicitudes#access_token=expired-token-xyz'
+    );
+
+    const error: any = new Error('Token expirado');
+    error.code = 'TOKEN_EXPIRED';
+    vi.spyOn(trackingApi, 'solicitanteSessionExchange').mockRejectedValue(error);
+
+    render(<MisSolicitudesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Aviso de Acceso')).toBeInTheDocument();
+      expect(screen.getByText(/Este enlace de acceso ha expirado/i)).toBeInTheDocument();
+    });
+
+    const requestBtn = screen.getByRole('button', { name: /Solicitar nuevo enlace/i });
+    expect(requestBtn).toBeInTheDocument();
+
+    // Al pulsar el botón, vuelve a la vista de formulario
+    fireEvent.click(requestBtn);
+    expect(screen.getByRole('button', { name: /Enviar enlace/i })).toBeInTheDocument();
+  });
+
+  it('15. Token ya utilizado (#access_token=...) pero con sesión persistente vigente: Reutiliza la sesión y abre solicitudes sin error', async () => {
+    // Simular que el usuario ya tenía sesión persistente activa en localStorage
+    saveStoredSolicitanteSession({
+      session_token: 'valid-persistent-session-999',
+      correo: 'pablosaldiviainfo@gmail.com',
+      expires_at: '2026-09-17T12:00:00.000Z',
+    });
+
+    // Vuelve a hacer clic en el mismo correo que trae el token ya canjeado y el deep-link al PED
+    window.history.pushState(
+      {},
+      '',
+      '/formulariomedios/mis-solicitudes#access_token=already-used-token&pedido=PED-2026-D000155'
+    );
+
+    // El canje falla porque el token fue consumido en el primer click
+    const error: any = new Error('Token ya utilizado');
+    error.code = 'TOKEN_ALREADY_USED';
+    vi.spyOn(trackingApi, 'solicitanteSessionExchange').mockRejectedValue(error);
+
+    const getPedidosSpy = vi.spyOn(trackingApi, 'solicitanteGetPedidos').mockResolvedValue({
+      correo: 'pablosaldiviainfo@gmail.com',
+      total: 1,
+      pedidos: [
+        {
+          id: 'b0d38a6f-0c1b-404d-a565-a4593ffb3d81',
+          pedido_visible: 'PED-2026-D000155',
+          categoria_nombre: 'Diseño Gráfico',
+          tipo_nombre: 'Flyer Digital',
+          estado: 'Finalizado',
+          created_at: '2026-09-16T12:00:00.000Z',
+          updated_at: '2026-09-16T15:00:00.000Z',
+          tiene_entrega: true,
+        },
+      ],
+    });
+
+    const getDetailSpy = vi.spyOn(trackingApi, 'solicitanteGetPedidoDetail').mockResolvedValue({
+      id: 'b0d38a6f-0c1b-404d-a565-a4593ffb3d81',
+      pedido_visible: 'PED-2026-D000155',
+      anio: 2026,
+      numero: 155,
+      codigo_categoria: 'DIS',
+      categoria_nombre: 'Diseño Gráfico',
+      tipo_nombre: 'Flyer Digital',
+      estado: 'Finalizado',
+      created_at: '2026-09-16T12:00:00.000Z',
+      updated_at: '2026-09-16T15:00:00.000Z',
+      informacion_especifica: {},
+      notas_publicas: [],
+      entrega: {
+        id: 'entrega-uuid-155',
+        version: 1,
+        url_entrega: 'https://drive.google.com/drive/folders/sample-finalizado',
+        nota_publica: 'Entrega recuperada por sesión persistente.',
+        created_at: '2026-09-16T15:00:00.000Z',
+      },
+      solicitudes_informacion: [],
+      archivos_adjuntos: [],
+      timeline_publico: [],
+    });
+
+    render(<MisSolicitudesPage />);
+
+    // NO debe mostrar "Aviso de Acceso" ni "enlace ya utilizado"
+    await waitFor(() => {
+      expect(screen.queryByText(/Este enlace de acceso ya ha sido utilizado/i)).not.toBeInTheDocument();
+      expect(screen.getAllByText('PED-2026-D000155')[0]).toBeInTheDocument();
+    });
+
+    expect(getPedidosSpy).toHaveBeenCalledWith('valid-persistent-session-999');
+
+    // Abre el pedido deep-linked
+    await waitFor(() => {
+      expect(getDetailSpy).toHaveBeenCalledWith('valid-persistent-session-999', 'PED-2026-D000155');
+      expect(screen.getByText('Entrega recuperada por sesión persistente.')).toBeInTheDocument();
+    });
+  });
+
+  it('16. Token ya utilizado (#access_token=...) SIN sesión persistente: Muestra aviso de enlace ya utilizado y formulario', async () => {
+    // Sin sesión en storage
+    clearStoredSolicitanteSession();
+    localStorage.clear();
+    sessionStorage.clear();
+
+    window.history.pushState(
+      {},
+      '',
+      '/formulariomedios/mis-solicitudes#access_token=used-without-session'
+    );
+
+    const error: any = new Error('Token ya utilizado');
+    error.code = 'TOKEN_ALREADY_USED';
+    vi.spyOn(trackingApi, 'solicitanteSessionExchange').mockRejectedValue(error);
+
+    render(<MisSolicitudesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Aviso de Acceso')).toBeInTheDocument();
+      expect(screen.getByText(/Este enlace de acceso ya ha sido utilizado previamente/i)).toBeInTheDocument();
+    });
+
+    const requestBtn = screen.getByRole('button', { name: /Solicitar nuevo enlace/i });
+    expect(requestBtn).toBeInTheDocument();
   });
 });

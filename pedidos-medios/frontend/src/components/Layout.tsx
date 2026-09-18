@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { getPublicConfig } from '../services/config';
 import { useAuth } from '../auth/AuthContext';
+import logoGobTdf from '../assets/logo-gob-tdf.png';
 
 export const Layout: React.FC = () => {
   const config = getPublicConfig();
@@ -17,11 +18,20 @@ export const Layout: React.FC = () => {
     location.pathname.includes('/solicitar-acceso') ||
     location.pathname.includes('/pedido/');
 
+  const isMisSolicitudes =
+    location.pathname.includes('/mis-solicitudes') ||
+    location.pathname.includes('/seguimiento') ||
+    location.pathname.includes('/solicitud-informacion');
+
   const isPublicFormPage =
     location.pathname === '/' ||
-    location.pathname === '/formulariomedios' ||
-    location.pathname === '/formulariomedios/' ||
     location.pathname === '';
+
+  const containerClass = isInternalPath
+    ? 'pedidos-app pedidos-app-wide'
+    : isMisSolicitudes
+    ? 'pedidos-app pedidos-app-tracking'
+    : 'pedidos-app pedidos-app-public';
 
   const handleLogout = async () => {
     await signOut();
@@ -29,61 +39,53 @@ export const Layout: React.FC = () => {
   };
 
   return (
-    <div className={`pedidos-app ${isInternalPath ? 'pedidos-app-wide' : ''}`}>
+    <div className={containerClass}>
       <header className="pedidos-header">
         {isProductionPreview ? (
           /* Cabecera Institucional Limpia (Modo Production Preview) */
           <div className="pedidos-header-institutional">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-              <div className="pedidos-header-brand">
-                <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#0f172a' }}>PEDIDOS</h1>
-                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.95rem', fontWeight: 600, color: '#1e293b' }}>
-                  Secretaría de Medios
-                </p>
-                <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.8125rem', color: '#64748b' }}>
-                  Gobierno de Tierra del Fuego AIAS
-                </p>
-              </div>
+            <div className="pedidos-header-main-row">
+              <NavLink to="/" className="pedidos-header-brand-link" aria-label="Portal Oficial - Gobierno de Tierra del Fuego AIAS">
+                <img
+                  src={logoGobTdf}
+                  alt="Gobierno de Tierra del Fuego AIAS"
+                  className="pedidos-header-logo"
+                />
+              </NavLink>
 
-              {isInternalPath && user && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
-                  <span style={{ color: '#334155', fontWeight: 500 }}>
-                    👤 {user.nombre} {user.apellido}
-                  </span>
-                  <span
-                    style={{
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      backgroundColor: isAdmin ? '#fef3c7' : user.appRole === 'equipo' ? '#e0e7ff' : '#f1f5f9',
-                      color: isAdmin ? '#b45309' : user.appRole === 'equipo' ? '#4338ca' : '#475569',
-                      textTransform: 'uppercase',
-                    }}
+              <div className="pedidos-header-actions">
+                {isInternalPath && user ? (
+                  <div className="pedidos-user-badge-group">
+                    <span className="pedidos-user-name">
+                      👤 {user.nombre} {user.apellido}
+                    </span>
+                    <span
+                      className={`pedidos-role-badge ${
+                        isAdmin ? 'pedidos-role-admin' : user.appRole === 'equipo' ? 'pedidos-role-equipo' : 'pedidos-role-obs'
+                      }`}
+                    >
+                      {user.appRole}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="pedidos-btn-logout"
+                    >
+                      Cerrar Sesión
+                    </button>
+                  </div>
+                ) : isPublicFormPage ? null : (
+                  <NavLink
+                    to="/"
+                    className="pedidos-header-link-btn"
                   >
-                    {user.appRole}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    style={{
-                      padding: '0.3rem 0.6rem',
-                      fontSize: '0.8rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid #cbd5e1',
-                      backgroundColor: '#ffffff',
-                      color: '#64748b',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                    }}
-                  >
-                    Cerrar Sesión
-                  </button>
-                </div>
-              )}
+                    &larr; Nueva solicitud
+                  </NavLink>
+                )}
+              </div>
             </div>
 
-            {isInternalPath ? (
+            {isInternalPath && (
               <nav className="pedidos-nav" aria-label="Navegación interna">
                 <NavLink to="/gestion" className={({ isActive }) => (isActive ? 'active' : '')}>
                   Gestión de Pedidos
@@ -102,39 +104,19 @@ export const Layout: React.FC = () => {
                   Portal Público
                 </NavLink>
               </nav>
-            ) : (
-              <div
-                className="pedidos-header-public-bar"
-                style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}
-              >
-                {isPublicFormPage ? (
-                  <NavLink
-                    to="/mis-solicitudes"
-                    style={{ fontSize: '0.875rem', color: '#0284c7', textDecoration: 'none', fontWeight: 500 }}
-                  >
-                    ¿Ya realizaste una solicitud? <strong>Ver mis solicitudes</strong> &rarr;
-                  </NavLink>
-                ) : (
-                  <NavLink
-                    to="/"
-                    style={{ fontSize: '0.875rem', color: '#0284c7', textDecoration: 'none', fontWeight: 500 }}
-                  >
-                    &larr; <strong>Nueva Solicitud</strong>
-                  </NavLink>
-                )}
-              </div>
             )}
           </div>
         ) : (
           /* Shell de Desarrollo y QA Completo */
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-              <div>
-                <h1>PEDIDOS — Secretaría de Medios</h1>
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                  Gobierno de Tierra del Fuego AIAS · Revisión {config.contractVersion} · v{config.pluginVersion} ({config.environment})
-                </p>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <NavLink to="/" className="pedidos-header-brand-link" aria-label="Portal Oficial - Gobierno de Tierra del Fuego AIAS">
+                <img
+                  src={logoGobTdf}
+                  alt="Gobierno de Tierra del Fuego AIAS"
+                  className="pedidos-header-logo"
+                />
+              </NavLink>
 
               {user && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>

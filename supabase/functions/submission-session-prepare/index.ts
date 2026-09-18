@@ -67,7 +67,7 @@ export default async function handler(req: Request): Promise<Response> {
       }
 
       // Si el cliente presenta la prueba de capacidad que ya poseía -> retry seguro
-      if (providedToken && verifyCapabilityToken(providedToken, existingSession.capability_hash)) {
+      if (providedToken && (await verifyCapabilityToken(providedToken, existingSession.capability_hash))) {
         return new Response(
           JSON.stringify({
             session_id: existingSession.id,
@@ -89,7 +89,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // Generar capability token
-    const { token: capabilityToken, hash: capabilityHash } = generateCapabilityToken(submissionKey);
+    const { token: capabilityToken, hash: capabilityHash } = await generateCapabilityToken(submissionKey);
     const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toISOString();
 
     const sessionId = crypto.randomUUID();

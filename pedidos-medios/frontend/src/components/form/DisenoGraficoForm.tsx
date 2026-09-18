@@ -40,13 +40,12 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
     <div className="pedidos-category-section">
       <div className="pedidos-section-header">
         <h3>Diseño Gráfico</h3>
-        <p className="pedidos-section-desc">
-          Podés seleccionar una o más piezas gráficas. Cada pieza seleccionada generará una solicitud independiente (PED).
-        </p>
       </div>
 
       <div className="pedidos-pieza-selector">
-        <label className="pedidos-label required">¿Qué piezas gráficas necesitás?</label>
+        <label className="pedidos-label required">
+          Elegí una o más piezas. <span style={{ fontWeight: 400, color: '#64748b', fontSize: '0.85rem' }}>(Cada pieza genera un PED)</span>
+        </label>
         {errors['diseno_piezas'] && (
           <div className="pedidos-error-banner" role="alert">{errors['diseno_piezas']}</div>
         )}

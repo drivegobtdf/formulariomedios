@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { getPublicConfig } from '../services/config';
 import {
   FormWizardState,
   CategoriaSlug,
@@ -67,7 +68,7 @@ const INITIAL_STATE: FormWizardState = {
     certificado: { nombre_actividad: '', firmantes: '', destinatarios: '' },
     otros_diseno: { descripcion: '', medidas_soporte: '' },
   },
-  cobertura_data: { fecha: '', hora_inicio: '', hora_fin: '', lugar: '', ciudad: '', autoridades: '', requerimientos: '' },
+  cobertura_data: { fecha: '', hora_inicio: '', hora_fin: '', lugar: '', ciudad: '', asiste_autoridades: '', autoridades: '', requerimientos: '' },
   gacetilla_data: { referente_contacto: '', telefono_contacto: '', informacion_base: '' },
   redes_data: { fecha_sugerida: '', texto_copy: '', enlaces_referencia: '' },
   audiovisual_data: { requiere_asesoramiento: false },
@@ -80,7 +81,22 @@ const INITIAL_STATE: FormWizardState = {
   submitting: false,
 };
 
-export const FormularioPublicoPage: React.FC = () => {
+export interface FormularioPublicoPageProps {
+  initialShowWizard?: boolean;
+}
+
+export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ initialShowWizard = false }) => {
+  const [showWizard, setShowWizard] = useState<boolean>(() => {
+    if (initialShowWizard) return true;
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const hash = window.location.hash.toLowerCase();
+      if (hash.includes('solicitar') || hash.includes('wizard') || hash.includes('iniciar') || hash.includes('nueva')) {
+        return true;
+      }
+    }
+    return false;
+  });
+
   const [state, setState] = useState<FormWizardState>(INITIAL_STATE);
   const [maxStepVisited, setMaxStepVisited] = useState<number>(1);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -99,6 +115,40 @@ export const FormularioPublicoPage: React.FC = () => {
     streaming: generateUUID(),
     sitios_web: generateUUID(),
   }));
+
+  const isFormDirty = useMemo(() => {
+    return Boolean(
+      state.contacto.nombre_apellido.trim() ||
+      state.contacto.correo.trim() ||
+      state.contacto.telefono.trim() ||
+      state.contacto.area_solicitante.trim() ||
+      state.selected_categorias.length > 0 ||
+      state.archivos.length > 0 ||
+      state.links.length > 0
+    );
+  }, [state]);
+
+  const handleStartWizard = useCallback(() => {
+    setShowWizard(true);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, []);
+
+  const handleBackToHome = useCallback(() => {
+    if (state.current_step === 5) {
+      handleNewSubmission();
+      setShowWizard(false);
+      return;
+    }
+    if (isFormDirty) {
+      if (window.confirm('¿Desea volver a la portada institucional? Los datos ingresados se mantendrán guardados en memoria.')) {
+        setShowWizard(false);
+      }
+    } else {
+      setShowWizard(false);
+    }
+  }, [state.current_step, isFormDirty]);
 
   // Lista de piezas activas calculada
   const availablePieces = useMemo<FormPieceItem[]>(() => {
@@ -365,7 +415,7 @@ export const FormularioPublicoPage: React.FC = () => {
     setState((prev) => {
       const nextState = {
         ...prev,
-        cobertura_data: { ...(prev.cobertura_data || { fecha: '', hora_inicio: '', lugar: '', ciudad: '', autoridades: '', requerimientos: '' }), ...data },
+        cobertura_data: { ...(prev.cobertura_data || { fecha: '', hora_inicio: '', lugar: '', ciudad: '', asiste_autoridades: '', autoridades: '', requerimientos: '' }), ...data },
       };
       setErrors((prevErrors) => {
         if (Object.keys(prevErrors).length === 0) return prevErrors;
@@ -794,8 +844,76 @@ export const FormularioPublicoPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  if (!showWizard) {
+    return (
+      <div className="pedidos-home-view">
+        <section className="pedidos-home-hero" aria-label="Portada institucional del sistema">
+          <div className="pedidos-hero-badge">
+            SISTEMA OFICIAL DE PEDIDOS
+          </div>
+
+          <h1 className="pedidos-hero-title">
+            Solicitud de Comunicación y Medios
+          </h1>
+
+          <div className="pedidos-hero-actions">
+            <button
+              type="button"
+              className="pedidos-btn-hero-primary"
+              onClick={handleStartWizard}
+              aria-label="Iniciar nueva solicitud"
+            >
+              + Nueva solicitud
+            </button>
+            <a
+              href={`${getPublicConfig().basePath}/mis-solicitudes`}
+              className="pedidos-btn-hero-secondary"
+              aria-label="Mis solicitudes"
+            >
+              Mis solicitudes
+            </a>
+          </div>
+
+          <div className="pedidos-flow-guide">
+            <div className="pedidos-flow-step">
+              <div className="pedidos-flow-step-header">
+                <span className="pedidos-flow-step-num">1</span>
+                <h4>Cargá tu pedido</h4>
+              </div>
+            </div>
+
+            <div className="pedidos-flow-step">
+              <div className="pedidos-flow-step-header">
+                <span className="pedidos-flow-step-num">2</span>
+                <h4>Seguí el avance</h4>
+              </div>
+            </div>
+
+            <div className="pedidos-flow-step">
+              <div className="pedidos-flow-step-header">
+                <span className="pedidos-flow-step-num">3</span>
+                <h4>Recibí el material</h4>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
-    <div className="pedidos-wizard-page">
+    <div className="pedidos-wizard-view">
+      <div className="pedidos-wizard-header-nav">
+        <button
+          type="button"
+          className="pedidos-btn-back-home"
+          onClick={handleBackToHome}
+          aria-label="Volver a la portada"
+        >
+          &larr; Volver
+        </button>
+      </div>
+
       <StepIndicator
         currentStep={state.current_step}
         onStepClick={(step) => goToStep(step)}

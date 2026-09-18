@@ -17,6 +17,34 @@ export interface CountryInfo {
 }
 
 /**
+ * Mapa de banderas SVG vectoriales livianas y estables para renderizado fiel en cualquier SO (incluyendo Windows).
+ */
+export const COUNTRY_FLAGS_SVG: Record<string, string> = {
+  AR: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 480" width="20" height="13" aria-hidden="true"><rect width="768" height="480" fill="#74acdf"/><rect y="160" width="768" height="160" fill="#ffffff"/><circle cx="384" cy="240" r="40" fill="#f6b40e"/></svg>`,
+  CL: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 512" width="20" height="13" aria-hidden="true"><rect width="768" height="512" fill="#d52b1e"/><rect width="768" height="256" fill="#ffffff"/><rect width="256" height="256" fill="#0039a6"/><polygon points="128,50 148,110 210,110 160,146 180,206 128,170 76,206 96,146 46,110 108,110" fill="#ffffff"/></svg>`,
+  UY: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 512" width="20" height="13" aria-hidden="true"><rect width="768" height="512" fill="#ffffff"/><rect y="56" width="768" height="57" fill="#0038a8"/><rect y="170" width="768" height="57" fill="#0038a8"/><rect y="284" width="768" height="57" fill="#0038a8"/><rect y="398" width="768" height="57" fill="#0038a8"/><rect width="256" height="256" fill="#ffffff"/><circle cx="128" cy="128" r="40" fill="#fcd116"/></svg>`,
+  BR: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 538" width="20" height="13" aria-hidden="true"><rect width="768" height="538" fill="#009b3a"/><polygon points="384,40 708,269 384,498 60,269" fill="#fedf00"/><circle cx="384" cy="269" r="130" fill="#002776"/></svg>`,
+  PY: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 440" width="20" height="13" aria-hidden="true"><rect width="768" height="147" fill="#d52b1e"/><rect y="147" width="768" height="146" fill="#ffffff"/><rect y="293" width="768" height="147" fill="#0038a8"/><circle cx="384" cy="220" r="30" fill="#fcd116"/></svg>`,
+  BO: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 512" width="20" height="13" aria-hidden="true"><rect width="768" height="170" fill="#d52b1e"/><rect y="170" width="768" height="172" fill="#fcd116"/><rect y="342" width="768" height="170" fill="#007934"/></svg>`,
+  PE: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 512" width="20" height="13" aria-hidden="true"><rect width="256" height="512" fill="#d91023"/><rect x="256" width="256" height="512" fill="#ffffff"/><rect x="512" width="256" height="512" fill="#d91023"/></svg>`,
+  CO: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 512" width="20" height="13" aria-hidden="true"><rect width="768" height="256" fill="#fcd116"/><rect y="256" width="768" height="128" fill="#0038a8"/><rect y="384" width="768" height="128" fill="#ce1126"/></svg>`,
+  EC: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 512" width="20" height="13" aria-hidden="true"><rect width="768" height="256" fill="#fcd116"/><rect y="256" width="768" height="128" fill="#0038a8"/><rect y="384" width="768" height="128" fill="#ce1126"/><circle cx="384" cy="256" r="28" fill="#0038a8"/></svg>`,
+  VE: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 512" width="20" height="13" aria-hidden="true"><rect width="768" height="170" fill="#fcd116"/><rect y="170" width="768" height="172" fill="#0038a8"/><rect y="342" width="768" height="170" fill="#cf142b"/></svg>`,
+  MX: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 440" width="20" height="13" aria-hidden="true"><rect width="256" height="440" fill="#006847"/><rect x="256" width="256" height="440" fill="#ffffff"/><rect x="512" width="256" height="440" fill="#ce1126"/><circle cx="384" cy="220" r="24" fill="#8b5a2b"/></svg>`,
+  ES: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 512" width="20" height="13" aria-hidden="true"><rect width="768" height="128" fill="#aa151b"/><rect y="128" width="768" height="256" fill="#f1bf00"/><rect y="384" width="768" height="128" fill="#aa151b"/></svg>`,
+  US: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 404" width="20" height="13" aria-hidden="true"><rect width="768" height="404" fill="#b22234"/><rect y="31" width="768" height="31" fill="#ffffff"/><rect y="93" width="768" height="31" fill="#ffffff"/><rect y="155" width="768" height="31" fill="#ffffff"/><rect y="217" width="768" height="31" fill="#ffffff"/><rect y="279" width="768" height="31" fill="#ffffff"/><rect y="341" width="768" height="31" fill="#ffffff"/><rect width="307" height="217" fill="#3c3b6e"/></svg>`,
+  IT: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 512" width="20" height="13" aria-hidden="true"><rect width="256" height="512" fill="#009246"/><rect x="256" width="256" height="512" fill="#ffffff"/><rect x="512" width="256" height="512" fill="#ce2b37"/></svg>`,
+  FR: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 512" width="20" height="13" aria-hidden="true"><rect width="256" height="512" fill="#002395"/><rect x="256" width="256" height="512" fill="#ffffff"/><rect x="512" width="256" height="512" fill="#ed2939"/></svg>`,
+  DE: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 460" width="20" height="13" aria-hidden="true"><rect width="768" height="153" fill="#000000"/><rect y="153" width="768" height="154" fill="#dd0000"/><rect y="307" width="768" height="153" fill="#ffce00"/></svg>`,
+};
+
+export function getCountryFlagSvg(countryCode: string): string {
+  if (!countryCode) return COUNTRY_FLAGS_SVG.AR;
+  const key = countryCode.toUpperCase();
+  return COUNTRY_FLAGS_SVG[key] || COUNTRY_FLAGS_SVG.AR;
+}
+
+/**
  * Convierte un código ISO 3166-1 alpha-2 en un emoji de bandera local.
  */
 export function getCountryFlagEmoji(countryCode: string): string {

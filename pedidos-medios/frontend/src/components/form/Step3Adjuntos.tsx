@@ -90,10 +90,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
   return (
     <div className="pedidos-step-container">
       <div className="pedidos-step-header">
-        <h2>3. Archivos Adjuntos y Enlaces de Referencia</h2>
-        <p>
-          Adjuntá logotipos, manuales de marca, fotografías, textos o planillas relacionadas a tus solicitudes.
-        </p>
+        <h2>3. Archivos y enlaces</h2>
       </div>
 
       {errors.archivos && (
@@ -105,10 +102,9 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
 
       {/* Dropzone de subida */}
       <div className="pedidos-card">
-        <h3 className="pedidos-card-title">Carga de Archivos</h3>
+        <h3 className="pedidos-card-title">Archivos</h3>
         <p className="pedidos-hint-text" style={{ marginBottom: '1rem' }}>
-          Formatos permitidos: <strong>PDF, PNG, JPG, DOCX, ZIP</strong>. Hasta <strong>10 MB</strong> por archivo.
-          Máximo <strong>10 archivos</strong> en total.
+          Formatos: PDF, PNG, JPG, DOCX, ZIP · Máx. 10 archivos · 10 MiB c/u
         </p>
 
         <div
@@ -139,7 +135,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
           />
           <div className="pedidos-dropzone-icon">📁</div>
           <div className="pedidos-dropzone-text">
-            <strong>Hacé clic acá para seleccionar archivos</strong> o arrastralos y soltalos
+            <strong>Seleccioná o arrastrá archivos</strong>
           </div>
           <div className="pedidos-dropzone-hint">
             ({archivos.length}/{MAX_FILES_LIMIT} archivos cargados)
@@ -150,7 +146,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
         {archivos.length > 0 && (
           <div className="pedidos-file-list" style={{ marginTop: '1.5rem' }}>
             <h4 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: '#0f172a' }}>
-              Archivos adjuntados ({archivos.length}):
+              Archivos ({archivos.length}):
             </h4>
 
             {archivos.map((fileItem, idx) => {
@@ -175,7 +171,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
                       )}
                       {isVerified && (
                         <span className="pedidos-status-badge verified">
-                          ✓ Verificado en almacenamiento seguro
+                          ✓ Cargado
                         </span>
                       )}
                       {isError && (
@@ -198,7 +194,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
                     {isMultiPiece && (
                       <div className="pedidos-file-target-selector" style={{ marginTop: '0.5rem' }}>
                         <label htmlFor={`target_file_${idx}`} style={{ fontSize: '0.825rem', color: '#475569' }}>
-                          Asociar este archivo a:
+                          Asociar a
                         </label>
                         <select
                           id={`target_file_${idx}`}
@@ -265,10 +261,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
       <div className="pedidos-card" style={{ marginTop: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <div>
-            <h3 className="pedidos-card-title" style={{ margin: 0 }}>Enlaces al Material (Opcional)</h3>
-            <p className="pedidos-hint-text" style={{ margin: '0.25rem 0 0 0' }}>
-              Si tenés archivos que superan los 10 MB, videos pesados o carpetas completas en Google Drive / OneDrive, ingresá los enlaces acá.
-            </p>
+            <h3 className="pedidos-card-title" style={{ margin: 0 }}>Enlaces opcionales</h3>
           </div>
           <button type="button" className="pedidos-btn pedidos-btn-secondary btn-sm" onClick={onAddLink}>
             + Agregar enlace
@@ -277,7 +270,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
 
         {links.length === 0 ? (
           <p style={{ color: '#64748b', fontSize: '0.9rem', fontStyle: 'italic', margin: '0.5rem 0' }}>
-            No se han agregado enlaces externos adicionales.
+            No se agregaron enlaces externos.
           </p>
         ) : (
           <div className="pedidos-links-list">
@@ -290,7 +283,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
                       className="pedidos-label"
                       style={{ display: 'block', marginBottom: '0.25rem' }}
                     >
-                      Enlace al material
+                      Enlace
                     </label>
                     <input
                       id={`link_url_${idx}`}
@@ -381,10 +374,10 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
 
       <div className="pedidos-step-actions">
         <button type="button" className="pedidos-btn pedidos-btn-secondary" onClick={onBack}>
-          ← Volver a Especificación
+          Atrás
         </button>
         <button type="button" className="pedidos-btn pedidos-btn-primary" onClick={onNext}>
-          Continuar al Resumen y Confirmación →
+          Continuar
         </button>
       </div>
     </div>

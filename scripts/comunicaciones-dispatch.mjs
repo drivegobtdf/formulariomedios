@@ -106,13 +106,11 @@ export function resolvePublicAppUrl(
   }
 
   if (isExplicitLocal) {
-    return 'http://localhost:5173';
+    return 'http://localhost:4173/formulariomedios';
   }
 
   throw new Error('CONFIG_ERROR: PUBLIC_APP_URL no está configurado en el servidor para el entorno Cloud.');
 }
-
-const appUrl = resolvePublicAppUrl(undefined, true);
 
 export function getEncryptionKey(customKey) {
   const rawSecret = customKey || env.MAGIC_LINK_ENCRYPTION_KEY || env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || 'pedidos-default-envelope-secret-key-32-bytes!';
@@ -135,9 +133,28 @@ export function decryptTokenEnvelope(envelope, purpose, communicationId, customK
   return decrypted;
 }
 
+export function encryptTokenEnvelope(plaintext, purpose, communicationId, customKey) {
+  const key = getEncryptionKey(customKey);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const aad = Buffer.from(`purpose:${purpose}|comm:${communicationId}`, 'utf8');
+  cipher.setAAD(aad);
+  let ciphertext = cipher.update(plaintext, 'utf8', 'hex');
+  ciphertext += cipher.final('hex');
+  const tag = cipher.getAuthTag().toString('hex');
+  return {
+    version: '1.0',
+    algo: 'aes-256-gcm',
+    iv: iv.toString('hex'),
+    tag,
+    ciphertext,
+    purpose,
+    created_at: new Date().toISOString()
+  };
+}
+
 // Brand styles and HTML Escaper
 const BRAND_PRIMARY = '#0B2746';
-const BRAND_SECONDARY = '#1E5AA0';
 const BRAND_BG = '#F4F7FA';
 const BRAND_CARD = '#FFFFFF';
 const BRAND_TEXT = '#1F2937';
@@ -200,8 +217,9 @@ function wrapHtmlLayout(title, contentHtml) {
 </html>`;
 }
 
-export function renderEmail(tipo, payload) {
-  const cleanAppUrl = appUrl.replace(/\/$/, '');
+export function renderEmail(tipo, payload, customAppUrl) {
+  const resolvedUrl = customAppUrl || (env.PUBLIC_APP_URL ? resolvePublicAppUrl(env.PUBLIC_APP_URL) : resolvePublicAppUrl(undefined, true));
+  const cleanAppUrl = resolvedUrl.replace(/\/$/, '');
   const rawNombre = (payload?.solicitante_nombre || payload?.nombre_solicitante || payload?.nombre || payload?.destinatario_nombre || 'Solicitante').trim();
   const nombreSafe = escapeHtml(rawNombre);
 
@@ -211,7 +229,7 @@ export function renderEmail(tipo, payload) {
       const pedidos = Array.isArray(payload?.pedidos) ? payload.pedidos : [];
       const totalPedidos = pedidos.length || 1;
       const codes = pedidos.map(p => p.pedido_visible).filter(Boolean).join(', ');
-      const subject = `[PEDIDOS] Confirmación de Solicitud: ${codes || 'Nuevos Requerimientos'}`;
+      const subject = `[PEDIDOS] Solicitud recibida: ${codes || 'Nuevos Requerimientos'}`;
 
       let rowsHtml = '';
       let rowsText = '';
@@ -220,21 +238,20 @@ export function renderEmail(tipo, payload) {
         const pedVis = escapeHtml(p.pedido_visible || 'N/D');
         const cat = escapeHtml(p.categoria || p.categoria_nombre || 'Servicio');
         const tip = escapeHtml(p.tipo || p.tipo_nombre || 'General');
-        const trackingUrl = `${cleanAppUrl}/seguimiento?id=${encodeURIComponent(p.id || p.pedido_id || '')}&ref=${encodeURIComponent(p.pedido_visible || '')}`;
 
         rowsHtml += `
           <tr style="border-bottom: 1px solid #E5E7EB;">
-            <td style="padding: 12px 8px; font-weight: bold; color: ${BRAND_PRIMARY};">${pedVis}</td>
-            <td style="padding: 12px 8px;">${cat}</td>
-            <td style="padding: 12px 8px;">${tip}</td>
-            <td style="padding: 12px 8px; text-align: right;">
-              <a href="${trackingUrl}" style="color: ${BRAND_SECONDARY}; text-decoration: underline; font-size: 13px; font-weight: 600;">Seguimiento</a>
-            </td>
+            <td style="padding: 12px 10px; font-weight: bold; color: ${BRAND_PRIMARY};">${pedVis}</td>
+            <td style="padding: 12px 10px;">${cat}</td>
+            <td style="padding: 12px 10px;">${tip}</td>
           </tr>`;
-        rowsText += `* ${p.pedido_visible || 'N/D'} | ${cat} - ${tip} -> Enlace: ${trackingUrl}\n`;
+        rowsText += `* ${p.pedido_visible || 'N/D'} | ${cat} - ${tip}\n`;
       }
 
-      const portalUrl = `${cleanAppUrl}/mis-solicitudes`;
+      const rawToken = (payload?.magic_token || payload?.raw_token || payload?.token || '').trim();
+      const portalUrl = rawToken
+        ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}`
+        : `${cleanAppUrl}/mis-solicitudes`;
       const areaSafe = escapeHtml(payload?.area_solicitante || 'Gobierno');
 
       const contentHtml = `
@@ -250,10 +267,9 @@ export function renderEmail(tipo, payload) {
         <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin-bottom: 24px; font-size: 13px;">
           <thead>
             <tr style="background-color: #F3F4F6; text-align: left;">
-              <th style="padding: 10px 8px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Código PED</th>
-              <th style="padding: 10px 8px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Categoría</th>
-              <th style="padding: 10px 8px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Tipo</th>
-              <th style="padding: 10px 8px; text-align: right; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Acción</th>
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Código PED</th>
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Categoría</th>
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Tipo</th>
             </tr>
           </thead>
           <tbody>
@@ -261,8 +277,8 @@ export function renderEmail(tipo, payload) {
           </tbody>
         </table>
         <div style="text-align: center; margin: 28px 0;">
-          <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
-            Acceder al Portal Mis Solicitudes
+          <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Ver mis solicitudes
           </a>
         </div>
       `;
@@ -365,8 +381,12 @@ export function renderEmail(tipo, payload) {
     case 'finalizado':
     case 'pedido_finalized': {
       const pedVisible = escapeHtml(payload?.pedido_visible || 'PED');
+      const rawPedVisible = (payload?.pedido_visible || '').trim();
       const subject = `[PEDIDOS] Solicitud Finalizada: ${payload?.pedido_visible || 'PED'}`;
-      const portalUrl = `${cleanAppUrl}/mis-solicitudes`;
+      const rawToken = (payload?.magic_token || payload?.raw_token || payload?.token || '').trim();
+      const portalUrl = rawToken
+        ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}${rawPedVisible ? `&pedido=${encodeURIComponent(rawPedVisible)}` : ''}`
+        : `${cleanAppUrl}/mis-solicitudes`;
       const urlEntrega = payload?.url_entrega || payload?.extra?.url_entrega || '';
       const notaCierreSafe = escapeHtml(payload?.nota_cierre || payload?.nota || '');
 
@@ -460,34 +480,80 @@ export function renderEmail(tipo, payload) {
 
     case 'magic_link_access':
     case 'access_requested': {
-      const subject = `[PEDIDOS] Enlace Seguro de Acceso a Mis Solicitudes`;
+      const subject = `[PEDIDOS] Acceso a Mis Solicitudes`;
       const rawToken = payload?.magic_token || payload?.raw_token || '';
-      const accessUrl = `${cleanAppUrl}/mis-solicitudes#token=${encodeURIComponent(rawToken)}`;
+      const accessUrl = `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}`;
 
       const contentHtml = `
         <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
-          Acceso Seguro a Mis Solicitudes
+          Acceso a Mis Solicitudes
         </h2>
         <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
           Estimado/a <strong>${nombreSafe}</strong>,
         </p>
         <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.5;">
-          Utilice el siguiente botón seguro para acceder a sus solicitudes en el portal de la Secretaría de Medios:
+          Usá el siguiente botón para acceder a tus solicitudes en el portal de la Secretaría de Medios:
         </p>
         <div style="text-align: center; margin: 28px 0;">
           <a href="${accessUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 700; font-size: 15px;">
-            Ingresar a Mis Solicitudes
+            Ver mis solicitudes
           </a>
         </div>
+        <p style="margin: 0 0 8px 0; font-size: 12px; color: ${BRAND_MUTED}; text-align: center;">
+          Este enlace estará disponible mientras se encuentre vigente.
+        </p>
       `;
 
-      const text = `ACCESO SEGURO A MIS SOLICITUDES\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nEnlace de acceso:\n${accessUrl}\n`;
+      const text = `ACCESO A MIS SOLICITUDES\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nUsá el siguiente enlace para acceder a tus solicitudes:\n${accessUrl}\n\n(Este enlace estará disponible mientras se encuentre vigente)\n`;
 
       return {
         subject,
         html: wrapHtmlLayout('Acceso a Mis Solicitudes', contentHtml),
         text,
         n8nTipo: 'magic_link_access'
+      };
+    }
+
+    case 'en_proceso':
+    case 'pedido_en_proceso': {
+      const pedVisible = escapeHtml(payload?.pedido_visible || 'PED');
+      const rawPedVisible = (payload?.pedido_visible || '').trim();
+      const subject = `[PEDIDOS] Tu solicitud ${payload?.pedido_visible || 'PED'} está en proceso`;
+      const rawToken = (payload?.magic_token || payload?.raw_token || payload?.token || '').trim();
+      const portalUrl = rawToken
+        ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}${rawPedVisible ? `&pedido=${encodeURIComponent(rawPedVisible)}` : ''}`
+        : `${cleanAppUrl}/mis-solicitudes`;
+
+      const contentHtml = `
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
+          Tu solicitud está en proceso
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
+          Estimado/a <strong>${nombreSafe}</strong>,
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+          Tu solicitud <strong>${pedVisible}</strong> ingresó a la etapa &ldquo;En proceso&rdquo;.
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+          El equipo de la Secretaría de Medios comenzó a trabajar en tu requerimiento.
+        </p>
+        <p style="margin: 0 0 20px 0; font-size: 14px; color: ${BRAND_MUTED}; line-height: 1.5;">
+          Podés consultar el estado actualizado desde el portal de Mis solicitudes.
+        </p>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Ver mis solicitudes
+          </a>
+        </div>
+      `;
+
+      const text = `TU SOLICITUD ESTÁ EN PROCESO\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nTu solicitud ${payload?.pedido_visible || 'PED'} ingresó a la etapa "En proceso".\nEl equipo de la Secretaría de Medios comenzó a trabajar en tu requerimiento.\nPodés consultar el estado actualizado desde el portal de Mis solicitudes en:\n${portalUrl}\n`;
+
+      return {
+        subject,
+        html: wrapHtmlLayout('Tu solicitud está en proceso', contentHtml),
+        text,
+        n8nTipo: 'en_proceso'
       };
     }
 
@@ -542,6 +608,7 @@ export async function dispatchBatch(batchSize = 10, leaseSeconds = 300) {
 
   const results = [];
   const webhookUrl = `${n8nUrl}/webhook/pedidos-email`;
+  const appUrl = resolvePublicAppUrl();
 
   for (const item of items) {
     const claimId = item.claim_id;
@@ -564,7 +631,65 @@ export async function dispatchBatch(batchSize = 10, leaseSeconds = 300) {
       }
 
       let payloadToRender = item.payload || {};
-      if (item.tipo_comunicacion === 'magic_link_access' || item.tipo_comunicacion === 'access_requested') {
+      if (item.tipo_comunicacion === 'pedido_ingresado' || item.tipo_comunicacion === 'submission_created') {
+        if (payloadToRender.encrypted_envelope) {
+          try {
+            const idempotencyKey = item.idempotency_key || `submission_created:${item.id}`;
+            const decrypted = decryptTokenEnvelope(
+              payloadToRender.encrypted_envelope,
+              'magic_link_delivery',
+              idempotencyKey
+            );
+            if (decrypted) {
+              payloadToRender = { ...payloadToRender, magic_token: decrypted, raw_token: decrypted };
+            }
+          } catch (e) {
+            console.warn(`[DISPATCHER] Could not decrypt envelope for item ${item.id}:`, e.message);
+          }
+        }
+
+        if (!payloadToRender.magic_token && !payloadToRender.raw_token) {
+          try {
+            const { data: accessData, error: accessErr } = await supabase.rpc('solicitante_request_access', {
+              p_correo: item.destinatario_email,
+            });
+            if (!accessErr && accessData?.found && accessData?.magic_token) {
+              const idempotencyKey = item.idempotency_key || `submission_created:${item.id}`;
+              const envelope = encryptTokenEnvelope(
+                accessData.magic_token,
+                'magic_link_delivery',
+                idempotencyKey
+              );
+              payloadToRender = {
+                ...payloadToRender,
+                magic_token: accessData.magic_token,
+                raw_token: accessData.magic_token,
+                encrypted_envelope: envelope,
+              };
+              await supabase
+                .from('comunicaciones_pedido')
+                .update({
+                  payload: {
+                    ...item.payload,
+                    encrypted_envelope: envelope,
+                  },
+                })
+                .eq('id', item.id);
+            }
+          } catch (genErr) {
+            console.warn(`[DISPATCHER] Error generating access token for submission_created ${item.id}:`, genErr.message);
+          }
+        }
+
+        const finalToken = (payloadToRender.magic_token || payloadToRender.raw_token || '');
+        if (!finalToken || typeof finalToken !== 'string' || finalToken.trim().length === 0) {
+          throw {
+            semanticType: 'PERMANENT_VALIDATION_ERROR',
+            status: 422,
+            message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token de acceso válido. Despacho cancelado para evitar envío sin enlace directo.`
+          };
+        }
+      } else if (item.tipo_comunicacion === 'magic_link_access' || item.tipo_comunicacion === 'access_requested') {
         if (payloadToRender.encrypted_envelope) {
           try {
             const idempotencyKey = item.idempotency_key || `magic_link:${item.id}`;
@@ -589,9 +714,155 @@ export async function dispatchBatch(batchSize = 10, leaseSeconds = 300) {
             message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token de acceso válido. Despacho cancelado para evitar envío de enlace vacío.`
           };
         }
+      } else if (item.tipo_comunicacion === 'informacion_faltante' || item.tipo_comunicacion === 'info_requested') {
+        if (payloadToRender.encrypted_envelope) {
+          try {
+            const idempotencyKey = item.idempotency_key || `info_requested:${payloadToRender.solicitud_id || item.id}`;
+            const decrypted = decryptTokenEnvelope(
+              payloadToRender.encrypted_envelope,
+              'info_requested_delivery',
+              idempotencyKey
+            );
+            if (decrypted) {
+              payloadToRender = {
+                ...payloadToRender,
+                token: decrypted,
+                raw_token: decrypted,
+                info_token: decrypted,
+              };
+            }
+          } catch (e) {
+            console.warn(`[DISPATCHER] Could not decrypt envelope for item ${item.id}:`, e.message);
+          }
+        }
+
+        const finalToken = (payloadToRender.token || payloadToRender.raw_token || payloadToRender.info_token || '');
+        if (!finalToken || typeof finalToken !== 'string' || finalToken.trim().length === 0) {
+          throw {
+            semanticType: 'PERMANENT_VALIDATION_ERROR',
+            status: 422,
+            message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token directo de respuesta válido. Despacho cancelado para evitar envío sin enlace directo.`
+          };
+        }
+      } else if (item.tipo_comunicacion === 'finalizado' || item.tipo_comunicacion === 'pedido_finalizado') {
+        if (payloadToRender.encrypted_envelope) {
+          try {
+            const idempotencyKey = item.idempotency_key || `finalizado:${item.id}`;
+            const decrypted = decryptTokenEnvelope(
+              payloadToRender.encrypted_envelope,
+              'magic_link_delivery',
+              idempotencyKey
+            );
+            if (decrypted) {
+              payloadToRender = { ...payloadToRender, magic_token: decrypted, raw_token: decrypted };
+            }
+          } catch (e) {
+            console.warn(`[DISPATCHER] Could not decrypt envelope for finalizado ${item.id}:`, e.message);
+          }
+        }
+
+        if (!payloadToRender.magic_token && !payloadToRender.raw_token) {
+          try {
+            const { data: accessData, error: accessErr } = await supabase.rpc('solicitante_request_access', {
+              p_correo: item.destinatario_email,
+            });
+            if (!accessErr && accessData?.found && accessData?.magic_token) {
+              const idempotencyKey = item.idempotency_key || `finalizado:${item.id}`;
+              const envelope = encryptTokenEnvelope(
+                accessData.magic_token,
+                'magic_link_delivery',
+                idempotencyKey
+              );
+              payloadToRender = {
+                ...payloadToRender,
+                magic_token: accessData.magic_token,
+                raw_token: accessData.magic_token,
+                encrypted_envelope: envelope,
+              };
+              await supabase
+                .from('comunicaciones_pedido')
+                .update({
+                  payload: {
+                    ...item.payload,
+                    encrypted_envelope: envelope,
+                  },
+                })
+                .eq('id', item.id);
+            }
+          } catch (genErr) {
+            console.warn(`[DISPATCHER] Error generating access token for finalizado ${item.id}:`, genErr.message);
+          }
+        }
+
+        const finalToken = (payloadToRender.magic_token || payloadToRender.raw_token || '');
+        if (!finalToken || typeof finalToken !== 'string' || finalToken.trim().length === 0) {
+          throw {
+            semanticType: 'PERMANENT_VALIDATION_ERROR',
+            status: 422,
+            message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token de acceso válido para Mis Solicitudes. Despacho cancelado para evitar envío sin enlace directo.`
+          };
+        }
+      } else if (item.tipo_comunicacion === 'en_proceso' || item.tipo_comunicacion === 'pedido_en_proceso') {
+        if (payloadToRender.encrypted_envelope) {
+          try {
+            const idempotencyKey = item.idempotency_key || `en_proceso:${item.id}`;
+            const decrypted = decryptTokenEnvelope(
+              payloadToRender.encrypted_envelope,
+              'magic_link_delivery',
+              idempotencyKey
+            );
+            if (decrypted) {
+              payloadToRender = { ...payloadToRender, magic_token: decrypted, raw_token: decrypted };
+            }
+          } catch (e) {
+            console.warn(`[DISPATCHER] Could not decrypt envelope for en_proceso ${item.id}:`, e.message);
+          }
+        }
+
+        if (!payloadToRender.magic_token && !payloadToRender.raw_token) {
+          try {
+            const { data: accessData, error: accessErr } = await supabase.rpc('solicitante_request_access', {
+              p_correo: item.destinatario_email,
+            });
+            if (!accessErr && accessData?.found && accessData?.magic_token) {
+              const idempotencyKey = item.idempotency_key || `en_proceso:${item.id}`;
+              const envelope = encryptTokenEnvelope(
+                accessData.magic_token,
+                'magic_link_delivery',
+                idempotencyKey
+              );
+              payloadToRender = {
+                ...payloadToRender,
+                magic_token: accessData.magic_token,
+                raw_token: accessData.magic_token,
+                encrypted_envelope: envelope,
+              };
+              await supabase
+                .from('comunicaciones_pedido')
+                .update({
+                  payload: {
+                    ...item.payload,
+                    encrypted_envelope: envelope,
+                  },
+                })
+                .eq('id', item.id);
+            }
+          } catch (genErr) {
+            console.warn(`[DISPATCHER] Error generating access token for en_proceso ${item.id}:`, genErr.message);
+          }
+        }
+
+        const finalToken = (payloadToRender.magic_token || payloadToRender.raw_token || '');
+        if (!finalToken || typeof finalToken !== 'string' || finalToken.trim().length === 0) {
+          throw {
+            semanticType: 'PERMANENT_VALIDATION_ERROR',
+            status: 422,
+            message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token de acceso válido para Mis Solicitudes. Despacho cancelado para evitar envío sin enlace directo.`
+          };
+        }
       }
 
-      const rendered = renderEmail(item.tipo_comunicacion, payloadToRender);
+      const rendered = renderEmail(item.tipo_comunicacion, payloadToRender, appUrl);
       
       const headers = { 'Content-Type': 'application/json' };
       if (integrationSecret) {

@@ -62,6 +62,17 @@ describe('GestionDashboardPage Unit Tests', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(gestionApi, 'fetchGestionStats').mockResolvedValue({
+      total: 2,
+      nuevos: 1,
+      enRevision: 0,
+      enProceso: 1,
+      esperandoInfo: 0,
+      finalizados: 0,
+      cancelados: 0,
+      sinAsignar: 1,
+      archivados: 0,
+    });
   });
 
   it('1. Usuario no autenticado: Renderiza el gate de acceso con botón de inicio de sesión', () => {
@@ -82,8 +93,8 @@ describe('GestionDashboardPage Unit Tests', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Acceso Restringido a Personal Interno')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Iniciar Sesión/i })).toBeInTheDocument();
+    expect(screen.getByText('Acceso restringido')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Iniciar sesión/i })).toBeInTheDocument();
   });
 
   it('2. Usuario en estado pendiente: Muestra pantalla de solicitud en revisión', () => {
@@ -104,7 +115,7 @@ describe('GestionDashboardPage Unit Tests', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Solicitud de Acceso Pendiente')).toBeInTheDocument();
+    expect(screen.getByText('Acceso pendiente')).toBeInTheDocument();
   });
 
   it('3. Usuario aprobado: Renderiza el tablero Kanban con 4 columnas horizontales y tarjetas de pedidos', async () => {
@@ -128,14 +139,14 @@ describe('GestionDashboardPage Unit Tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Gestión Interna de Pedidos')).toBeInTheDocument();
+      expect(screen.getByText('Gestión de pedidos')).toBeInTheDocument();
     });
 
     // 4 Columnas activas del Kanban
     expect(screen.getAllByText('Nuevo').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('En Revisión').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('En Proceso').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Esperando Información').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('En revisión').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('En proceso').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Esperando información').length).toBeGreaterThan(0);
 
     // Verificación de tarjetas de pedidos
     expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
@@ -173,7 +184,7 @@ describe('GestionDashboardPage Unit Tests', () => {
       expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
     });
 
-    const sinAsignarTab = screen.getByRole('button', { name: /Sin Asignar/i });
+    const sinAsignarTab = screen.getByRole('button', { name: /^Sin asignar$/i });
     fireEvent.click(sinAsignarTab);
 
     await waitFor(() => {
@@ -208,4 +219,65 @@ describe('GestionDashboardPage Unit Tests', () => {
 
     expect(screen.getByRole('button', { name: /Reintentar/i })).toBeInTheDocument();
   });
+
+  it('6. Estados terminales: Al seleccionar pestaña "Finalizados", muestra panel dedicado con pedidos finalizados', async () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: mockApprovedProfile,
+      isLoading: false,
+      isApproved: true,
+      isAdmin: true,
+      isTeamOrAdmin: true,
+      isObserver: false,
+      signOut: vi.fn(),
+      refreshUser: vi.fn(),
+    });
+
+    const mockFinalizado: gestionApi.PedidoListItem = {
+      id: 'ped-final-1',
+      pedido_visible: 'PED-2026-000099',
+      anio: 2026,
+      numero: 99,
+      codigo_categoria: 'D',
+      categoria_id: 'cat-1',
+      categoria_nombre: 'Diseño Gráfico',
+      tipo_servicio_id: 'tipo-1',
+      tipo_nombre: 'Flyer Digital',
+      estado: 'Finalizado',
+      informacion_especifica: {},
+      version: 1,
+      archivado: false,
+      responsable_user_id: 'usr-admin-1',
+      responsable_nombre: 'Pablo Saldivia',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    vi.spyOn(gestionApi, 'fetchPedidos').mockImplementation(async (params: any) => {
+      if (params?.estado === 'Finalizado') {
+        return [mockFinalizado];
+      }
+      return mockPedidos;
+    });
+
+    render(
+      <MemoryRouter>
+        <GestionDashboardPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
+    });
+
+    const finalizadosTab = screen.getByRole('button', { name: /^Finalizados$/i });
+    fireEvent.click(finalizadosTab);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Finalizados').length).toBeGreaterThan(0);
+      expect(screen.getByText('PED-2026-000099')).toBeInTheDocument();
+      expect(screen.getByText('← Volver')).toBeInTheDocument();
+    });
+  });
 });
+
+

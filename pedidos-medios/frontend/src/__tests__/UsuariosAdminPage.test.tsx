@@ -65,8 +65,8 @@ describe('UsuariosAdminPage Unit Tests', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Acceso Denegado')).toBeInTheDocument();
-    expect(screen.getByText(/Esta sección es de uso exclusivo para/i)).toBeInTheDocument();
+    expect(screen.getByText('Acceso denegado')).toBeInTheDocument();
+    expect(screen.getByText(/Esta sección es exclusiva para administradores/i)).toBeInTheDocument();
   });
 
   it('2. Administrador: Renderiza lista de usuarios y filtros por estado', async () => {
@@ -90,12 +90,12 @@ describe('UsuariosAdminPage Unit Tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Administración de Usuarios y Roles')).toBeInTheDocument();
+      expect(screen.getByText('Usuarios y roles')).toBeInTheDocument();
     });
 
     expect(screen.getByText('@psaldivia')).toBeInTheDocument();
     expect(screen.getByText('@aperez')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Aprobar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Aprobar$/i })).toBeInTheDocument();
   });
 
   it('3. Modal de Aprobación: Permite seleccionar rol y ejecutar adminApproveUser', async () => {
@@ -128,12 +128,14 @@ describe('UsuariosAdminPage Unit Tests', () => {
       expect(screen.getByText('@aperez')).toBeInTheDocument();
     });
 
-    const approveButton = screen.getByRole('button', { name: /Aprobar/i });
+    const approveButton = screen.getByRole('button', { name: /^Aprobar$/i });
     fireEvent.click(approveButton);
 
-    expect(screen.getByText('Aprobar Acceso Operativo')).toBeInTheDocument();
+    expect(screen.getByText('Aprobar acceso')).toBeInTheDocument();
 
-    const confirmButton = screen.getByRole('button', { name: /Confirmar Aprobación/i });
+    const submitButtons = screen.getAllByRole('button', { name: /^Aprobar$/i });
+    // The modal submit button will be the last one or within the modal
+    const confirmButton = submitButtons[submitButtons.length - 1];
     fireEvent.click(confirmButton);
 
     await waitFor(() => {

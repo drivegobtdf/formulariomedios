@@ -7,6 +7,7 @@ import {
   validateFileMetadata,
   MAX_FILES_PER_SUBMISSION,
   getSupabaseConfig,
+  computeSha256Hex,
 } from '../_shared/security.ts';
 import { getDriveAdapter } from '../_shared/drive-adapter.ts';
 import { getEnv } from '../_shared/env.ts';
@@ -86,11 +87,11 @@ export default async function handler(req: Request): Promise<Response> {
     if (req.method === 'PUT') {
       const url = new URL(req.url);
       const reservationId = url.searchParams.get('reservation_id') || req.headers.get('x-reservation-id');
-      const capabilityToken = req.headers.get('x-capability-token');
+      const capabilityToken = req.headers.get('x-capability-token') || req.headers.get('x-info-token') || req.headers.get('x-session-token');
 
       if (!reservationId || !capabilityToken) {
         return new Response(
-          JSON.stringify({ error: 'UNAUTHORIZED', message: 'reservation_id y capability_token son obligatorios' }),
+          JSON.stringify({ error: 'UNAUTHORIZED', message: 'reservation_id y token de autorización son obligatorios' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -108,19 +109,53 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
 
-      const session = resData.submission_sessions;
-      if (!session || session.estado !== 'abierta' || new Date(session.expires_at).getTime() <= Date.now()) {
-        return new Response(
-          JSON.stringify({ error: 'SESSION_EXPIRED', message: 'La sesión ha expirado o no está abierta' }),
-          { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      if (resData.solicitud_id) {
+        // Validación para reservas originadas en requerimientos de información
+        const { data: solData } = await supabase
+          .from('solicitudes_informacion')
+          .select('*')
+          .eq('id', resData.solicitud_id)
+          .maybeSingle();
 
-      if (!verifyCapabilityToken(capabilityToken, session.capability_hash)) {
-        return new Response(
-          JSON.stringify({ error: 'INVALID_CAPABILITY', message: 'capability_token inválido' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        if (!solData || solData.estado !== 'pendiente' || new Date(solData.expires_at).getTime() <= Date.now()) {
+          return new Response(
+            JSON.stringify({ error: 'SESSION_EXPIRED', message: 'La solicitud de información ha expirado o ya no está abierta' }),
+            { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const infoTokenHash = await computeSha256Hex(capabilityToken.trim());
+        if (solData.token_hash !== infoTokenHash) {
+          const { data: solSession } = await supabase
+            .from('solicitante_sessions')
+            .select('correo, expires_at')
+            .eq('session_token_hash', infoTokenHash)
+            .gt('expires_at', new Date().toISOString())
+            .maybeSingle();
+
+          if (!solSession) {
+            return new Response(
+              JSON.stringify({ error: 'INVALID_CAPABILITY', message: 'Token de autorización inválido' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+      } else {
+        // Validación estándar para reservas de formulario público
+        const session = resData.submission_sessions;
+        if (!session || session.estado !== 'abierta' || new Date(session.expires_at).getTime() <= Date.now()) {
+          return new Response(
+            JSON.stringify({ error: 'SESSION_EXPIRED', message: 'La sesión ha expirado o no está abierta' }),
+            { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!(await verifyCapabilityToken(capabilityToken, session.capability_hash))) {
+          return new Response(
+            JSON.stringify({ error: 'INVALID_CAPABILITY', message: 'capability_token inválido' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       if (!resData.drive_session_ref) {
@@ -191,59 +226,157 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const body = await req.json();
-    const { session_id, capability_token, expected_name, expected_size, mime_type, targets } = body;
+    const { session_id, capability_token, info_token, session_token, solicitud_id, expected_name, expected_size, mime_type, targets } = body;
 
-    if (!session_id || !capability_token) {
-      return new Response(
-        JSON.stringify({ error: 'UNAUTHORIZED', message: 'session_id y capability_token son obligatorios' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    let targetSubmissionKey = '';
+    let targetExpiresAt = '';
+    let targetContexto = 'solicitud';
+    let targetSolicitudId: string | null = null;
+    let targetPedidoId: string | null = null;
+    let targetSessionId: string | null = null;
+
+    if (info_token) {
+      // 1A. Validación de token de requerimiento de información
+      const tokenHash = await computeSha256Hex(String(info_token).trim());
+      const { data: sol, error: solErr } = await supabase
+        .from('solicitudes_informacion')
+        .select('id, pedido_id, estado, expires_at, pedidos:pedido_id(pedido_visible)')
+        .eq('token_hash', tokenHash)
+        .maybeSingle();
+
+      if (solErr || !sol) {
+        return new Response(
+          JSON.stringify({ error: 'TOKEN_NOT_FOUND', message: 'Solicitud de información no encontrada' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (sol.estado !== 'pendiente' || new Date(sol.expires_at).getTime() <= Date.now()) {
+        return new Response(
+          JSON.stringify({ error: 'TOKEN_EXPIRED', message: 'La solicitud de información ha expirado tras las 48 horas corridas' }),
+          { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      targetSolicitudId = sol.id;
+      targetPedidoId = sol.pedido_id;
+      targetExpiresAt = sol.expires_at;
+      targetContexto = 'informacion_respuesta';
+      targetSubmissionKey = `info_${sol.id}`;
+    } else if (session_token && solicitud_id) {
+      // 1B. Validación de sesión autenticada de solicitante
+      const tokenHash = await computeSha256Hex(String(session_token).trim());
+      const { data: solSession, error: sessErr } = await supabase
+        .from('solicitante_sessions')
+        .select('correo, expires_at')
+        .eq('session_token_hash', tokenHash)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+      if (sessErr || !solSession) {
+        return new Response(
+          JSON.stringify({ error: 'SESSION_INVALID', message: 'Sesión de solicitante inválida o expirada' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: sol, error: solErr } = await supabase
+        .from('solicitudes_informacion')
+        .select('id, pedido_id, estado, expires_at')
+        .eq('id', solicitud_id)
+        .maybeSingle();
+
+      if (solErr || !sol) {
+        return new Response(
+          JSON.stringify({ error: 'SOLICITUD_NOT_FOUND', message: 'Solicitud de información no encontrada' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (sol.estado !== 'pendiente' || new Date(sol.expires_at).getTime() <= Date.now()) {
+        return new Response(
+          JSON.stringify({ error: 'SOLICITUD_EXPIRED', message: 'La solicitud de información ha expirado tras 48 horas corridas' }),
+          { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      targetSolicitudId = sol.id;
+      targetPedidoId = sol.pedido_id;
+      targetExpiresAt = sol.expires_at;
+      targetContexto = 'informacion_respuesta';
+      targetSubmissionKey = `info_${sol.id}`;
+    } else {
+      // 1C. Validación de sesión pública estándar
+      if (!session_id || !capability_token) {
+        return new Response(
+          JSON.stringify({ error: 'UNAUTHORIZED', message: 'session_id y capability_token o info_token son obligatorios' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: session, error: sessionErr } = await supabase
+        .from('submission_sessions')
+        .select('*')
+        .eq('id', session_id)
+        .maybeSingle();
+
+      if (sessionErr || !session) {
+        return new Response(
+          JSON.stringify({ error: 'SESSION_NOT_FOUND', message: 'Sesión de envío no encontrada' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (session.estado !== 'abierta' || new Date(session.expires_at).getTime() <= Date.now()) {
+        return new Response(
+          JSON.stringify({ error: 'SESSION_EXPIRED', message: 'La sesión de envío ha expirado o ya no está abierta' }),
+          { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!(await verifyCapabilityToken(capability_token, session.capability_hash))) {
+        return new Response(
+          JSON.stringify({ error: 'INVALID_CAPABILITY', message: 'capability_token inválido' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      targetSessionId = session.id;
+      targetSubmissionKey = session.submission_key;
+      targetExpiresAt = session.expires_at;
     }
 
-    // 1. Obtener y validar sesión
-    const { data: session, error: sessionErr } = await supabase
-      .from('submission_sessions')
-      .select('*')
-      .eq('id', session_id)
-      .maybeSingle();
-
-    if (sessionErr || !session) {
-      return new Response(
-        JSON.stringify({ error: 'SESSION_NOT_FOUND', message: 'Sesión de envío no encontrada' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // 2. Comprobar límite de 10 archivos por sesión / requerimiento
+    let currentReservationsCount = 0;
+    if (targetSessionId) {
+      const { count, error: countErr } = await supabase
+        .from('upload_reservations')
+        .select('*', { count: 'exact', head: true })
+        .eq('session_id', targetSessionId)
+        .in('state', ['pending', 'uploading', 'completed', 'verified']);
+      if (countErr) {
+        return new Response(
+          JSON.stringify({ error: 'DB_ERROR', message: 'Error al verificar reservas existentes', details: countErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      currentReservationsCount = count || 0;
+    } else if (targetSolicitudId) {
+      const { count, error: countErr } = await supabase
+        .from('upload_reservations')
+        .select('*', { count: 'exact', head: true })
+        .eq('solicitud_id', targetSolicitudId)
+        .in('state', ['pending', 'uploading', 'completed', 'verified']);
+      if (countErr) {
+        return new Response(
+          JSON.stringify({ error: 'DB_ERROR', message: 'Error al verificar reservas existentes', details: countErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      currentReservationsCount = count || 0;
     }
 
-    if (session.estado !== 'abierta' || new Date(session.expires_at).getTime() <= Date.now()) {
-      return new Response(
-        JSON.stringify({ error: 'SESSION_EXPIRED', message: 'La sesión de envío ha expirado o ya no está abierta' }),
-        { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validar capability token
-    if (!verifyCapabilityToken(capability_token, session.capability_hash)) {
-      return new Response(
-        JSON.stringify({ error: 'INVALID_CAPABILITY', message: 'capability_token inválido' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // 2. Comprobar límite de 10 archivos por sesión
-    const { count: currentReservationsCount, error: countErr } = await supabase
-      .from('upload_reservations')
-      .select('*', { count: 'exact', head: true })
-      .eq('session_id', session_id)
-      .in('state', ['pending', 'uploading', 'completed', 'verified']);
-
-    if (countErr) {
-      return new Response(
-        JSON.stringify({ error: 'DB_ERROR', message: 'Error al verificar reservas existentes', details: countErr.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if ((currentReservationsCount || 0) >= MAX_FILES_PER_SUBMISSION) {
+    if (currentReservationsCount >= MAX_FILES_PER_SUBMISSION) {
       return new Response(
         JSON.stringify({
           error: 'MAX_FILES_EXCEEDED',
@@ -277,7 +410,7 @@ export default async function handler(req: Request): Promise<Response> {
       fileSize: Number(expected_size),
       parentFolderId: stagingFolderId,
       appProperties: {
-        submission_key: session.submission_key,
+        submission_key: targetSubmissionKey,
         client_file_ref: clientFileRef,
         reservation_id: reservationId,
       },
@@ -292,7 +425,7 @@ export default async function handler(req: Request): Promise<Response> {
       nombre_original: expected_name,
       mime_type: mime_type,
       size_bytes: Number(expected_size),
-      contexto: 'solicitud',
+      contexto: targetContexto,
       estado: 'reserved',
     });
 
@@ -305,7 +438,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     const { error: resErr } = await supabase.from('upload_reservations').insert({
       id: reservationId,
-      session_id: session_id,
+      session_id: targetSessionId,
+      solicitud_id: targetSolicitudId,
+      pedido_id: targetPedidoId,
       client_file_ref: clientFileRef,
       archivo_id: archivoId,
       drive_file_id: resumableSession.driveFileId || null,
@@ -315,7 +450,7 @@ export default async function handler(req: Request): Promise<Response> {
       expected_mime: mime_type,
       targets: targets || 'all',
       state: 'pending',
-      expires_at: session.expires_at,
+      expires_at: targetExpiresAt,
     });
 
     if (resErr) {
@@ -346,7 +481,7 @@ export default async function handler(req: Request): Promise<Response> {
         archivo_id: archivoId,
         upload_url: resumableSession.uploadUrl,
         relay_url: relayUrl,
-        expires_at: session.expires_at,
+        expires_at: targetExpiresAt,
       }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

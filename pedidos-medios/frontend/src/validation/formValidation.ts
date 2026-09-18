@@ -368,8 +368,12 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
         if (!data?.ciudad) {
           errors['cobertura.ciudad'] = 'Seleccioná la ciudad (Ushuaia, Río Grande o Tolhuin).';
         }
-        if (!data?.autoridades || data.autoridades.trim().length < 2) {
-          errors['cobertura.autoridades'] = 'Indicá las autoridades asistentes o protagonistas.';
+        if (!data?.asiste_autoridades || (data.asiste_autoridades !== 'si' && (data.asiste_autoridades as unknown) !== true && data.asiste_autoridades !== 'no')) {
+          errors['cobertura.asiste_autoridades'] = 'Seleccioná una opción.';
+        } else if (data.asiste_autoridades === 'si' || (data.asiste_autoridades as unknown) === true) {
+          if (!data?.autoridades || data.autoridades.trim().length < 2) {
+            errors['cobertura.autoridades'] = 'Indicá qué autoridades asistirán.';
+          }
         }
         if (!data?.requerimientos || data.requerimientos.trim().length < 5) {
           errors['cobertura.requerimientos'] = 'Detallá los requerimientos de cobertura (fotos, video, testimonios, etc.).';

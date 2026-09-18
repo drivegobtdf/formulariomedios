@@ -10,6 +10,7 @@ import {
   signIn,
   signOut,
   getMyAccess,
+  getEmailConfirmationRedirectUrl,
 } from '../services/auth';
 import { UserProfile } from '../auth/types';
 import * as supabaseClientModule from '../services/supabaseClient';
@@ -184,6 +185,7 @@ describe('Auth Service - Operaciones con Supabase Client Mock', () => {
       email: 'nuevo@example.com',
       password: 'password123',
       options: {
+        emailRedirectTo: 'http://localhost:3000/formulariomedios/confirmar-email',
         data: {
           nombre: 'Nuevo',
           apellido: 'Usuario',
@@ -191,6 +193,12 @@ describe('Auth Service - Operaciones con Supabase Client Mock', () => {
         },
       },
     });
+  });
+
+  it('construye el callback de confirmación dentro del basename de la SPA', () => {
+    expect(getEmailConfirmationRedirectUrl()).toBe(
+      'http://localhost:3000/formulariomedios/confirmar-email'
+    );
   });
 
   it('signIn exitoso retorna userId', async () => {

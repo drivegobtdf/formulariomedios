@@ -1,0 +1,56 @@
+# ==============================================================================
+# PEDIDOS — Secretaría de Medios (Gobierno de Tierra del Fuego AIAS)
+# Configuración Netlify para Despliegue de Standalone Static SPA
+# ==============================================================================
+
+[build]
+  command = "npm run build:standalone"
+  publish = "pedidos-standalone/web"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# ------------------------------------------------------------------------------
+# SPA Routing Fallback (Redirección canónica a index.html sin alterar URLs)
+# ------------------------------------------------------------------------------
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ------------------------------------------------------------------------------
+# Cabeceras de Seguridad y Políticas Globales
+# ------------------------------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# ------------------------------------------------------------------------------
+# Control de Caché: Assets con Hash (Inmutables por 1 año)
+# ------------------------------------------------------------------------------
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ------------------------------------------------------------------------------
+# Control de Caché: index.html y runtime config (Sin caché agresiva)
+# ------------------------------------------------------------------------------
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+[[headers]]
+  for = "/pedidos-config.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"

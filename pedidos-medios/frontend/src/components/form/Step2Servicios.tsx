@@ -66,10 +66,7 @@ export const Step2Servicios: React.FC<Step2ServiciosProps> = ({
   return (
     <div className="pedidos-step-container">
       <div className="pedidos-step-header">
-        <h2>2. Detalle y Especificación de Servicios</h2>
-        <p>
-          Completá los requerimientos técnicos y detalles de cada una de las categorías seleccionadas.
-        </p>
+        <h2>2. Detalle de la solicitud</h2>
       </div>
 
       {state.selected_categorias.includes('diseno_grafico') && (
@@ -112,6 +109,7 @@ export const Step2Servicios: React.FC<Step2ServiciosProps> = ({
               hora_fin: '',
               lugar: '',
               ciudad: '',
+              asiste_autoridades: '',
               autoridades: '',
               requerimientos: '',
             }
@@ -191,10 +189,10 @@ export const Step2Servicios: React.FC<Step2ServiciosProps> = ({
 
       <div className="pedidos-step-actions">
         <button type="button" className="pedidos-btn pedidos-btn-secondary" onClick={onBack}>
-          ← Volver al Contacto
+          Atrás
         </button>
         <button type="button" className="pedidos-btn pedidos-btn-primary" onClick={onNext}>
-          Continuar a Adjuntos y Enlaces →
+          Continuar
         </button>
       </div>
     </div>

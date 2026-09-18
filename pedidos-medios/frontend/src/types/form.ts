@@ -154,7 +154,8 @@ export interface CoberturaEventosData {
   hora_fin?: string;
   lugar: string;
   ciudad: 'Ushuaia' | 'Río Grande' | 'Tolhuin' | '';
-  autoridades: string;
+  asiste_autoridades?: 'si' | 'no' | '';
+  autoridades?: string;
   requerimientos: string;
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "pedidos-medios-frontend",
-  "version": "0.1.0-alpha",
+  "version": "0.1.0-beta2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,8 +10,11 @@
     "build": "tsc && vite build",
     "build:preview": "tsc && vite build --mode preview",
     "build:preview:cloud": "tsc && vite build --mode preview-cloud",
+    "build:wordpress": "tsc && vite build --mode preview-cloud",
+    "build:standalone": "tsc && vite build --mode standalone",
     "preview": "vite preview",
     "preview:cloud": "npm run build:preview:cloud && vite preview",
+    "preview:standalone": "vite preview --mode standalone --port 4174 --host",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,6 +1,5 @@
-import crypto from 'node:crypto';
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
-import { getCorsHeaders, getSupabaseConfig } from '../_shared/security.ts';
+import { getCorsHeaders, getSupabaseConfig, computeSha256Hex } from '../_shared/security.ts';
 
 export default async function handler(req: Request): Promise<Response> {
   const corsHeaders = getCorsHeaders(req);
@@ -40,7 +39,7 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const tokenHash = crypto.createHash('sha256').update(trackingToken).digest('hex');
+    const tokenHash = await computeSha256Hex(trackingToken);
 
     const { supabaseUrl, serviceRoleKey } = getSupabaseConfig();
     const supabase = createClient(supabaseUrl, serviceRoleKey, {

@@ -117,9 +117,10 @@ describe('F10 Communications Outbox, Templates & Dispatcher - Integration Tests'
   });
 
   describe('2. Email Templates Validation (REQ-F10-01, REQ-F10-02, REQ-F10-04)', () => {
-    it('renders multi-PED submission created email with visible codes and single primary CTA', () => {
+    it('renders multi-PED submission created email with visible codes and single primary CTA with access_token', () => {
       const rendered = renderSubmissionCreatedEmail({
         nombre_apellido: 'Pablo Saldivia',
+        raw_token: 'tok_access_fake_123',
         pedidos: [
           { id: 'p1', pedido_visible: 'PED-2026-D000001', categoria: 'Diseño Gráfico', tipo: 'Flyer' },
           { id: 'p2', pedido_visible: 'PED-2026-A000002', categoria: 'Audiovisual', tipo: 'Video' },
@@ -130,7 +131,7 @@ describe('F10 Communications Outbox, Templates & Dispatcher - Integration Tests'
       expect(rendered.html).toContain('PED-2026-D000001');
       expect(rendered.html).toContain('PED-2026-A000002');
       expect(rendered.html).toContain('Ver mis solicitudes');
-      expect(rendered.html).toContain('mis-solicitudes');
+      expect(rendered.html).toContain('mis-solicitudes#access_token=tok_access_fake_123');
       expect(rendered.html).toContain('GOBIERNO DE TIERRA DEL FUEGO AIAS');
       expect(rendered.n8nTipo).toBe('pedido_ingresado');
     });
@@ -147,7 +148,8 @@ describe('F10 Communications Outbox, Templates & Dispatcher - Integration Tests'
       expect(rendered.subject).toContain('[PEDIDOS] Requerimiento de Información (48h): PED-2026-D000001');
       expect(rendered.html).toContain('48 horas corridas');
       expect(rendered.html).toContain('Falta adjuntar el manual de marca en PDF');
-      expect(rendered.html).toContain('48 horas corridas');
+      expect(rendered.html).toContain('solicitud-informacion#token=info_tok_xyz');
+      expect(rendered.html).toContain('Responder requerimiento');
       expect(rendered.n8nTipo).toBe('informacion_faltante');
     });
 

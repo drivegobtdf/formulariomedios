@@ -150,13 +150,14 @@ export const LoginPage: React.FC = () => {
               padding: '0.75rem',
               borderRadius: '0.375rem',
               border: 'none',
-              backgroundColor: '#0284c7',
+              backgroundColor: 'var(--pedidos-brand-primary, #0b2746)',
               color: '#ffffff',
               fontSize: '0.875rem',
               fontWeight: 600,
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1,
               transition: 'background-color 0.15s ease',
+              boxShadow: '0 2px 4px rgba(11, 39, 70, 0.2)',
             }}
           >
             {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
@@ -177,7 +178,7 @@ export const LoginPage: React.FC = () => {
         >
           <Link
             to="/solicitar-acceso"
-            style={{ color: '#0284c7', textDecoration: 'none', fontWeight: 500 }}
+            style={{ color: 'var(--pedidos-brand-secondary, #1e5aa0)', textDecoration: 'none', fontWeight: 600 }}
           >
             ¿No tienes cuenta? <strong>Solicitar acceso operativo</strong> &rarr;
           </Link>

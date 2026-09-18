@@ -34,6 +34,7 @@ describe('Supabase Cloud Environment & Config Resolution', () => {
     expect(config.supabaseUrl).toBe('https://pedidos-medios-test.supabase.co');
     expect(config.serviceRoleKey).toBe('sb_secret_default_key_123');
     expect(config.publishableKey).toBe('sb_pub_default_key_789');
+    expect(config.supabaseAnonKey).toBe('sb_pub_default_key_789');
   });
 
   it('debe tener fallback seguro a variables legacy cuando no existen JSON dictionaries', () => {
@@ -46,6 +47,19 @@ describe('Supabase Cloud Environment & Config Resolution', () => {
     expect(config.supabaseUrl).toBe('http://127.0.0.1:54351');
     expect(config.serviceRoleKey).toBe('legacy_service_role_key_abc');
     expect(config.publishableKey).toBe('legacy_anon_key_def');
+    expect(config.supabaseAnonKey).toBe('legacy_anon_key_def');
+  });
+
+  it('debe soportar SUPABASE_PUBLISHABLE_KEY y SUPABASE_SECRET_KEY en formato individual', () => {
+    process.env.SUPABASE_URL = 'https://pedidos-medios-test.supabase.co';
+    process.env.SUPABASE_SECRET_KEY = 'single_secret_key_123';
+    process.env.SUPABASE_PUBLISHABLE_KEY = 'single_pub_key_456';
+
+    const config = getSupabaseConfig();
+
+    expect(config.serviceRoleKey).toBe('single_secret_key_123');
+    expect(config.publishableKey).toBe('single_pub_key_456');
+    expect(config.supabaseAnonKey).toBe('single_pub_key_456');
   });
 
   it('debe priorizar variables modernas JSON por sobre variables legacy si ambas existen', () => {
@@ -59,6 +73,7 @@ describe('Supabase Cloud Environment & Config Resolution', () => {
 
     expect(config.serviceRoleKey).toBe('modern_secret_key');
     expect(config.publishableKey).toBe('modern_pub_key');
+    expect(config.supabaseAnonKey).toBe('modern_pub_key');
   });
 
   it('getEnv debe leer correctamente variables de entorno', () => {
@@ -68,11 +83,28 @@ describe('Supabase Cloud Environment & Config Resolution', () => {
   });
 
   it('getCorsHeaders debe mantener localhost/127.0.0.1 y nunca permitir wildcard * indiscriminado', () => {
-    const reqLocalhost = new Request('http://localhost/functions/v1/test', {
+    const reqLocalhost5173 = new Request('http://localhost/functions/v1/test', {
       headers: { origin: 'http://localhost:5173' },
     });
-    const headers1 = getCorsHeaders(reqLocalhost);
+    const headers1 = getCorsHeaders(reqLocalhost5173);
     expect(headers1['Access-Control-Allow-Origin']).toBe('http://localhost:5173');
+    expect(headers1['Access-Control-Allow-Headers']).toContain('x-info-token');
+    expect(headers1['Access-Control-Allow-Headers']).toContain('x-session-token');
+    expect(headers1['Access-Control-Allow-Headers']).toContain('x-reservation-id');
+
+    const reqLocalhost4173 = new Request('http://localhost/functions/v1/drive-upload-prepare', {
+      headers: { origin: 'http://localhost:4173' },
+    });
+    const headers4173 = getCorsHeaders(reqLocalhost4173);
+    expect(headers4173['Access-Control-Allow-Origin']).toBe('http://localhost:4173');
+    expect(headers4173['Access-Control-Allow-Headers']).toContain('x-info-token');
+
+    const reqLocalhost4174 = new Request('http://localhost/functions/v1/submission-session-prepare', {
+      headers: { origin: 'http://localhost:4174' },
+    });
+    const headers4174 = getCorsHeaders(reqLocalhost4174);
+    expect(headers4174['Access-Control-Allow-Origin']).toBe('http://localhost:4174');
+    expect(headers4174['Access-Control-Allow-Headers']).toContain('x-capability-token');
 
     const reqUntrusted = new Request('http://localhost/functions/v1/test', {
       headers: { origin: 'https://malicious-site.com' },

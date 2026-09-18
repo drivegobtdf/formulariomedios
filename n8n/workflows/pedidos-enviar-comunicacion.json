@@ -79,7 +79,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p = $input.first().json;\n\nconst required = ['communication_id', 'tipo', 'to', 'subject', 'html'];\nconst missing = required.filter((key) => {\n  const value = p[key];\n  return value === undefined || value === null || String(value).trim() === '';\n});\n\nif (missing.length) {\n  throw new Error(`Faltan campos obligatorios: ${missing.join(', ')}`);\n}\n\nconst to = String(p.to).trim();\nconst basicEmail = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\nif (!basicEmail.test(to)) {\n  throw new Error('El destinatario no tiene un formato de email válido.');\n}\n\nconst allowedTypes = [\n  'pedido_ingresado',\n  'cambio_estado',\n  'informacion_faltante',\n  'informacion_respondida',\n  'finalizado',\n  'cancelado',\n  'magic_link_access'\n];\n\nif (!allowedTypes.includes(String(p.tipo))) {\n  throw new Error(`Tipo de comunicación no permitido: ${p.tipo}`);\n}\n\nreturn [{\n  json: {\n    communication_id: String(p.communication_id),\n    pedido_id: p.pedido_id ? String(p.pedido_id) : '',\n    servicio_id: p.servicio_id ? String(p.servicio_id) : '',\n    tipo: String(p.tipo),\n    to,\n    subject: String(p.subject).trim(),\n    html: String(p.html),\n    text: p.text ? String(p.text) : ''\n  }\n}];"
+        "jsCode": "const p = $input.first().json;\n\nconst required = ['communication_id', 'tipo', 'to', 'subject', 'html'];\nconst missing = required.filter((key) => {\n  const value = p[key];\n  return value === undefined || value === null || String(value).trim() === '';\n});\n\nif (missing.length) {\n  throw new Error(`Faltan campos obligatorios: ${missing.join(', ')}`);\n}\n\nconst to = String(p.to).trim();\nconst basicEmail = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\nif (!basicEmail.test(to)) {\n  throw new Error('El destinatario no tiene un formato de email válido.');\n}\n\nconst allowedTypes = [\n  'pedido_ingresado',\n  'cambio_estado',\n  'informacion_faltante',\n  'informacion_respondida',\n  'finalizado',\n  'cancelado',\n  'magic_link_access',\n  'en_proceso'\n];\n\nif (!allowedTypes.includes(String(p.tipo))) {\n  throw new Error(`Tipo de comunicación no permitido: ${p.tipo}`);\n}\n\nreturn [{\n  json: {\n    communication_id: String(p.communication_id),\n    pedido_id: p.pedido_id ? String(p.pedido_id) : '',\n    servicio_id: p.servicio_id ? String(p.servicio_id) : '',\n    tipo: String(p.tipo),\n    to,\n    subject: String(p.subject).trim(),\n    html: String(p.html),\n    text: p.text ? String(p.text) : ''\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -113,10 +113,6 @@
         "gmailOAuth2": {
           "id": "CREDENTIAL_ID_PLACEHOLDER",
           "name": "PEDIDOS MEDIOS"
-        },
-        "httpHeaderAuth": {
-          "id": "CREDENTIAL_ID_PLACEHOLDER",
-          "name": "PEDIDOS - Header Auth"
         }
       }
     },
@@ -185,10 +181,6 @@
       "name": "Webhook",
       "webhookId": "a58baf31-71bd-42eb-860e-6c492212f6ef",
       "credentials": {
-        "gmailOAuth2": {
-          "id": "CREDENTIAL_ID_PLACEHOLDER",
-          "name": "PEDIDOS MEDIOS"
-        },
         "httpHeaderAuth": {
           "id": "CREDENTIAL_ID_PLACEHOLDER",
           "name": "PEDIDOS - Header Auth"
@@ -265,8 +257,8 @@
         "rule": {
           "interval": [
             {
-              "field": "minutes",
-              "minutesInterval": 1
+              "field": "seconds",
+              "secondsInterval": 15
             }
           ]
         }
@@ -278,7 +270,7 @@
         448
       ],
       "id": "b8c8d8e8-1111-4444-8888-000000000001",
-      "name": "Programación periódica (1m)"
+      "name": "Programación periódica (15s)"
     },
     {
       "parameters": {
@@ -293,11 +285,11 @@
             },
             {
               "name": "x-pedidos-dispatch-secret",
-              "value": "<N8N_DISPATCH_SECRET_PLACEHOLDER>"
+              "value": "4a72605d175daee062362f9b94f950d10131b1ed3e61a13021ff31a79900c144"
             },
             {
               "name": "Authorization",
-              "value": "Bearer <SUPABASE_ANON_KEY_PLACEHOLDER>"
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZmt6Z3F2ZXphcnpobHdpaWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMjYyMjcsImV4cCI6MjEwNDgwMjIyN30.HtH8wtoexhpHLz4IHYtGkMWBF3_WuthkR_XroB4ODfU"
             }
           ]
         },
@@ -385,7 +377,7 @@
         ]
       ]
     },
-    "Programación periódica (1m)": {
+    "Programación periódica (15s)": {
       "main": [
         [
           {
@@ -399,6 +391,8 @@
   },
   "settings": {
     "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
     "callerPolicy": "workflowsFromSameOwner"
   }
 }

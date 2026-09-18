@@ -27,6 +27,7 @@ export interface SupabaseConfig {
   supabaseUrl: string;
   publishableKey: string;
   serviceRoleKey: string;
+  supabaseAnonKey: string;
 }
 
 /**
@@ -36,7 +37,7 @@ export interface SupabaseConfig {
 export function getSupabaseConfig(): SupabaseConfig {
   const supabaseUrl = getEnv('SUPABASE_URL') || 'http://127.0.0.1:54351';
 
-  // 1. SUPABASE_SECRET_KEYS (JSON) -> fallback a SUPABASE_SERVICE_ROLE_KEY
+  // 1. SUPABASE_SECRET_KEYS (JSON) -> fallback a SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SECRET_KEY
   let serviceRoleKey = '';
   const rawSecretKeys = getEnv('SUPABASE_SECRET_KEYS');
   if (rawSecretKeys) {
@@ -65,10 +66,10 @@ export function getSupabaseConfig(): SupabaseConfig {
     }
   }
   if (!serviceRoleKey) {
-    serviceRoleKey = getEnv('SUPABASE_SERVICE_ROLE_KEY') || '';
+    serviceRoleKey = getEnv('SUPABASE_SERVICE_ROLE_KEY') || getEnv('SUPABASE_SECRET_KEY') || '';
   }
 
-  // 2. SUPABASE_PUBLISHABLE_KEYS (JSON) -> fallback a SUPABASE_ANON_KEY
+  // 2. SUPABASE_PUBLISHABLE_KEYS (JSON) -> fallback a SUPABASE_PUBLISHABLE_KEY / SUPABASE_ANON_KEY
   let publishableKey = '';
   const rawPublishableKeys = getEnv('SUPABASE_PUBLISHABLE_KEYS');
   if (rawPublishableKeys) {
@@ -97,13 +98,14 @@ export function getSupabaseConfig(): SupabaseConfig {
     }
   }
   if (!publishableKey) {
-    publishableKey = getEnv('SUPABASE_ANON_KEY') || '';
+    publishableKey = getEnv('SUPABASE_PUBLISHABLE_KEY') || getEnv('SUPABASE_ANON_KEY') || '';
   }
 
   return {
     supabaseUrl,
     publishableKey,
     serviceRoleKey,
+    supabaseAnonKey: publishableKey,
   };
 }
 

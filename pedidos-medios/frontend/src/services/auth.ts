@@ -6,6 +6,7 @@
  */
 
 import { getSupabaseClient } from './supabaseClient';
+import { getPublicConfig } from './config';
 import { AppRole, EstadoAcceso, UserProfile } from '../auth/types';
 
 export interface SignUpParams {
@@ -25,6 +26,17 @@ export interface AuthResult<T = void> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+/**
+ * Devuelve el callback permitido para la confirmación de email del entorno
+ * que está sirviendo la SPA. Supabase Auth usa el flujo implícito del cliente,
+ * por lo que el callback recibirá la sesión en el fragmento de la URL.
+ */
+export function getEmailConfirmationRedirectUrl(): string {
+  const { basePath } = getPublicConfig();
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+  return new URL(`${basePath}/confirmar-email`, `${origin}/`).toString();
 }
 
 /**
@@ -66,6 +78,7 @@ export async function signUp(params: SignUpParams): Promise<AuthResult<{ userId:
     email,
     password,
     options: {
+      emailRedirectTo: getEmailConfirmationRedirectUrl(),
       data: {
         nombre: cleanNombre,
         apellido: cleanApellido,

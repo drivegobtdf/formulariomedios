@@ -32,18 +32,24 @@ export async function prepareSubmissionSession(submissionKey: string): Promise<S
   const config = getPublicConfig();
   const endpoint = `${config.supabaseUrl}/functions/v1/submission-session-prepare`;
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'apikey': config.supabaseAnonKey,
-      'Authorization': `Bearer ${config.supabaseAnonKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      submission_key: submissionKey,
-      form_schema_version: 3,
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'apikey': config.supabaseAnonKey,
+        'Authorization': `Bearer ${config.supabaseAnonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        submission_key: submissionKey,
+        form_schema_version: 3,
+      }),
+    });
+  } catch (netErr: unknown) {
+    const errorMsg = netErr instanceof Error ? netErr.message : String(netErr);
+    throw new Error(`Error de conexión al inicializar sesión (${errorMsg}). Verifique su conexión.`);
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -265,6 +271,134 @@ export async function uploadFileToDrive(
   };
 }
 
+export async function uploadFileForInfoResponse(
+  auth: { info_token?: string; session_token?: string; solicitud_id?: string },
+  clientFileRef: string,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<UploadResult> {
+  const config = getPublicConfig();
+  if (onProgress) onProgress(5);
+
+  const prepareUrl = `${config.supabaseUrl}/functions/v1/drive-upload-prepare`;
+  const prepHeaders: Record<string, string> = {
+    'apikey': config.supabaseAnonKey,
+    'Authorization': `Bearer ${config.supabaseAnonKey}`,
+    'Content-Type': 'application/json',
+  };
+  if (auth.info_token) {
+    prepHeaders['x-info-token'] = auth.info_token;
+  } else if (auth.session_token) {
+    prepHeaders['x-session-token'] = auth.session_token;
+  }
+
+  const prepRes = await fetch(prepareUrl, {
+    method: 'POST',
+    headers: prepHeaders,
+    body: JSON.stringify({
+      info_token: auth.info_token,
+      session_token: auth.session_token,
+      solicitud_id: auth.solicitud_id,
+      client_file_ref: clientFileRef,
+      expected_name: file.name,
+      expected_size: file.size,
+      mime_type: file.type || 'application/octet-stream',
+      targets: 'informacion_respuesta',
+    }),
+  });
+
+  if (!prepRes.ok) {
+    const prepErr = await prepRes.json().catch(() => ({}));
+    throw new Error(prepErr.message || prepErr.error || `Error preparando subida (${prepRes.status})`);
+  }
+
+  const prepData = await prepRes.json();
+  if (onProgress) onProgress(20);
+
+  let driveFileId = prepData.drive_file_id || '';
+  const targetUploadUrl = resolveUploadRelayUrl(
+    prepData.relay_url,
+    prepData.reservation_id,
+    config.supabaseUrl
+  );
+
+  const isAuthorized = isOriginAuthorized(targetUploadUrl, config.supabaseUrl);
+  if (!isAuthorized) {
+    throw new Error('SECURITY_ERROR: Destino de almacenamiento no autorizado. Transferencia cancelada.');
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', targetUploadUrl);
+    
+    xhr.setRequestHeader('apikey', config.supabaseAnonKey);
+    xhr.setRequestHeader('Authorization', `Bearer ${config.supabaseAnonKey}`);
+    if (auth.info_token) {
+      xhr.setRequestHeader('x-info-token', auth.info_token);
+    } else if (auth.session_token) {
+      xhr.setRequestHeader('x-session-token', auth.session_token);
+    }
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        const pct = Math.round(20 + (event.loaded / event.total) * 60);
+        onProgress(pct);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const parsed = JSON.parse(xhr.responseText || '{}');
+          if (parsed.id) driveFileId = parsed.id;
+        } catch {
+          void 0;
+        }
+        resolve();
+      } else {
+        reject(new Error(`Fallo en transferencia a almacenamiento (${xhr.status})`));
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Error de red durante la transferencia del archivo'));
+    };
+
+    xhr.send(file);
+  });
+
+  if (onProgress) onProgress(85);
+
+  const completeUrl = `${config.supabaseUrl}/functions/v1/drive-upload-complete`;
+  const compRes = await fetch(completeUrl, {
+    method: 'POST',
+    headers: prepHeaders,
+    body: JSON.stringify({
+      info_token: auth.info_token,
+      session_token: auth.session_token,
+      reservation_id: prepData.reservation_id,
+      client_file_ref: prepData.client_file_ref || clientFileRef,
+      drive_file_id: driveFileId,
+    }),
+  });
+
+  if (!compRes.ok) {
+    const compErr = await compRes.json().catch(() => ({}));
+    throw new Error(compErr.message || compErr.error || `Error verificando archivo en backend (${compRes.status})`);
+  }
+
+  const compData: UploadCompleteResponse = await compRes.json();
+  if (onProgress) onProgress(100);
+
+  return {
+    archivo_id: compData.archivo_id,
+    drive_file_id: compData.drive_file_id || driveFileId,
+    reservation_id: prepData.reservation_id,
+    client_file_ref: prepData.client_file_ref || clientFileRef,
+  };
+}
+
 /**
  * Mapea y valida la respuesta del backend RPC submission_create_core
  * hacia el modelo canónico del frontend.
@@ -364,11 +498,19 @@ export async function submitMultiPedFormulario(
     headers['x-capability-token'] = capabilityToken;
   }
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-  });
+  let res: Response;
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+  } catch (netErr: unknown) {
+    const errorMsg = netErr instanceof Error ? netErr.message : String(netErr);
+    throw new Error(
+      `Error de conexión con el servidor (${errorMsg}). Verifique su conexión a Internet o intente nuevamente.`
+    );
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));

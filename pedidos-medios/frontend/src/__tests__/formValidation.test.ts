@@ -184,7 +184,7 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       expect(errs['flyer_rrss.fecha_limite']).toBeDefined();
     });
 
-    it('debe validar que Cobertura de Eventos requiera fecha, hora, lugar, ciudad y autoridades', () => {
+    it('debe validar que Cobertura de Eventos requiera fecha, hora, lugar, ciudad, requerimientos y opción de autoridades', () => {
       const state: Partial<FormWizardState> = {
         selected_categorias: ['cobertura_eventos'],
         cobertura_data: {
@@ -192,6 +192,7 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
           hora_inicio: '',
           lugar: '',
           ciudad: '',
+          asiste_autoridades: '',
           autoridades: '',
           requerimientos: '',
         },
@@ -202,8 +203,47 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       expect(errs['cobertura.hora_inicio']).toBeDefined();
       expect(errs['cobertura.lugar']).toBeDefined();
       expect(errs['cobertura.ciudad']).toBeDefined();
-      expect(errs['cobertura.autoridades']).toBeDefined();
+      expect(errs['cobertura.asiste_autoridades']).toBe('Seleccioná una opción.');
       expect(errs['cobertura.requerimientos']).toBeDefined();
+    });
+
+    it('debe validar selector de autoridades: sin selección bloquea, "no" es válido sin autoridades, "si" exige nombres', () => {
+      const baseState: Partial<FormWizardState> = {
+        selected_categorias: ['cobertura_eventos'],
+        cobertura_data: {
+          fecha: '2026-12-01',
+          hora_inicio: '10:00',
+          lugar: 'Casa de Gobierno',
+          ciudad: 'Ushuaia',
+          asiste_autoridades: '',
+          autoridades: '',
+          requerimientos: 'Cobertura fotográfica',
+        },
+      };
+
+      // 1. Sin seleccionar (estado inicial '')
+      const errsUnset = validateStep2(baseState as FormWizardState);
+      expect(errsUnset['cobertura.asiste_autoridades']).toBe('Seleccioná una opción.');
+      expect(errsUnset['cobertura.autoridades']).toBeUndefined();
+
+      // 2. Selecciona "no" -> válido, no exige autoridades
+      baseState.cobertura_data!.asiste_autoridades = 'no';
+      const errsNo = validateStep2(baseState as FormWizardState);
+      expect(errsNo['cobertura.asiste_autoridades']).toBeUndefined();
+      expect(errsNo['cobertura.autoridades']).toBeUndefined();
+
+      // 3. Selecciona "si" con campo vacío -> bloquea exigiendo autoridades
+      baseState.cobertura_data!.asiste_autoridades = 'si';
+      baseState.cobertura_data!.autoridades = '';
+      const errsSiEmpty = validateStep2(baseState as FormWizardState);
+      expect(errsSiEmpty['cobertura.asiste_autoridades']).toBeUndefined();
+      expect(errsSiEmpty['cobertura.autoridades']).toBe('Indicá qué autoridades asistirán.');
+
+      // 4. Selecciona "si" con nombres válidos -> válido
+      baseState.cobertura_data!.autoridades = 'Gobernador y Ministros';
+      const errsSiValid = validateStep2(baseState as FormWizardState);
+      expect(errsSiValid['cobertura.asiste_autoridades']).toBeUndefined();
+      expect(errsSiValid['cobertura.autoridades']).toBeUndefined();
     });
 
     it('debe aplicar patrón de asesoramiento simplificado si requiere_asesoramiento es true', () => {
@@ -461,6 +501,7 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
           hora_inicio: '10:00',
           lugar: 'Gimnasio Petrina',
           ciudad: 'Ushuaia',
+          asiste_autoridades: 'si',
           autoridades: 'Gobernador',
           requerimientos: 'Fotografía y video institucional',
         },

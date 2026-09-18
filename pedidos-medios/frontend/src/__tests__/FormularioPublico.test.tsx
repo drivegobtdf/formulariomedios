@@ -10,12 +10,39 @@ import { getLocalTodayDateString } from '../validation/formValidation';
 // Mock scrollTo
 window.scrollTo = vi.fn();
 
-describe('FormularioPublicoPage — Wizard Component Tests', () => {
-  it('debe navegar por los pasos al completar los campos requeridos', async () => {
+describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () => {
+  it('1. Portada Institucional Home: Muestra presentación, logo, 3 pasos simultáneos y CTAs sin desplegar campos de formulario inicialmente', () => {
     render(<FormularioPublicoPage />);
 
+    expect(
+      screen.getByRole('heading', { level: 1, name: /Solicitud de Comunicación y Medios/i })
+    ).toBeInTheDocument();
+
+    expect(screen.getByText(/SISTEMA OFICIAL DE PEDIDOS/i)).toBeInTheDocument();
+
+    // Las 3 cards se muestran juntas simultáneamente
+    expect(screen.getByText(/Cargá tu pedido/i)).toBeInTheDocument();
+    expect(screen.getByText(/Seguí el avance/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recibí el material/i)).toBeInTheDocument();
+
+    const startBtn = screen.getByRole('button', { name: /Nueva solicitud/i });
+    expect(startBtn).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Mis solicitudes/i })).toBeInTheDocument();
+
+    // No debe haber inputs del formulario en la portada
+    expect(screen.queryByLabelText(/Nombre y apellido/i)).not.toBeInTheDocument();
+
+    // Al hacer clic en Iniciar Nueva Solicitud, se despliega el wizard
+    fireEvent.click(startBtn);
+    expect(screen.getByRole('heading', { level: 2, name: /1\. Datos de Contacto y Servicios Requeridos/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nombre y apellido/i)).toBeInTheDocument();
+  });
+
+  it('debe navegar por los pasos al completar los campos requeridos', async () => {
+    render(<FormularioPublicoPage initialShowWizard={true} />);
+
     // Paso 1: Intentar continuar sin datos debe mostrar errores
-    const nextBtn1 = screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i });
+    const nextBtn1 = screen.getByRole('button', { name: /^Continuar$/i });
     fireEvent.click(nextBtn1);
 
     expect(screen.getByText(/Ingresá tu nombre y apellido/i)).toBeInTheDocument();
@@ -30,7 +57,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
     fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
       target: { value: 'juan.perez@tierradelfuego.gob.ar' },
     });
-    fireEvent.change(screen.getByLabelText(/Área, Ministerio o Dependencia/i), {
+    fireEvent.change(screen.getByLabelText(/Área o Dependencia/i), {
       target: { value: 'Secretaría General' },
     });
 
@@ -42,7 +69,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
 
     // Ahora debemos estar en el Paso 2
     expect(
-      screen.getByRole('heading', { level: 2, name: /2\. Detalle y Especificación de Servicios/i })
+      screen.getByRole('heading', { level: 2, name: /2\. Detalle de la solicitud/i })
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: /Diseño Gráfico/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: /Gacetilla de Prensa/i })).toBeInTheDocument();
@@ -71,23 +98,23 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
     });
 
     // Continuar al Paso 3 (Adjuntos)
-    const nextBtn2 = screen.getByRole('button', { name: /Continuar a Adjuntos y Enlaces/i });
+    const nextBtn2 = screen.getByRole('button', { name: /^Continuar$/i });
     fireEvent.click(nextBtn2);
 
     expect(
-      screen.getByRole('heading', { level: 2, name: /3\. Archivos Adjuntos y Enlaces de Referencia/i })
+      screen.getByRole('heading', { level: 2, name: /3\. Archivos y enlaces/i })
     ).toBeInTheDocument();
 
     // Continuar al Paso 4 (Resumen)
-    const nextBtn3 = screen.getByRole('button', { name: /Continuar al Resumen y Confirmación/i });
+    const nextBtn3 = screen.getByRole('button', { name: /^Continuar$/i });
     fireEvent.click(nextBtn3);
 
     expect(
-      screen.getByRole('heading', { level: 2, name: /4\. Resumen y Confirmación Final/i })
+      screen.getByRole('heading', { level: 2, name: /4\. Revisá y enviá/i })
     ).toBeInTheDocument();
 
     // Verificar que el resumen muestre los 2 PEDs a generar
-    expect(screen.getByText(/Solicitudes a Generar \(2 PEDs\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Solicitudes \(2 PEDs\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Flyer para redes sociales/i)).toBeInTheDocument();
     expect(screen.getByText(/Gacetilla de prensa/i)).toBeInTheDocument();
     expect(screen.getByText(/Juan Pérez/i)).toBeInTheDocument();
@@ -96,7 +123,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
     const submitBtn = screen.getByRole('button', { name: /Enviar solicitudes/i });
     expect(submitBtn).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Confirmo que revisé los datos/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Revisé los datos y son correctos/i }));
     expect(submitBtn).not.toBeDisabled();
   });
 
@@ -173,7 +200,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
 
   describe('Validación Reactiva y UX Flyer RRSS (Escenarios A - N)', () => {
     const setupStep2WithFlyer = async () => {
-      render(<FormularioPublicoPage />);
+      render(<FormularioPublicoPage initialShowWizard={true} />);
 
       // Completar Paso 1 válido
       fireEvent.change(screen.getByLabelText(/Nombre y apellido/i), {
@@ -185,7 +212,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
         target: { value: 'juan.perez@tierradelfuego.gob.ar' },
       });
-      fireEvent.change(screen.getByLabelText(/Área, Ministerio o Dependencia/i), {
+      fireEvent.change(screen.getByLabelText(/Área o Dependencia/i), {
         target: { value: 'Secretaría General' },
       });
 
@@ -193,7 +220,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.click(screen.getByLabelText(/Diseño gráfico/i));
 
       // Avanzar a Paso 2
-      const nextBtn1 = screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i });
+      const nextBtn1 = screen.getByRole('button', { name: /^Continuar$/i });
       fireEvent.click(nextBtn1);
 
       // Seleccionar pieza Flyer para redes sociales
@@ -201,7 +228,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.click(flyerCheckbox);
 
       return {
-        nextBtn2: screen.getByRole('button', { name: /Continuar a Adjuntos y Enlaces/i }),
+        nextBtn2: screen.getByRole('button', { name: /^Continuar$/i }),
       };
     };
 
@@ -350,7 +377,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       expect(
         screen.getByRole('heading', {
           level: 2,
-          name: /3\. Archivos Adjuntos y Enlaces de Referencia/i,
+          name: /3\. Archivos y enlaces/i,
         })
       ).toBeInTheDocument();
     });
@@ -358,7 +385,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
 
   describe('Paso 3: Enlaces al Material - Validación Reactiva y Labels Persistentes', () => {
     const setupStep3 = async () => {
-      render(<FormularioPublicoPage />);
+      render(<FormularioPublicoPage initialShowWizard={true} />);
 
       // Paso 1
       fireEvent.change(screen.getByLabelText(/Nombre y Apellido/i), {
@@ -370,13 +397,13 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
         target: { value: 'juan.perez@tierradelfuego.gob.ar' },
       });
-      fireEvent.change(screen.getByLabelText(/Área, Ministerio o Dependencia/i), {
+      fireEvent.change(screen.getByLabelText(/Área o Dependencia/i), {
         target: { value: 'Secretaría General' },
       });
       fireEvent.click(screen.getByLabelText(/Diseño gráfico/i));
 
       // Avanzar a Paso 2
-      fireEvent.click(screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
 
       // Completar Paso 2 con Flyer válido
       fireEvent.click(screen.getByRole('checkbox', { name: /Flyer para redes sociales/i }));
@@ -391,12 +418,12 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       });
 
       // Avanzar a Paso 3
-      fireEvent.click(screen.getByRole('button', { name: /Continuar a Adjuntos y Enlaces/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
 
       expect(
         screen.getByRole('heading', {
           level: 2,
-          name: /3\. Archivos Adjuntos y Enlaces de Referencia/i,
+          name: /3\. Archivos y enlaces/i,
         })
       ).toBeInTheDocument();
     };
@@ -419,7 +446,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.change(descInput, { target: { value: 'fotos en alta resolución' } });
 
       // Intentar continuar al Paso 4
-      const nextBtn3 = screen.getByRole('button', { name: /Continuar al Resumen y Confirmación/i });
+      const nextBtn3 = screen.getByRole('button', { name: /^Continuar$/i });
       fireEvent.click(nextBtn3);
 
       // Verificar que se muestra el error exacto y el estado de error
@@ -471,7 +498,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       expect(
         screen.getByRole('heading', {
           level: 2,
-          name: /4\. Resumen y Confirmación Final/i,
+          name: /4\. Revisá y enviá/i,
         })
       ).toBeInTheDocument();
     });
@@ -479,7 +506,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
 
   describe('Paso 1: Selector Internacional de WhatsApp y Validación Reactiva', () => {
     it('debe tener Argentina por defecto, validar reglas locales y revalidar reactivamente sin nuevo submit', async () => {
-      render(<FormularioPublicoPage />);
+      render(<FormularioPublicoPage initialShowWizard={true} />);
 
       // Verificar país por defecto AR
       const countrySelect = screen.getByLabelText(/Seleccionar país para WhatsApp/i) as HTMLSelectElement;
@@ -487,7 +514,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       expect(screen.getByText(/Ingresá código de área y número, sin 0 y sin 15\./i)).toBeInTheDocument();
 
       const phoneInput = screen.getByLabelText(/Número de WhatsApp/i);
-      const nextBtn1 = screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i });
+      const nextBtn1 = screen.getByRole('button', { name: /^Continuar$/i });
 
       // Ingresar número con 0 inicial -> 02964477578
       fireEvent.change(phoneInput, { target: { value: '02964477578' } });
@@ -533,7 +560,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
 
   describe('Paso 2: Validación Centralizada de Fechas Pasadas y Reactividad UI', () => {
     it('Cobertura de Eventos: debe poseer atributo min, rechazar fecha de ayer y limpiar reactivamente al ingresar hoy o futuro', async () => {
-      render(<FormularioPublicoPage />);
+      render(<FormularioPublicoPage initialShowWizard={true} />);
 
       // Completar Paso 1 seleccionando Cobertura de Eventos
       fireEvent.change(screen.getByLabelText(/Nombre y apellido/i), {
@@ -545,13 +572,13 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.change(screen.getByLabelText(/Correo electrónico/i), {
         target: { value: 'esteban@tierradelfuego.gob.ar' },
       });
-      fireEvent.change(screen.getByLabelText(/Área, Ministerio o Dependencia/i), {
+      fireEvent.change(screen.getByLabelText(/Área o Dependencia/i), {
         target: { value: 'Dirección de Protocolo' },
       });
 
       fireEvent.click(screen.getByLabelText(/Cobertura de eventos/i));
 
-      const nextBtn1 = screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i });
+      const nextBtn1 = screen.getByRole('button', { name: /^Continuar$/i });
       fireEvent.click(nextBtn1);
 
       // En Paso 2 - Cobertura de Eventos
@@ -567,14 +594,15 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.change(screen.getByLabelText(/Hora de inicio/i), { target: { value: '10:00' } });
       fireEvent.change(screen.getByLabelText(/Lugar \/ Dirección/i), { target: { value: 'Gimnasio Petrina' } });
       fireEvent.change(screen.getByLabelText(/Ciudad/i), { target: { value: 'Ushuaia' } });
-      fireEvent.change(screen.getByLabelText(/Autoridades y protagonistas/i), { target: { value: 'Gobernador' } });
+      fireEvent.click(screen.getByLabelText(/^Sí$/i));
+      fireEvent.change(screen.getByLabelText(/¿Qué autoridades asistirán\?/i), { target: { value: 'Gobernador' } });
       fireEvent.change(screen.getByLabelText(/Requerimientos de cobertura/i), { target: { value: 'Cobertura fotográfica completa' } });
 
       // Ingresar fecha pasada: 2026-09-13
       fireEvent.change(fechaInput, { target: { value: '2026-09-13' } });
 
       // Intentar avanzar al Paso 3
-      const nextBtn2 = screen.getByRole('button', { name: /Continuar a Adjuntos y Enlaces/i });
+      const nextBtn2 = screen.getByRole('button', { name: /^Continuar$/i });
       fireEvent.click(nextBtn2);
 
       // Debe mostrar error de fecha pasada
@@ -591,18 +619,18 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       // Avanzar al Paso 3 exitosamente
       fireEvent.click(nextBtn2);
       expect(
-        screen.getByRole('heading', { level: 2, name: /3\. Archivos Adjuntos y Enlaces de Referencia/i })
+        screen.getByRole('heading', { level: 2, name: /3\. Archivos y enlaces/i })
       ).toBeInTheDocument();
     });
 
     it('Todos los servicios con fechas operativas deben incluir el atributo min con la fecha local de hoy', async () => {
-      render(<FormularioPublicoPage />);
+      render(<FormularioPublicoPage initialShowWizard={true} />);
 
       // Completar Paso 1 seleccionando todos los servicios con campos de fecha
       fireEvent.change(screen.getByLabelText(/Nombre y apellido/i), { target: { value: 'Juan' } });
       fireEvent.change(screen.getByLabelText(/Número de WhatsApp/i), { target: { value: '2901445566' } });
       fireEvent.change(screen.getByLabelText(/Correo electrónico/i), { target: { value: 'juan@tdf.gob.ar' } });
-      fireEvent.change(screen.getByLabelText(/Área, Ministerio o Dependencia/i), { target: { value: 'Medios' } });
+      fireEvent.change(screen.getByLabelText(/Área o Dependencia/i), { target: { value: 'Medios' } });
 
       fireEvent.click(screen.getByLabelText(/Diseño gráfico/i));
       fireEvent.click(screen.getByLabelText(/Publicaciones en redes sociales/i));
@@ -611,7 +639,7 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
       fireEvent.click(screen.getByLabelText(/Transmisión en vivo \/ streaming/i));
       fireEvent.click(screen.getByLabelText(/Sitios y contenidos web/i));
 
-      fireEvent.click(screen.getByRole('button', { name: /Continuar al Detalle de Solicitudes/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
 
       // En Diseño Gráfico -> Seleccionar Flyer e Invitación
       fireEvent.click(screen.getByRole('checkbox', { name: /Flyer para redes sociales/i }));
@@ -644,6 +672,90 @@ describe('FormularioPublicoPage — Wizard Component Tests', () => {
 
       // Verificar Sitios Web fecha límite
       expect(screen.getByLabelText(/Fecha límite de puesta en línea/i)).toHaveAttribute('min', today);
+    });
+
+    it('Cobertura de Eventos: Validación completa del selector "¿Asisten autoridades?" (8 reglas)', async () => {
+      render(<FormularioPublicoPage initialShowWizard={true} />);
+
+      // Completar Paso 1 seleccionando Cobertura de Eventos
+      fireEvent.change(screen.getByLabelText(/Nombre y apellido/i), { target: { value: 'María López' } });
+      fireEvent.change(screen.getByLabelText(/Número de WhatsApp/i), { target: { value: '2901445566' } });
+      fireEvent.change(screen.getByLabelText(/Correo electrónico/i), { target: { value: 'maria@tdf.gob.ar' } });
+      fireEvent.change(screen.getByLabelText(/Área o Dependencia/i), { target: { value: 'Protocolo' } });
+      fireEvent.click(screen.getByLabelText(/Cobertura de eventos/i));
+
+      fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
+
+      // En Paso 2 - Cobertura de Eventos
+      const today = getLocalTodayDateString();
+      fireEvent.change(screen.getByLabelText(/Fecha del evento/i), { target: { value: today } });
+      fireEvent.change(screen.getByLabelText(/Hora de inicio/i), { target: { value: '11:00' } });
+      fireEvent.change(screen.getByLabelText(/Lugar \/ Dirección/i), { target: { value: 'Salón Malvinas' } });
+      fireEvent.change(screen.getByLabelText(/Ciudad/i), { target: { value: 'Ushuaia' } });
+      fireEvent.change(screen.getByLabelText(/Requerimientos de cobertura/i), { target: { value: 'Fotos institucionales' } });
+
+      // 1. Estado inicial = '' -> ni Sí ni No están seleccionados
+      const radioSi = screen.getByLabelText(/^Sí$/i) as HTMLInputElement;
+      const radioNo = screen.getByLabelText(/^No$/i) as HTMLInputElement;
+      expect(radioSi.checked).toBe(false);
+      expect(radioNo.checked).toBe(false);
+      expect(screen.queryByLabelText(/¿Qué autoridades asistirán\?/i)).not.toBeInTheDocument();
+
+      // 2. Sin seleccionar Sí/No → intentar avanzar bloquea con mensaje
+      fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
+      expect(screen.getByText('Seleccioná una opción.')).toBeInTheDocument();
+
+      // 3. Seleccionar "Sí" → aparece campo de autoridades
+      fireEvent.click(radioSi);
+      expect(radioSi.checked).toBe(true);
+      expect(screen.queryByText('Seleccioná una opción.')).not.toBeInTheDocument();
+      const inputAutoridades = screen.getByLabelText(/¿Qué autoridades asistirán\?/i) as HTMLInputElement;
+      expect(inputAutoridades).toBeInTheDocument();
+
+      // 4. "Sí" + campo vacío → intentar avanzar bloquea con error
+      fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
+      expect(screen.getByText('Indicá qué autoridades asistirán.')).toBeInTheDocument();
+
+      // 5. "Sí" + nombres ingresados → campo válido
+      fireEvent.change(inputAutoridades, { target: { value: 'Gobernador y Ministros' } });
+      expect(screen.queryByText('Indicá qué autoridades asistirán.')).not.toBeInTheDocument();
+
+      // 6. Cambiar "Sí" -> "No" → oculta el campo y limpia autoridades
+      fireEvent.click(radioNo);
+      expect(radioNo.checked).toBe(true);
+      expect(radioSi.checked).toBe(false);
+      expect(screen.queryByLabelText(/¿Qué autoridades asistirán\?/i)).not.toBeInTheDocument();
+
+      // 7. "No" → válido sin nombres, permite avanzar al Paso 3 y luego al Paso 4
+      fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
+      expect(screen.getByRole('heading', { level: 2, name: /3\. Archivos y enlaces/i })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
+      expect(screen.getByRole('heading', { level: 2, name: /4\. Revisá y enviá/i })).toBeInTheDocument();
+
+      // 8. En Paso 4 Resumen: no muestra 'asiste_autoridades' y no muestra 'Autoridades' si fue No
+      expect(screen.queryByText(/asiste_autoridades/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Autoridades:/i)).not.toBeInTheDocument();
+
+      // Verificar caso Sí en Paso 4: volver a Paso 2, marcar Sí y completar autoridades
+      fireEvent.click(screen.getAllByRole('button', { name: /^Editar$/i })[1]); // Editar solicitudes (Paso 2)
+      expect(screen.getByRole('heading', { level: 3, name: /Cobertura de Eventos/i })).toBeInTheDocument();
+
+      const radioSiAgain = screen.getByLabelText(/^Sí$/i);
+      fireEvent.click(radioSiAgain);
+      fireEvent.change(screen.getByLabelText(/¿Qué autoridades asistirán\?/i), {
+        target: { value: 'Gobernador y Ministros' },
+      });
+
+      // Avanzar a Paso 3 y luego a Paso 4
+      fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
+      expect(screen.getByRole('heading', { level: 2, name: /4\. Revisá y enviá/i })).toBeInTheDocument();
+
+      // En Paso 4: muestra Autoridades con el valor y NO muestra la clave técnica asiste_autoridades
+      expect(screen.queryByText(/asiste_autoridades/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Autoridades:')).toBeInTheDocument();
+      expect(screen.getByText('Gobernador y Ministros')).toBeInTheDocument();
     });
   });
 });

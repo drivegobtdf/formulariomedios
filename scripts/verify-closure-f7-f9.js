@@ -303,8 +303,8 @@ async function runClosureControl() {
     const { data: exch1, error: exchErr1 } = await serviceClient.rpc('solicitante_session_exchange', { p_token: rawMagicToken.data });
     assert('CRIT-02-TTL-CONFIG', '2.7 Primer canje genera sesión opaca exitosamente', !exchErr1 && exch1 && exch1.session_token);
 
-    const { error: exchErr2 } = await serviceClient.rpc('solicitante_session_exchange', { p_token: rawMagicToken.data });
-    assert('CRIT-02-TTL-CONFIG', '2.8 Replay de token mágico ya usado es rechazado con 42202 TOKEN_ALREADY_USED', exchErr2 && exchErr2.message.includes('TOKEN_ALREADY_USED'));
+    const { data: exch2, error: exchErr2 } = await serviceClient.rpc('solicitante_session_exchange', { p_token: rawMagicToken.data });
+    assert('CRIT-02-TTL-CONFIG', '2.8 Replay controlado del mismo enlace dentro de su vigencia genera sesión válida', !exchErr2 && exch2 && exch2.session_token);
 
     // 2.7 Probar Revocación de Sesión
     const sessionToken = exch1.session_token;

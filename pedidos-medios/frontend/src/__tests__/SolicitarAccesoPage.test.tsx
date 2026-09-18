@@ -75,5 +75,6 @@ describe('SolicitarAccesoPage Unit Tests', () => {
       expect(screen.getByText('Solicitud Registrada con Éxito')).toBeInTheDocument();
     });
     expect(screen.getByText(/PENDIENTE/i)).toBeInTheDocument();
+    expect(screen.getByText(/Te enviamos un correo de confirmación/i)).toBeInTheDocument();
   });
 });

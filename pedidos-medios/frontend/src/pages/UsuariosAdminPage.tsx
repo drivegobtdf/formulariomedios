@@ -70,14 +70,14 @@ export const UsuariosAdminPage: React.FC = () => {
       <div style={{ maxWidth: '480px', margin: '3rem auto', padding: '0 1rem', textAlign: 'center' }}>
         <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '2rem' }}>
           <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔒</div>
-          <h2>Acceso Restringido</h2>
-          <p style={{ color: '#64748b' }}>Debe iniciar sesión como Administrador para acceder a esta sección.</p>
+          <h2>Acceso restringido</h2>
+          <p style={{ color: '#64748b' }}>Iniciá sesión como administrador para acceder.</p>
           <button
             type="button"
             onClick={() => navigate('/login')}
             style={{ padding: '0.65rem 1.5rem', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '0.375rem', fontWeight: 600, cursor: 'pointer' }}
           >
-            Iniciar Sesión
+            Iniciar sesión
           </button>
         </div>
       </div>
@@ -90,15 +90,15 @@ export const UsuariosAdminPage: React.FC = () => {
       <div style={{ maxWidth: '540px', margin: '3rem auto', padding: '0 1rem', textAlign: 'center' }}>
         <div style={{ backgroundColor: '#ffffff', border: '1px solid #fecaca', borderRadius: '0.75rem', padding: '2.5rem 2rem' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🚫</div>
-          <h2 style={{ color: '#991b1b', margin: '0 0 0.5rem 0' }}>Acceso Denegado</h2>
+          <h2 style={{ color: '#991b1b', margin: '0 0 0.5rem 0' }}>Acceso denegado</h2>
           <p style={{ color: '#64748b', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
-            Esta sección es de uso exclusivo para <strong>Administradores</strong> del sistema. Su cuenta actual tiene rol de <strong>{user.appRole}</strong>.
+            Esta sección es exclusiva para administradores.
           </p>
           <Link
             to="/gestion"
             style={{ display: 'inline-block', padding: '0.65rem 1.5rem', backgroundColor: '#0284c7', color: '#ffffff', textDecoration: 'none', borderRadius: '0.375rem', fontWeight: 600 }}
           >
-            ← Volver a Gestión de Pedidos
+            ← Volver
           </Link>
         </div>
       </div>
@@ -283,22 +283,19 @@ export const UsuariosAdminPage: React.FC = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-              Administración de Usuarios y Roles
+              Usuarios y roles
             </h1>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '9999px', backgroundColor: '#fef3c7', color: '#b45309', textTransform: 'uppercase' }}>
               ADMINISTRADOR
             </span>
           </div>
-          <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '0.25rem 0 0 0' }}>
-            Gestión de solicitudes de acceso, asignación de roles operativos y revocación de permisos.
-          </p>
         </div>
 
         <Link
           to="/gestion"
           style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', textDecoration: 'none', fontWeight: 600, fontSize: '0.85rem' }}
         >
-          ← Volver a Gestión
+          ← Volver
         </Link>
       </div>
 
@@ -319,7 +316,7 @@ export const UsuariosAdminPage: React.FC = () => {
       {/* Metric Cards Banner */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
         <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Cuentas</span>
+          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total</span>
           <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: '0.15rem 0 0 0' }}>{stats.total}</p>
         </div>
         <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
@@ -395,9 +392,9 @@ export const UsuariosAdminPage: React.FC = () => {
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 600 }}>
                   <th style={{ padding: '0.75rem 1rem' }}>Usuario</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Rol Asignado</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Rol asignado</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Estado</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Fecha Solicitud</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Fecha de solicitud</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Acciones</th>
                 </tr>
               </thead>
@@ -487,14 +484,14 @@ export const UsuariosAdminPage: React.FC = () => {
                                 onClick={() => handleOpenApprove(u)}
                                 style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', backgroundColor: '#16a34a', color: '#ffffff', border: 'none', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
                               >
-                                ✓ Aprobar
+                                Aprobar
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleOpenReject(u)}
                                 style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', backgroundColor: '#dc2626', color: '#ffffff', border: 'none', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
                               >
-                                ✕ Rechazar
+                                Rechazar
                               </button>
                             </>
                           )}
@@ -506,7 +503,7 @@ export const UsuariosAdminPage: React.FC = () => {
                                 onClick={() => handleOpenChangeRole(u)}
                                 style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
                               >
-                                Cambiar Rol
+                                Cambiar rol
                               </button>
                               <button
                                 type="button"
@@ -531,7 +528,7 @@ export const UsuariosAdminPage: React.FC = () => {
                               onClick={() => handleOpenApprove(u)}
                               style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
                             >
-                              Reactivar / Aprobar
+                              Aprobar
                             </button>
                           )}
                         </div>
@@ -543,7 +540,7 @@ export const UsuariosAdminPage: React.FC = () => {
                 {filteredUsers.length === 0 && (
                   <tr>
                     <td colSpan={5} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
-                      No se encontraron usuarios con los criterios de búsqueda.
+                      No se encontraron usuarios.
                     </td>
                   </tr>
                 )}
@@ -557,9 +554,9 @@ export const UsuariosAdminPage: React.FC = () => {
       {activeModal === 'approve' && selectedUser && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a' }}>Aprobar Acceso Operativo</h3>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a' }}>Aprobar acceso</h3>
             <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
-              Aprobar la cuenta de <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario}).
+              <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario})
             </p>
 
             {modalError && (
@@ -570,16 +567,16 @@ export const UsuariosAdminPage: React.FC = () => {
 
             <form onSubmit={handleApproveSubmit}>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
-                Rol de Aplicación a Asignar:
+                Rol:
               </label>
               <select
                 value={modalRole}
                 onChange={(e) => setModalRole(e.target.value as any)}
                 style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', marginBottom: '1.25rem', fontSize: '0.875rem' }}
               >
-                <option value="equipo">Equipo (Operación de pedidos)</option>
-                <option value="observador">Observador (Solo lectura)</option>
-                <option value="administrador">Administrador (Control total)</option>
+                <option value="equipo">Equipo</option>
+                <option value="observador">Observador</option>
+                <option value="administrador">Administrador</option>
               </select>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -595,7 +592,7 @@ export const UsuariosAdminPage: React.FC = () => {
                   disabled={modalLoading}
                   style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: '#16a34a', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  {modalLoading ? 'Aprobando...' : 'Confirmar Aprobación'}
+                  {modalLoading ? 'Aprobando...' : 'Aprobar'}
                 </button>
               </div>
             </form>
@@ -607,9 +604,9 @@ export const UsuariosAdminPage: React.FC = () => {
       {activeModal === 'reject' && selectedUser && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#991b1b' }}>Rechazar Solicitud</h3>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: '#991b1b' }}>Rechazar solicitud</h3>
             <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
-              ¿Rechazar la solicitud de <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario})?
+              <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario})
             </p>
 
             {modalError && (
@@ -620,12 +617,12 @@ export const UsuariosAdminPage: React.FC = () => {
 
             <form onSubmit={handleRejectSubmit}>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
-                Motivo del rechazo (opcional):
+                Motivo (opcional):
               </label>
               <textarea
                 value={modalMotivo}
                 onChange={(e) => setModalMotivo(e.target.value)}
-                placeholder="Indique el motivo o justificación..."
+                placeholder="Motivo del rechazo..."
                 rows={3}
                 style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', marginBottom: '1.25rem', fontSize: '0.875rem' }}
               />
@@ -643,7 +640,7 @@ export const UsuariosAdminPage: React.FC = () => {
                   disabled={modalLoading}
                   style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  {modalLoading ? 'Rechazando...' : 'Confirmar Rechazo'}
+                  {modalLoading ? 'Rechazando...' : 'Rechazar'}
                 </button>
               </div>
             </form>
@@ -655,9 +652,9 @@ export const UsuariosAdminPage: React.FC = () => {
       {activeModal === 'revoke' && selectedUser && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#991b1b' }}>Revocar Acceso de Usuario</h3>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: '#991b1b' }}>Revocar acceso</h3>
             <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
-              Se inhabilitará el acceso de <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario}).
+              <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario})
             </p>
 
             {modalError && (
@@ -668,13 +665,13 @@ export const UsuariosAdminPage: React.FC = () => {
 
             <form onSubmit={handleRevokeSubmit}>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
-                Motivo de Revocación (obligatorio):
+                Motivo (obligatorio):
               </label>
               <textarea
                 required
                 value={modalMotivo}
                 onChange={(e) => setModalMotivo(e.target.value)}
-                placeholder="Indique el motivo contractual o administrativo..."
+                placeholder="Motivo de la revocación..."
                 rows={3}
                 style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', marginBottom: '1.25rem', fontSize: '0.875rem' }}
               />
@@ -692,7 +689,7 @@ export const UsuariosAdminPage: React.FC = () => {
                   disabled={modalLoading}
                   style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  {modalLoading ? 'Revocando...' : 'Confirmar Revocación'}
+                  {modalLoading ? 'Revocando...' : 'Revocar'}
                 </button>
               </div>
             </form>
@@ -704,9 +701,9 @@ export const UsuariosAdminPage: React.FC = () => {
       {activeModal === 'changeRole' && selectedUser && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a' }}>Modificar Rol de Usuario</h3>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a' }}>Cambiar rol</h3>
             <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
-              Cambiar rol para <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario}).
+              <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario})
             </p>
 
             {modalError && (
@@ -717,16 +714,16 @@ export const UsuariosAdminPage: React.FC = () => {
 
             <form onSubmit={handleChangeRoleSubmit}>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
-                Nuevo Rol:
+                Nuevo rol:
               </label>
               <select
                 value={modalRole}
                 onChange={(e) => setModalRole(e.target.value as any)}
                 style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', marginBottom: '1.25rem', fontSize: '0.875rem' }}
               >
-                <option value="equipo">Equipo (Operación de pedidos)</option>
-                <option value="observador">Observador (Solo lectura)</option>
-                <option value="administrador">Administrador (Control total)</option>
+                <option value="equipo">Equipo</option>
+                <option value="observador">Observador</option>
+                <option value="administrador">Administrador</option>
               </select>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -742,7 +739,7 @@ export const UsuariosAdminPage: React.FC = () => {
                   disabled={modalLoading}
                   style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: '#0284c7', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  {modalLoading ? 'Guardando...' : 'Guardar Cambios'}
+                  {modalLoading ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </form>
@@ -754,9 +751,9 @@ export const UsuariosAdminPage: React.FC = () => {
       {activeModal === 'changeUsername' && selectedUser && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a' }}>Modificar Nombre de Usuario</h3>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a' }}>Cambiar nombre de usuario</h3>
             <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
-              Usuario: <strong>{selectedUser.nombre} {selectedUser.apellido}</strong>
+              <strong>{selectedUser.nombre} {selectedUser.apellido}</strong>
             </p>
 
             {modalError && (
@@ -793,7 +790,7 @@ export const UsuariosAdminPage: React.FC = () => {
                   disabled={modalLoading}
                   style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: '#0284c7', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  {modalLoading ? 'Guardando...' : 'Actualizar Nombre'}
+                  {modalLoading ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </form>

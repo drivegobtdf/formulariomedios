@@ -1,13 +1,14 @@
 /**
- * Servicio centralizado y tipado para almacenamiento temporal en sessionStorage
- * de la sesión opaca del solicitante ("Mis Solicitudes").
+ * Servicio centralizado y tipado para almacenamiento en sesión
+ * del solicitante ("Mis Solicitudes").
  * 
- * Reglas contractuales:
- * 1. Usa exclusivamente sessionStorage (aislado por pestaña/recarga).
- * 2. NUNCA almacena en localStorage ni en la URL.
- * 3. NUNCA almacena tokens de enlace (magic links), sobres cifrados ni credenciales privilegiadas.
- * 4. NUNCA llama a sessionStorage.clear() (solo borra su propia clave).
- * 5. Maneja de forma tolerante fallos de JSON corrupto o restricciones de privacidad del navegador.
+ * Reglas contractuales de seguridad y arquitectura:
+ * 1. Utiliza estrictamente sessionStorage (aislado por pestaña) como almacenamiento web.
+ * 2. NUNCA escribe bearer credentials, session tokens ni correos en localStorage.
+ * 3. Posee fallback seguro a memoria interna ante restricciones del navegador (ej. modo incógnito).
+ * 4. Limpia preventivamente cualquier residuo obsoleto en localStorage para evitar fugas entre pestañas.
+ * 5. NUNCA llama a storage.clear() (solo gestiona su propia clave).
+ * 6. Maneja de forma tolerante fallos de JSON corrupto o restricciones de privacidad.
  */
 
 export const SOLICITANTE_SESSION_STORAGE_KEY = 'pedidos_solicitante_session_v1';
@@ -21,34 +22,65 @@ export interface StoredSolicitanteSession {
   stored_at: string;
 }
 
+// Fallback en memoria si sessionStorage está totalmente restringido o inaccesible
+let inMemorySession: StoredSolicitanteSession | null = null;
+
 /**
- * Comprueba de forma segura si sessionStorage está disponible y operativo en el navegador
+ * Obtiene el objeto sessionStorage disponible de forma segura.
  */
-export function isSessionStorageAvailable(): boolean {
-  if (typeof window === 'undefined' || typeof window.sessionStorage === 'undefined') {
-    return false;
-  }
+function getAvailableSessionStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+
   try {
-    const testKey = '__pedidos_storage_test__';
-    window.sessionStorage.setItem(testKey, '1');
-    window.sessionStorage.removeItem(testKey);
-    return true;
+    if (window.sessionStorage) {
+      const testKey = '__pedidos_test_storage__';
+      window.sessionStorage.setItem(testKey, '1');
+      window.sessionStorage.removeItem(testKey);
+      return window.sessionStorage;
+    }
   } catch {
-    return false;
+    // sessionStorage no disponible o restringido
   }
+
+  return null;
 }
 
 /**
- * Obtiene y valida la sesión almacenada en sessionStorage.
+ * Comprueba de forma segura si sessionStorage está disponible
+ */
+export function isSessionStorageAvailable(): boolean {
+  return getAvailableSessionStorage() !== null;
+}
+
+/**
+ * Obtiene y valida la sesión almacenada en sessionStorage (o memoria).
  * Si el contenido está corrupto o es incompatible, lo limpia y retorna null.
+ * Defensivamente remueve cualquier residuo que hubiese quedado previamente en localStorage.
  */
 export function getStoredSolicitanteSession(): StoredSolicitanteSession | null {
-  if (!isSessionStorageAvailable()) {
+  // Purga defensiva de cualquier residuo obsoleto en localStorage
+  if (typeof window !== 'undefined') {
+    try {
+      if (window.localStorage && window.localStorage.getItem(SOLICITANTE_SESSION_STORAGE_KEY)) {
+        window.localStorage.removeItem(SOLICITANTE_SESSION_STORAGE_KEY);
+      }
+    } catch {
+      // Ignorar restricciones de acceso a localStorage
+    }
+  }
+
+  const storage = getAvailableSessionStorage();
+
+  if (!storage) {
+    if (inMemorySession) {
+      return { ...inMemorySession };
+    }
     return null;
   }
 
   try {
-    const raw = window.sessionStorage.getItem(SOLICITANTE_SESSION_STORAGE_KEY);
+    const raw = storage.getItem(SOLICITANTE_SESSION_STORAGE_KEY);
+
     if (!raw || typeof raw !== 'string' || raw.trim().length === 0) {
       return null;
     }
@@ -66,7 +98,7 @@ export function getStoredSolicitanteSession(): StoredSolicitanteSession | null {
       return null;
     }
 
-    return {
+    const sessionObj: StoredSolicitanteSession = {
       version: '1.0',
       session_token: parsed.session_token.trim(),
       correo: typeof parsed.correo === 'string' ? parsed.correo.trim() : undefined,
@@ -74,6 +106,9 @@ export function getStoredSolicitanteSession(): StoredSolicitanteSession | null {
       env: typeof parsed.env === 'string' ? parsed.env : undefined,
       stored_at: typeof parsed.stored_at === 'string' ? parsed.stored_at : new Date().toISOString(),
     };
+
+    inMemorySession = { ...sessionObj };
+    return sessionObj;
   } catch {
     // JSON corrupto o error de acceso: limpiar de forma defensiva
     clearStoredSolicitanteSession();
@@ -82,8 +117,8 @@ export function getStoredSolicitanteSession(): StoredSolicitanteSession | null {
 }
 
 /**
- * Guarda la sesión opaca y sus metadatos mínimos en sessionStorage.
- * Retorna true si se guardó exitosamente, o false si el almacenamiento está bloqueado.
+ * Guarda la sesión opaca y sus metadatos mínimos en sessionStorage y memoria defensiva.
+ * Retorna true si se guardó exitosamente en sessionStorage.
  */
 export function saveStoredSolicitanteSession(params: {
   session_token: string;
@@ -95,39 +130,53 @@ export function saveStoredSolicitanteSession(params: {
     return false;
   }
 
-  if (!isSessionStorageAvailable()) {
-    return false;
+  const payload: StoredSolicitanteSession = {
+    version: '1.0',
+    session_token: params.session_token.trim(),
+    correo: params.correo?.trim(),
+    expires_at: params.expires_at,
+    env: params.env || (typeof import.meta !== 'undefined' && import.meta.env?.MODE) || 'production',
+    stored_at: new Date().toISOString(),
+  };
+
+  inMemorySession = { ...payload };
+
+  const storage = getAvailableSessionStorage();
+  if (!storage) {
+    return false; // Guardado en memoria únicamente por almacenamiento no disponible
   }
 
   try {
-    const payload: StoredSolicitanteSession = {
-      version: '1.0',
-      session_token: params.session_token.trim(),
-      correo: params.correo?.trim(),
-      expires_at: params.expires_at,
-      env: params.env || (typeof import.meta !== 'undefined' && import.meta.env?.MODE) || 'production',
-      stored_at: new Date().toISOString(),
-    };
-
-    window.sessionStorage.setItem(SOLICITANTE_SESSION_STORAGE_KEY, JSON.stringify(payload));
+    storage.setItem(SOLICITANTE_SESSION_STORAGE_KEY, JSON.stringify(payload));
     return true;
   } catch {
-    return false;
+    return false; // Conservado en memoria únicamente por fallo de almacenamiento
   }
 }
 
 /**
- * Elimina exclusivamente la clave de sesión de PEDIDOS de sessionStorage.
- * Nunca usa sessionStorage.clear() para no afectar otras aplicaciones o claves en la misma pestaña.
+ * Elimina exclusivamente la clave de sesión de PEDIDOS en sessionStorage, memoria y localStorage.
+ * Nunca usa storage.clear() para no afectar otras claves del sitio.
  */
 export function clearStoredSolicitanteSession(): void {
-  if (!isSessionStorageAvailable()) {
-    return;
+  inMemorySession = null;
+
+  if (typeof window === 'undefined') return;
+
+  try {
+    if (window.sessionStorage) {
+      window.sessionStorage.removeItem(SOLICITANTE_SESSION_STORAGE_KEY);
+    }
+  } catch {
+    // Ignorar
   }
 
   try {
-    window.sessionStorage.removeItem(SOLICITANTE_SESSION_STORAGE_KEY);
+    if (window.localStorage) {
+      window.localStorage.removeItem(SOLICITANTE_SESSION_STORAGE_KEY);
+    }
   } catch {
-    // Ignorar si el almacenamiento está bloqueado
+    // Ignorar
   }
 }
+

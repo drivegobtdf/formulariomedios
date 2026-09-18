@@ -3,10 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PEDIDOS — Secretaría de Medios (Dev Server)</title>
+    <title>PEDIDOS — Secretaría de Medios — Gobierno de Tierra del Fuego AIAS</title>
+    <!-- Configuración pública de runtime para despliegues Standalone (opcional si se usan variables compiladas) -->
+    <script src="/pedidos-config.js"></script>
   </head>
   <body>
-    <!-- Mount point idéntico al renderizado por el shortcode de WordPress [pedidos_medios_app] -->
+    <!-- Mount point de la SPA -->
     <div id="pedidos-app" class="pedidos-app"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

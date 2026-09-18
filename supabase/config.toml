@@ -27,8 +27,11 @@ port = 54354
 
 [auth]
 enabled = true
-site_url = "http://localhost:5173"
-additional_redirect_urls = ["http://localhost:5173/formulariomedios/**"]
+site_url = "http://localhost:5173/formulariomedios/"
+additional_redirect_urls = [
+  "http://localhost:4173/formulariomedios/confirmar-email",
+  "http://localhost:5173/formulariomedios/confirmar-email"
+]
 jwt_expiry = 3600
 enable_signup = true
 

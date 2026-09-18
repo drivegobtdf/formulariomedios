@@ -9,6 +9,7 @@ import {
   COUNTRIES_LIST,
   DEFAULT_COUNTRY_CODE,
   getCountryConfig,
+  getCountryFlagSvg,
   validateWhatsAppPhone,
 } from '../../utils/phoneUtils';
 
@@ -62,9 +63,6 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
     <div className="pedidos-step-container">
       <div className="pedidos-step-header">
         <h2>1. Datos de Contacto y Servicios Requeridos</h2>
-        <p>
-          Ingresá los datos del solicitante y seleccioná los servicios que necesitás gestionar ante la Secretaría de Medios.
-        </p>
       </div>
 
       <div className="pedidos-card">
@@ -97,6 +95,11 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
             </label>
             <div className="pedidos-phone-input-group">
               <div className="pedidos-country-select-wrapper">
+                <span
+                  className="pedidos-country-flag-icon"
+                  aria-hidden="true"
+                  dangerouslySetInnerHTML={{ __html: getCountryFlagSvg(selectedCountry) }}
+                />
                 <select
                   id="contacto_pais"
                   className="pedidos-select pedidos-country-select"
@@ -106,7 +109,7 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
                 >
                   {COUNTRIES_LIST.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.flag} {c.name} ({c.displayDialCode})
+                      {c.name} ({c.displayDialCode})
                     </option>
                   ))}
                 </select>
@@ -147,7 +150,7 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
         <div className="pedidos-form-row">
           <div className="pedidos-form-group col-6">
             <label htmlFor="contacto_correo" className="pedidos-label required">
-              Correo electrónico oficial o de contacto
+              Correo electrónico
             </label>
             <input
               type="email"
@@ -167,7 +170,7 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
 
           <div className="pedidos-form-group col-6">
             <label htmlFor="contacto_area" className="pedidos-label required">
-              Área, Ministerio o Dependencia solicitante
+              Área o Dependencia
             </label>
             <input
               type="text"
@@ -188,9 +191,6 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
 
       <div className="pedidos-card" style={{ marginTop: '1.5rem' }}>
         <h3 className="pedidos-card-title required-label">¿Qué servicios necesitás solicitar?</h3>
-        <p className="pedidos-hint-text" style={{ marginBottom: '1rem' }}>
-          Podés seleccionar una o múltiples categorías en un solo envío. Cada pieza solicitada generará un número de seguimiento PED independiente.
-        </p>
 
         {errors.selected_categorias && (
           <div className="pedidos-error-banner" role="alert">{errors.selected_categorias}</div>
@@ -214,10 +214,8 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
                 </div>
                 <div className="pedidos-cat-content">
                   <div className="pedidos-cat-header">
-                    <span className="pedidos-cat-code">{cat.codigo}</span>
                     <strong className="pedidos-cat-title">{cat.nombre}</strong>
                   </div>
-                  <p className="pedidos-cat-desc">{cat.descripcion}</p>
                 </div>
               </label>
             );
@@ -227,7 +225,7 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
 
       <div className="pedidos-step-actions">
         <button type="button" className="pedidos-btn pedidos-btn-primary" onClick={onNext}>
-          Continuar al Detalle de Solicitudes →
+          Continuar
         </button>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
-import { getCorsHeaders, getSupabaseConfig, getEnv, decryptTokenEnvelope, timingSafeEqualString, resolvePublicAppUrl } from '../_shared/security.ts';
+import { getCorsHeaders, getSupabaseConfig, getEnv, decryptTokenEnvelope, encryptTokenEnvelope, timingSafeEqualString, resolvePublicAppUrl } from '../_shared/security.ts';
 import { renderEmailForCommunication } from '../_shared/emailTemplates.ts';
 
 interface ClaimedCommItem {
@@ -126,7 +126,6 @@ export default async function handler(req: Request): Promise<Response> {
     for (const item of items) {
       const claimId = item.claim_id;
       let isUncertain = false;
-      let isSuccess = false;
       let providerMsgId: string | null = null;
       let errorMsg: string | null = null;
       let retrySeconds: number | null = 300;
@@ -148,7 +147,71 @@ export default async function handler(req: Request): Promise<Response> {
 
         // Descifrado del sobre autenticado en memoria para magic link si aplica
         let payloadToRender: Record<string, any> = item.payload || {};
-        if (item.tipo_comunicacion === 'magic_link_access' || item.tipo_comunicacion === 'access_requested') {
+        if (item.tipo_comunicacion === 'pedido_ingresado' || item.tipo_comunicacion === 'submission_created') {
+          if (payloadToRender.encrypted_envelope) {
+            try {
+              const idempotencyKey = item.idempotency_key || `submission_created:${item.id}`;
+              const decryptedToken = decryptTokenEnvelope(
+                payloadToRender.encrypted_envelope as any,
+                'magic_link_delivery',
+                idempotencyKey
+              );
+              if (decryptedToken) {
+                payloadToRender = {
+                  ...payloadToRender,
+                  magic_token: decryptedToken,
+                  raw_token: decryptedToken,
+                };
+              }
+            } catch (decErr) {
+              console.warn(`[DISPATCHER] Error descifrando sobre submission_created para ${item.id}:`, (decErr as Error)?.message);
+            }
+          }
+
+          // Si no vino sobre cifrado en el encolado de creación, generar el token efímero de acceso atómicamente
+          if (!payloadToRender.magic_token && !payloadToRender.raw_token) {
+            try {
+              const { data: accessData, error: accessErr } = await supabase.rpc('solicitante_request_access', {
+                p_correo: item.destinatario_email,
+              });
+              if (!accessErr && accessData?.found && accessData?.magic_token) {
+                const idempotencyKey = item.idempotency_key || `submission_created:${item.id}`;
+                const envelope = encryptTokenEnvelope(
+                  accessData.magic_token,
+                  'magic_link_delivery',
+                  idempotencyKey
+                );
+                payloadToRender = {
+                  ...payloadToRender,
+                  magic_token: accessData.magic_token,
+                  raw_token: accessData.magic_token,
+                  encrypted_envelope: envelope,
+                };
+                // Actualizar de forma duradera el sobre cifrado en outbox (NUNCA el token en texto plano)
+                await supabase
+                  .from('comunicaciones_pedido')
+                  .update({
+                    payload: {
+                      ...item.payload,
+                      encrypted_envelope: envelope,
+                    },
+                  })
+                  .eq('id', item.id);
+              }
+            } catch (genErr) {
+              console.warn(`[DISPATCHER] Error generando token de acceso para submission_created ${item.id}:`, (genErr as Error)?.message);
+            }
+          }
+
+          const finalToken = (payloadToRender.magic_token || payloadToRender.raw_token || '') as string;
+          if (!finalToken || typeof finalToken !== 'string' || finalToken.trim().length === 0) {
+            throw {
+              semanticType: 'PERMANENT_VALIDATION_ERROR',
+              status: 422,
+              message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token de acceso válido. Despacho cancelado para evitar envío sin enlace directo.`,
+            };
+          }
+        } else if (item.tipo_comunicacion === 'magic_link_access' || item.tipo_comunicacion === 'access_requested') {
           if (payloadToRender.encrypted_envelope) {
             try {
               const idempotencyKey = item.idempotency_key || `magic_link:${item.id}`;
@@ -176,6 +239,167 @@ export default async function handler(req: Request): Promise<Response> {
               semanticType: 'PERMANENT_VALIDATION_ERROR',
               status: 422,
               message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token de acceso válido. Despacho cancelado para evitar envío de enlace vacío.`,
+            };
+          }
+        } else if (item.tipo_comunicacion === 'informacion_faltante' || item.tipo_comunicacion === 'info_requested') {
+          if (payloadToRender.encrypted_envelope) {
+            try {
+              const idempotencyKey = item.idempotency_key || `info_requested:${payloadToRender.solicitud_id || item.id}`;
+              const decryptedToken = decryptTokenEnvelope(
+                payloadToRender.encrypted_envelope as any,
+                'info_requested_delivery',
+                idempotencyKey
+              );
+              if (decryptedToken) {
+                payloadToRender = {
+                  ...payloadToRender,
+                  token: decryptedToken,
+                  raw_token: decryptedToken,
+                  info_token: decryptedToken,
+                };
+              }
+            } catch (decErr) {
+              console.warn(`[DISPATCHER] Error descifrando sobre info_requested para ${item.id}:`, (decErr as Error)?.message);
+            }
+          }
+
+          // Hard guard: NUNCA despachar una solicitud de información sin token válido y no vacío
+          const finalToken = (payloadToRender.token || payloadToRender.raw_token || payloadToRender.info_token || '') as string;
+          if (!finalToken || typeof finalToken !== 'string' || finalToken.trim().length === 0) {
+            throw {
+              semanticType: 'PERMANENT_VALIDATION_ERROR',
+              status: 422,
+              message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token directo de respuesta válido. Despacho cancelado para evitar envío sin enlace directo.`,
+            };
+          }
+        } else if (item.tipo_comunicacion === 'finalizado' || item.tipo_comunicacion === 'pedido_finalizado') {
+          if (payloadToRender.encrypted_envelope) {
+            try {
+              const idempotencyKey = item.idempotency_key || `finalizado:${item.id}`;
+              const decryptedToken = decryptTokenEnvelope(
+                payloadToRender.encrypted_envelope as any,
+                'magic_link_delivery',
+                idempotencyKey
+              );
+              if (decryptedToken) {
+                payloadToRender = {
+                  ...payloadToRender,
+                  magic_token: decryptedToken,
+                  raw_token: decryptedToken,
+                };
+              }
+            } catch (decErr) {
+              console.warn(`[DISPATCHER] Error descifrando sobre finalizado para ${item.id}:`, (decErr as Error)?.message);
+            }
+          }
+
+          // Si no vino sobre cifrado en el encolado de lifecycle, generar el token efímero de acceso atómicamente
+          if (!payloadToRender.magic_token && !payloadToRender.raw_token) {
+            try {
+              const { data: accessData, error: accessErr } = await supabase.rpc('solicitante_request_access', {
+                p_correo: item.destinatario_email,
+              });
+              if (!accessErr && accessData?.found && accessData?.magic_token) {
+                const idempotencyKey = item.idempotency_key || `finalizado:${item.id}`;
+                const envelope = encryptTokenEnvelope(
+                  accessData.magic_token,
+                  'magic_link_delivery',
+                  idempotencyKey
+                );
+                payloadToRender = {
+                  ...payloadToRender,
+                  magic_token: accessData.magic_token,
+                  raw_token: accessData.magic_token,
+                  encrypted_envelope: envelope,
+                };
+                // Actualizar de forma duradera el sobre cifrado en outbox (NUNCA el token en texto plano)
+                await supabase
+                  .from('comunicaciones_pedido')
+                  .update({
+                    payload: {
+                      ...item.payload,
+                      encrypted_envelope: envelope,
+                    },
+                  })
+                  .eq('id', item.id);
+              }
+            } catch (genErr) {
+              console.warn(`[DISPATCHER] Error generando token de acceso para finalizado ${item.id}:`, (genErr as Error)?.message);
+            }
+          }
+
+          // Hard guard: NUNCA despachar una finalización sin token de acceso válido
+          const finalToken = (payloadToRender.magic_token || payloadToRender.raw_token || '') as string;
+          if (!finalToken || typeof finalToken !== 'string' || finalToken.trim().length === 0) {
+            throw {
+              semanticType: 'PERMANENT_VALIDATION_ERROR',
+              status: 422,
+              message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token de acceso válido para Mis Solicitudes. Despacho cancelado para evitar envío sin enlace directo.`,
+            };
+          }
+        } else if (item.tipo_comunicacion === 'en_proceso' || item.tipo_comunicacion === 'pedido_en_proceso') {
+          if (payloadToRender.encrypted_envelope) {
+            try {
+              const idempotencyKey = item.idempotency_key || `en_proceso:${item.id}`;
+              const decryptedToken = decryptTokenEnvelope(
+                payloadToRender.encrypted_envelope as any,
+                'magic_link_delivery',
+                idempotencyKey
+              );
+              if (decryptedToken) {
+                payloadToRender = {
+                  ...payloadToRender,
+                  magic_token: decryptedToken,
+                  raw_token: decryptedToken,
+                };
+              }
+            } catch (decErr) {
+              console.warn(`[DISPATCHER] Error descifrando sobre en_proceso para ${item.id}:`, (decErr as Error)?.message);
+            }
+          }
+
+          // Si no vino sobre cifrado en el encolado de lifecycle, generar el token efímero de acceso atómicamente
+          if (!payloadToRender.magic_token && !payloadToRender.raw_token) {
+            try {
+              const { data: accessData, error: accessErr } = await supabase.rpc('solicitante_request_access', {
+                p_correo: item.destinatario_email,
+              });
+              if (!accessErr && accessData?.found && accessData?.magic_token) {
+                const idempotencyKey = item.idempotency_key || `en_proceso:${item.id}`;
+                const envelope = encryptTokenEnvelope(
+                  accessData.magic_token,
+                  'magic_link_delivery',
+                  idempotencyKey
+                );
+                payloadToRender = {
+                  ...payloadToRender,
+                  magic_token: accessData.magic_token,
+                  raw_token: accessData.magic_token,
+                  encrypted_envelope: envelope,
+                };
+                // Actualizar de forma duradera el sobre cifrado en outbox (NUNCA el token en texto plano)
+                await supabase
+                  .from('comunicaciones_pedido')
+                  .update({
+                    payload: {
+                      ...item.payload,
+                      encrypted_envelope: envelope,
+                    },
+                  })
+                  .eq('id', item.id);
+              }
+            } catch (genErr) {
+              console.warn(`[DISPATCHER] Error generando token de acceso para en_proceso ${item.id}:`, (genErr as Error)?.message);
+            }
+          }
+
+          // Hard guard: NUNCA despachar en_proceso sin token de acceso válido
+          const finalToken = (payloadToRender.magic_token || payloadToRender.raw_token || '') as string;
+          if (!finalToken || typeof finalToken !== 'string' || finalToken.trim().length === 0) {
+            throw {
+              semanticType: 'PERMANENT_VALIDATION_ERROR',
+              status: 422,
+              message: `Comunicación ${item.id} (${item.tipo_comunicacion}) no contiene token de acceso válido para Mis Solicitudes. Despacho cancelado para evitar envío sin enlace directo.`,
             };
           }
         }
@@ -295,7 +519,6 @@ export default async function handler(req: Request): Promise<Response> {
 
         const dispatchJson = await dispatchResponse.json();
         providerMsgId = String(dispatchJson?.message_id || dispatchJson?.id || `n8n_${Date.now()}`);
-        isSuccess = true;
 
         // C08: Mark success passing claim_id to guard against stale lease
         await supabase.rpc('comunicacion_mark_result', {
@@ -311,7 +534,6 @@ export default async function handler(req: Request): Promise<Response> {
         results.push({ id: item.id, success: true, status: 'enviada', provider_message_id: providerMsgId });
       } catch (err: any) {
         errorMsg = err.message || (err as Error)?.message || 'Error desconocido';
-        isSuccess = false;
 
         if (
           err.semanticType === 'PERMANENT_VALIDATION_ERROR' ||

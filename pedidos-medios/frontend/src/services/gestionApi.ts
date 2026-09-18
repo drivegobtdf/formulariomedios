@@ -82,6 +82,21 @@ export interface PedidoDetailItem extends PedidoListItem {
     respuesta_texto?: string;
     responded_at?: string;
     created_at: string;
+    archivos_respuesta?: Array<{
+      id: string;
+      nombre_original: string;
+      size_bytes: number;
+      mime_type: string;
+      estado: string;
+      contexto?: string;
+      created_at?: string;
+    }>;
+    enlaces_respuesta?: Array<{
+      id: string;
+      url: string;
+      descripcion?: string;
+      created_at?: string;
+    }>;
   }>;
   archivos: Array<{
     id: string;
@@ -198,6 +213,40 @@ export async function adminChangeUsername(
   });
   if (error) throw new Error(error.message);
   return data;
+}
+
+export interface GestionStats {
+  total: number;
+  nuevos: number;
+  enRevision: number;
+  enProceso: number;
+  esperandoInfo: number;
+  finalizados: number;
+  cancelados: number;
+  sinAsignar: number;
+  archivados: number;
+}
+
+export async function fetchGestionStats(): Promise<GestionStats> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('pedidos')
+    .select('estado, responsable_user_id, archivado');
+
+  if (error) throw new Error(error.message);
+
+  const items = data || [];
+  return {
+    total: items.filter((p) => !p.archivado).length,
+    nuevos: items.filter((p) => !p.archivado && p.estado === 'Nuevo').length,
+    enRevision: items.filter((p) => !p.archivado && p.estado === 'En revisión').length,
+    enProceso: items.filter((p) => !p.archivado && p.estado === 'En proceso').length,
+    esperandoInfo: items.filter((p) => !p.archivado && p.estado === 'Esperando información').length,
+    finalizados: items.filter((p) => !p.archivado && p.estado === 'Finalizado').length,
+    cancelados: items.filter((p) => !p.archivado && p.estado === 'Cancelado').length,
+    sinAsignar: items.filter((p) => !p.archivado && !p.responsable_user_id).length,
+    archivados: items.filter((p) => p.archivado).length,
+  };
 }
 
 export async function fetchPedidos(filters?: {
@@ -344,10 +393,25 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     .eq('pedido_id', pedidoId)
     .order('created_at', { ascending: false });
 
-  // Solicitudes de información
+  // Solicitudes de información con archivos y enlaces contextuales
   const { data: solicitudes } = await supabase
     .from('solicitudes_informacion')
-    .select('id, solicitada_por, mensaje, estado, expires_at, respuesta_texto, responded_at, created_at')
+    .select(`
+      id,
+      solicitada_por,
+      mensaje,
+      estado,
+      expires_at,
+      respuesta_texto,
+      responded_at,
+      created_at,
+      archivo_solicitud_informacion (
+        archivos ( id, nombre_original, size_bytes, mime_type, estado, contexto, created_at )
+      ),
+      enlace_solicitud_informacion (
+        enlaces_material ( id, url, descripcion, created_at )
+      )
+    `)
     .eq('pedido_id', pedidoId)
     .order('created_at', { ascending: false });
 
@@ -416,6 +480,12 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       respuesta_texto: s.respuesta_texto,
       responded_at: s.responded_at,
       created_at: s.created_at,
+      archivos_respuesta: (s.archivo_solicitud_informacion || [])
+        .map((asi: any) => asi.archivos)
+        .filter(Boolean),
+      enlaces_respuesta: (s.enlace_solicitud_informacion || [])
+        .map((esi: any) => esi.enlaces_material)
+        .filter(Boolean),
     })),
     archivos: (archivosData || []).map((ap: any) => ap.archivos).filter(Boolean),
     enlaces: (enlacesData || []).map((ep: any) => ep.enlaces_material).filter(Boolean),
@@ -528,12 +598,36 @@ export async function createNotaPedido(pedidoId: string, texto: string, visibili
 
 export async function createInfoRequest(pedidoId: string, mensaje: string, expectedVersion: number) {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc('info_request_create', {
-    p_pedido_id: pedidoId,
-    p_mensaje: mensaje,
-    p_expected_version: expectedVersion,
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr || !sessionData.session?.access_token) {
+    throw new Error('Sesión no válida o expirada. Por favor inicie sesión nuevamente.');
+  }
+
+  const { data, error } = await supabase.functions.invoke('info-request-create', {
+    body: {
+      pedido_id: pedidoId,
+      mensaje,
+      expected_version: expectedVersion,
+    },
   });
-  if (error) throw new Error(error.message);
+
+  if (error) {
+    let errorMsg = error.message || 'Error al emitir solicitud de información';
+    try {
+      if ((error as any).context?.json) {
+        const errJson = await (error as any).context.json();
+        if (errJson.message) errorMsg = errJson.message;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMsg);
+  }
+
+  if (!data?.success) {
+    throw new Error(data?.message || 'No se pudo crear la solicitud de información');
+  }
+
   return data;
 }
 
@@ -552,4 +646,46 @@ export async function fetchPedidoHistorialOperativo(pedidoId: string): Promise<H
   });
   if (error) throw new Error(error.message);
   return data || [];
+}
+
+export async function downloadArchivo(archivoId: string, nombreOriginal?: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr || !sessionData.session?.access_token) {
+    throw new Error('Sesión no válida o expirada. Por favor inicie sesión nuevamente.');
+  }
+
+  const token = sessionData.session.access_token;
+  const supabaseUrl = (supabase as any).supabaseUrl || import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = (supabase as any).supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/drive-download?archivo_id=${encodeURIComponent(archivoId)}`, {
+    method: 'GET',
+    headers: {
+      'apikey': anonKey,
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    let errorMsg = `Error en descarga (${response.status})`;
+    try {
+      const errJson = await response.json();
+      if (errJson.message) errorMsg = errJson.message;
+      else if (errJson.error) errorMsg = errJson.error;
+    } catch {
+      // Non-JSON response
+    }
+    throw new Error(errorMsg);
+  }
+
+  const blob = await response.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = nombreOriginal || 'archivo_descargado';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(downloadUrl);
 }

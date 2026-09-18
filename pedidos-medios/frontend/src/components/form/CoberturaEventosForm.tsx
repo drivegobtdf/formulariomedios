@@ -108,21 +108,50 @@ export const CoberturaEventosForm: React.FC<CoberturaEventosFormProps> = ({ data
       </div>
 
       <div className="pedidos-form-group">
-        <label htmlFor="cob_autoridades" className="pedidos-label required">
-          Autoridades y protagonistas asistentes
-        </label>
-        <input
-          type="text"
-          id="cob_autoridades"
-          className={`pedidos-input ${errors['cobertura.autoridades'] ? 'error' : ''}`}
-          placeholder="Ej: Gobernador, Ministra de Obras Públicas, Intendentes..."
-          value={data.autoridades || ''}
-          onChange={(e) => onChange({ autoridades: e.target.value })}
-        />
-        {errors['cobertura.autoridades'] && (
-          <span className="pedidos-error-text" role="alert">{errors['cobertura.autoridades']}</span>
+        <label className="pedidos-label required">¿Asisten autoridades?</label>
+        <div className="pedidos-radio-inline" style={{ marginTop: '0.5rem' }}>
+          <label className="pedidos-radio-label">
+            <input
+              type="radio"
+              name="cobertura_asiste_autoridades"
+              checked={data.asiste_autoridades === 'si'}
+              onChange={() => onChange({ asiste_autoridades: 'si' })}
+            />
+            <span>Sí</span>
+          </label>
+          <label className="pedidos-radio-label">
+            <input
+              type="radio"
+              name="cobertura_asiste_autoridades"
+              checked={data.asiste_autoridades === 'no'}
+              onChange={() => onChange({ asiste_autoridades: 'no', autoridades: '' })}
+            />
+            <span>No</span>
+          </label>
+        </div>
+        {errors['cobertura.asiste_autoridades'] && (
+          <span className="pedidos-error-text" role="alert">{errors['cobertura.asiste_autoridades']}</span>
         )}
       </div>
+
+      {data.asiste_autoridades === 'si' && (
+        <div className="pedidos-form-group">
+          <label htmlFor="cob_autoridades" className="pedidos-label required">
+            ¿Qué autoridades asistirán?
+          </label>
+          <input
+            type="text"
+            id="cob_autoridades"
+            className={`pedidos-input ${errors['cobertura.autoridades'] ? 'error' : ''}`}
+            placeholder="Ej: Gobernador, Ministra de Obras Públicas, Intendentes..."
+            value={data.autoridades || ''}
+            onChange={(e) => onChange({ autoridades: e.target.value })}
+          />
+          {errors['cobertura.autoridades'] && (
+            <span className="pedidos-error-text" role="alert">{errors['cobertura.autoridades']}</span>
+          )}
+        </div>
+      )}
 
       <div className="pedidos-form-group">
         <label htmlFor="cob_requerimientos" className="pedidos-label required">

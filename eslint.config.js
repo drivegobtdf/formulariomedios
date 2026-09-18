@@ -15,6 +15,8 @@ export default tseslint.config(
       'supabase/.temp/**',
       'FUENTES_WORK/**',
       'scratch/**',
+      'pedidos-standalone/**',
+      '.wp-staging/**',
     ],
   },
   js.configs.recommended,

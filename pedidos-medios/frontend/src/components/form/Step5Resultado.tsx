@@ -18,15 +18,15 @@ export const Step5Resultado: React.FC<Step5ResultadoProps> = ({
     <div className="pedidos-result-container">
       <div className="pedidos-result-header">
         <div className="pedidos-result-icon">✓</div>
-        <h2>¡Solicitud Recibida con Éxito!</h2>
+        <h2>Solicitud recibida</h2>
         <p className="pedidos-result-subtitle">
-          Hemos recibido tu presentación correctamente. Se ha generado un código de seguimiento único (PED) para cada una de las piezas y servicios solicitados.
+          Guardá tus códigos PED para consultar tus solicitudes.
         </p>
       </div>
 
       <div className="pedidos-result-peds-card">
         <h3 className="pedidos-result-card-title">
-          Tus Solicitudes Registradas ({result.pedidos.length})
+          Tus solicitudes ({result.pedidos.length})
         </h3>
 
         <div className="pedidos-peds-grid">
@@ -40,7 +40,6 @@ export const Step5Resultado: React.FC<Step5ResultadoProps> = ({
                   </span>
                   <div className="pedidos-ped-title-block">
                     <h4>{piece?.piece_title || ped.tipo_slug}</h4>
-                    <span className="pedidos-ped-cat">{ped.categoria_slug.replace(/_/g, ' ')}</span>
                   </div>
                 </div>
 
@@ -62,16 +61,16 @@ export const Step5Resultado: React.FC<Step5ResultadoProps> = ({
       <div className="pedidos-result-info-box">
         <div className="pedidos-result-info-icon">📋</div>
         <div>
-          <h4>Comprobante de Registro de Solicitud</h4>
+          <h4>Registro confirmado</h4>
           <p>
-            Tus solicitudes han sido registradas para el contacto <strong>{contacto.correo}</strong>. Conservá los códigos PED indicados arriba para consultar el estado de cada pedido ante la Secretaría de Medios.
+            Enviamos la confirmación a tu correo (<strong>{contacto.correo}</strong>).
           </p>
         </div>
       </div>
 
       <div className="pedidos-result-actions">
         <button type="button" className="pedidos-btn pedidos-btn-primary" onClick={onNewSubmission}>
-          + Realizar otra solicitud
+          + Nueva solicitud
         </button>
       </div>
     </div>

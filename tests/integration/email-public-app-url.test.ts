@@ -84,6 +84,25 @@ describe('Resolucion de URL Publica y Enlaces de Correo (CTA / Magic Links)', ()
       expect(rendered.html).not.toContain('http://localhost:5173/mis-solicitudes');
     });
 
+    it('A, C & E: Boton "Ver mis solicitudes" en email de confirmacion con token incluye #access_token', () => {
+      const rawToken = '7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a';
+      const rendered = renderSubmissionCreatedEmail(
+        {
+          nombre_apellido: 'Pablo Saldivia',
+          raw_token: rawToken,
+          pedidos: [
+            { id: 'p1', pedido_visible: 'PED-2026-D000151', categoria: 'Diseño gráfico', tipo: 'Flyer' },
+          ],
+        },
+        previewCloudBaseUrl
+      );
+
+      const expectedPortalUrl = `http://localhost:4173/formulariomedios/mis-solicitudes#access_token=${rawToken}`;
+      expect(rendered.html).toContain(`href="${expectedPortalUrl}"`);
+      expect(rendered.html).toContain('Ver mis solicitudes');
+      expect(rendered.text).toContain(expectedPortalUrl);
+    });
+
     it('C & E: Magic Link con token criptografico preserva token y base path /formulariomedios', () => {
       const rawToken = '7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a';
       const rendered = renderMagicLinkEmail(
@@ -94,9 +113,9 @@ describe('Resolucion de URL Publica y Enlaces de Correo (CTA / Magic Links)', ()
         previewCloudBaseUrl
       );
 
-      const expectedAccessUrl = `http://localhost:4173/formulariomedios/mis-solicitudes#token=${rawToken}`;
+      const expectedAccessUrl = `http://localhost:4173/formulariomedios/mis-solicitudes#access_token=${rawToken}`;
       expect(rendered.html).toContain(`href="${expectedAccessUrl}"`);
-      expect(rendered.html).toContain('Ingresar a Mis Solicitudes');
+      expect(rendered.html).toContain('Ver mis solicitudes');
       expect(rendered.text).toContain(expectedAccessUrl);
       expect(rendered.html).not.toContain('http://localhost:5173/mis-solicitudes');
     });

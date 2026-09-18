@@ -69,15 +69,16 @@ Ejemplo:
 
 ## 6. Solicitante: eventos notificables
 
-- creación agrupada;
-- cambio de estado cuando corresponda plantilla;
-- información solicitada;
-- confirmación de respuesta;
-- finalización;
-- cancelación;
-- recuperación de seguimiento.
+- **Creación agrupada** (`submission.created` / `pedido_ingresado`): SÍ correo (con enlace seguro inicial);
+- **Transición a "En proceso"** (`pedido.state_changed` donde `estado_nuevo = 'En proceso'`): **SÍ correo** con botón directo a Mis Solicitudes;
+- **Transición a "En revisión"** (`pedido.state_changed` donde `estado_nuevo = 'En revisión'`): **NO correo** (cambio puramente interno de gestión);
+- **Información solicitada** (`pedido.info_requested` / `informacion_faltante`): SÍ correo con plazo contractual de 48h;
+- **Confirmación de información respondida** (`pedido.info_responded` / `informacion_respondida`): SÍ correo;
+- **Finalización** (`pedido.finalized` / `finalizado`): SÍ correo con enlace de entrega y acceso al portal;
+- **Cancelación** (`pedido.cancelled` / `cancelado`): SÍ correo con motivo de cancelación;
+- **Acceso solicitado / Magic Link** (`access.requested` / `magic_link_access`): SÍ correo.
 
-Evitar duplicar correos cuando una acción ya está cubierta por una plantilla más específica.
+Evitar duplicar correos cuando una acción ya está cubierta por una plantilla más específica o cuando no hay transición real.
 
 ## 7. Internos
 
