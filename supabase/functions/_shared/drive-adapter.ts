@@ -123,12 +123,13 @@ export class GoogleDriveAdapter implements DriveAdapter {
    * Asegura la existencia de la carpeta raíz de la aplicación en Google Drive
    */
   async ensureRootFolder(folderName = 'PEDIDOS'): Promise<string> {
+    const effectiveName = getEnv('GOOGLE_DRIVE_ROOT_FOLDER_NAME') || folderName || 'PEDIDOS';
     if (this.rootFolderId) return this.rootFolderId;
 
     const token = await this.getAccessToken();
 
     // Buscar si ya existe la carpeta
-    const query = encodeURIComponent(`mimeType = 'application/vnd.google-apps.folder' and name = '${folderName}' and trashed = false`);
+    const query = encodeURIComponent(`mimeType = 'application/vnd.google-apps.folder' and name = '${effectiveName}' and trashed = false`);
     const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -149,7 +150,7 @@ export class GoogleDriveAdapter implements DriveAdapter {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        name: folderName,
+        name: effectiveName,
         mimeType: 'application/vnd.google-apps.folder',
       }),
     });

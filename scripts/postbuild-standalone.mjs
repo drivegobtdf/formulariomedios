@@ -35,11 +35,11 @@ const runtimeConfigContent = `/**
  * NUNCA incluya credenciales privadas, service_role, contraseñas ni secretos aquí.
  */
 window.__PEDIDOS_CONFIG__ = {
-  // URL base de Supabase Cloud TEST / Producción
-  supabaseUrl: 'https://yqfkzgqvezarzhlwiilo.supabase.co',
+  // URL base de Supabase Cloud Producción
+  supabaseUrl: 'https://uwzgyirilafgnbpmrkic.supabase.co',
 
-  // Clave pública/anon de Supabase (protegida por RLS en el backend)
-  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZmt6Z3F2ZXphcnpobHdpaWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMjYyMjcsImV4cCI6MjEwNDgwMjIyN30.HtH8wtoexhpHLz4IHYtGkMWBF3_WuthkR_XroB4ODfU',
+  // Clave pública/anon de Supabase Producción (protegida por RLS en el backend)
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3emd5aXJpbGFmZ25icG1ya2ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTY0MjIsImV4cCI6MjEwNTMzMjQyMn0.CF9BcagNdprp7h24aAPrKpdD1SLg9i-LUiCxkdSSPA8',
 
   // Entorno de ejecución: 'production' | 'staging' | 'development'
   environment: 'production',
@@ -51,7 +51,7 @@ window.__PEDIDOS_CONFIG__ = {
   basePath: '/',
 
   // URL pública canónica completa de la aplicación
-  publicAppUrl: 'https://formulariomedios.tierradelfuego.gob.ar',
+  publicAppUrl: 'https://formulariomedios.netlify.app',
 
   // Versión de contrato con la base de datos y Edge Functions
   contractVersion: '3.0',

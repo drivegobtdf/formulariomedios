@@ -11,7 +11,7 @@ max_rows = 1000
 [db]
 port = 54352
 shadow_port = 54350
-major_version = 15
+major_version = 17
 
 [db.pooler]
 enabled = false
@@ -27,10 +27,12 @@ port = 54354
 
 [auth]
 enabled = true
-site_url = "http://localhost:5173/formulariomedios/"
+site_url = "https://formulariomedios.netlify.app"
 additional_redirect_urls = [
-  "http://localhost:4173/formulariomedios/confirmar-email",
-  "http://localhost:5173/formulariomedios/confirmar-email"
+  "https://formulariomedios.netlify.app/confirmar-email",
+  "https://formulariomedios.netlify.app/mis-solicitudes",
+  "https://formulariomedios.netlify.app/login",
+  "https://formulariomedios.netlify.app/gestion"
 ]
 jwt_expiry = 3600
 enable_signup = true
@@ -92,4 +94,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.solicitante-session-revoke]
+verify_jwt = false
+
+[functions.comunicaciones-dispatch]
+verify_jwt = false
+
+[functions.info-request-create]
 verify_jwt = false
