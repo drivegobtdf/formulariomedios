@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { getMyAccess, updatePassword } from '../services/auth';
 import { getSupabaseClient } from '../services/supabaseClient';
@@ -15,38 +15,46 @@ const AUTH_RETURN_PARAMS = [
   'error',
   'error_code',
   'error_description',
+  'code',
+  'token_hash',
 ] as const;
 
 export interface AuthReturnSnapshot {
   hasAuthReturn: boolean;
   hasImplicitSession: boolean;
+  code: string | null;
+  tokenHash: string | null;
+  type: string | null;
   error: string | null;
   errorCode: string | null;
   errorDescription: string | null;
 }
 
-type ConfirmationState =
-  | { kind: 'processing' }
-  | { kind: 'error'; message: string }
-  | {
-      kind: 'success';
-      accessState: 'pendiente' | 'aprobado' | 'rechazado' | 'revocado' | 'sin_perfil';
-    };
-
 export function readAuthReturn(url = window.location.href): AuthReturnSnapshot {
   const parsedUrl = new URL(url);
   const hashParams = new URLSearchParams(parsedUrl.hash.replace(/^#/, ''));
-  const readParam = (name: string) => hashParams.get(name) ?? parsedUrl.searchParams.get(name);
+  const searchParams = parsedUrl.searchParams;
+
+  const readParam = (name: string) => hashParams.get(name) ?? searchParams.get(name);
   const error = readParam('error');
   const errorCode = readParam('error_code');
   const errorDescription = readParam('error_description');
+  const code = searchParams.get('code') ?? hashParams.get('code');
+  const tokenHash = searchParams.get('token_hash') ?? hashParams.get('token_hash');
+  const type = readParam('type');
+
   const hasImplicitSession = Boolean(
-    hashParams.get('access_token') && hashParams.get('refresh_token')
+    (hashParams.get('access_token') && hashParams.get('refresh_token')) ||
+    code ||
+    tokenHash
   );
 
   return {
     hasAuthReturn: Boolean(error || errorCode || errorDescription || hasImplicitSession),
     hasImplicitSession,
+    code,
+    tokenHash,
+    type,
     error,
     errorCode,
     errorDescription,
@@ -63,7 +71,7 @@ export function sanitizeAuthReturnUrl(): void {
 }
 
 function getAuthErrorMessage(snapshot: AuthReturnSnapshot): string {
-  if (snapshot.errorCode === 'otp_expired') {
+  if (snapshot.errorCode === 'otp_expired' || snapshot.errorDescription?.includes('expired')) {
     return 'El enlace de confirmación no es válido o ya no está vigente. Si ya confirmaste el correo con otro enlace, intentá iniciar sesión. Si no, solicitá un único reenvío al administrador.';
   }
 
@@ -71,16 +79,35 @@ function getAuthErrorMessage(snapshot: AuthReturnSnapshot): string {
     return 'Supabase rechazó este enlace de confirmación. Podés intentar iniciar sesión si el correo ya fue confirmado con otro enlace.';
   }
 
-  return 'No se pudo validar este enlace de confirmación. Puede ser inválido o haber dejado de estar vigente.';
+  return snapshot.errorDescription || 'No se pudo validar este enlace de confirmación. Puede ser inválido o haber dejado de estar vigente.';
 }
+
+type PageState =
+  | { kind: 'processing'; message?: string }
+  | { kind: 'bot_gate'; tokenHash: string; type: string }
+  | { kind: 'ready'; accessState: 'pendiente' | 'aprobado' | 'rechazado' | 'revocado' | 'sin_perfil'; email?: string }
+  | { kind: 'success_password'; message: string }
+  | { kind: 'error'; message: string };
 
 export const ConfirmarEmailPage: React.FC = () => {
   const [authReturn] = useState<AuthReturnSnapshot>(() => readAuthReturn());
-  const [state, setState] = useState<ConfirmationState>(() =>
-    authReturn.error || authReturn.errorCode || authReturn.errorDescription
-      ? { kind: 'error', message: getAuthErrorMessage(authReturn) }
-      : { kind: 'processing' }
-  );
+  const [state, setState] = useState<PageState>(() => {
+    if (authReturn.error || authReturn.errorCode || authReturn.errorDescription) {
+      return { kind: 'error', message: getAuthErrorMessage(authReturn) };
+    }
+    if (authReturn.tokenHash) {
+      return { kind: 'bot_gate', tokenHash: authReturn.tokenHash, type: authReturn.type || 'recovery' };
+    }
+    return { kind: 'processing' };
+  });
+
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  const resolvedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,66 +119,123 @@ export const ConfirmarEmailPage: React.FC = () => {
       };
     }
 
-    if (!authReturn.hasImplicitSession) {
-      setState({
-        kind: 'error',
-        message:
-          'No encontramos datos de confirmación en esta URL. Abrí el enlace recibido por correo o iniciá sesión.',
-      });
-      sanitizeAuthReturnUrl();
+    if (authReturn.tokenHash) {
+      // Defer to user click to protect single-use token against email pre-fetching bots
       return () => {
         cancelled = true;
       };
     }
 
-    const verifyConfirmation = async () => {
+    const supabase = getSupabaseClient();
+
+    // 1. Escuchar activamente eventos de recuperación de contraseña o login
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (cancelled) return;
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || (session && !resolvedRef.current)) {
+        resolvedRef.current = true;
+        try {
+          const access = await getMyAccess();
+          if (cancelled) return;
+          setState({
+            kind: 'ready',
+            accessState: access.success && access.data ? access.data.estadoAcceso : 'sin_perfil',
+            email: session?.user?.email,
+          });
+        } catch {
+          if (!cancelled) {
+            setState({
+              kind: 'ready',
+              accessState: 'sin_perfil',
+              email: session?.user?.email,
+            });
+          }
+        } finally {
+          sanitizeAuthReturnUrl();
+        }
+      }
+    });
+
+    // 2. Comprobar sesión asíncrona existente o intercambio PKCE
+    const initVerification = async () => {
       try {
-        // detectSessionInUrl procesa una sola vez el retorno implícito. No se
-        // realiza verifyOtp ni exchangeCodeForSession en paralelo.
-        const supabase = getSupabaseClient();
+        if (authReturn.code) {
+          await supabase.auth.exchangeCodeForSession(authReturn.code);
+        }
+
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
-        if (sessionError || !sessionData.session) {
-          throw sessionError || new Error('Supabase no devolvió una sesión confirmada.');
+        if (sessionError) {
+          throw sessionError;
         }
 
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError || !userData.user?.email_confirmed_at) {
-          throw userError || new Error('Supabase no informó la confirmación del correo.');
+        if (sessionData.session) {
+          resolvedRef.current = true;
+          const access = await getMyAccess();
+          if (cancelled) return;
+          setState({
+            kind: 'ready',
+            accessState: access.success && access.data ? access.data.estadoAcceso : 'sin_perfil',
+            email: sessionData.session.user?.email,
+          });
+          sanitizeAuthReturnUrl();
+          return;
         }
 
-        const access = await getMyAccess();
-        if (cancelled) return;
-
-        setState({
-          kind: 'success',
-          accessState: access.success && access.data ? access.data.estadoAcceso : 'sin_perfil',
-        });
-      } catch {
-        if (!cancelled) {
+        // Si después de verificar no hay sesión ni parámetros implícitos
+        if (!authReturn.hasImplicitSession) {
+          if (cancelled) return;
           setState({
             kind: 'error',
-            message:
-              'No pudimos comprobar la confirmación con Supabase. El enlace puede ser inválido o haber dejado de estar vigente.',
+            message: 'No encontramos datos de confirmación en esta URL. Abrí el enlace recibido por correo o iniciá sesión.',
           });
+          sanitizeAuthReturnUrl();
         }
-      } finally {
-        sanitizeAuthReturnUrl();
+      } catch (err: any) {
+        if (!cancelled && !resolvedRef.current) {
+          setState({
+            kind: 'error',
+            message: err?.message || 'No pudimos comprobar la confirmación con Supabase. El enlace puede ser inválido o haber dejado de estar vigente.',
+          });
+          sanitizeAuthReturnUrl();
+        }
       }
     };
 
-    void verifyConfirmation();
+    void initVerification();
 
     return () => {
       cancelled = true;
+      authListener.subscription.unsubscribe();
     };
   }, [authReturn]);
 
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const handleVerifyOtpClick = async (tokenHash: string, type: string) => {
+    setState({ kind: 'processing', message: 'Validando enlace seguro...' });
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: type as any,
+      });
+
+      if (error) throw error;
+
+      resolvedRef.current = true;
+      const access = await getMyAccess();
+      setState({
+        kind: 'ready',
+        accessState: access.success && access.data ? access.data.estadoAcceso : 'sin_perfil',
+        email: data.session?.user?.email,
+      });
+      sanitizeAuthReturnUrl();
+    } catch (err: any) {
+      setState({
+        kind: 'error',
+        message: err?.message || 'El enlace de confirmación no es válido o ya fue utilizado.',
+      });
+      sanitizeAuthReturnUrl();
+    }
+  };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,17 +256,17 @@ export const ConfirmarEmailPage: React.FC = () => {
       if (res.success) {
         setPasswordSuccess(true);
       } else {
-        setPasswordError(res.error || 'Error al actualizar contraseña.');
+        setPasswordError(res.error || 'Error al actualizar la contraseña.');
       }
     } catch (err: any) {
-      setPasswordError(err?.message || 'Error al conectar con el servidor.');
+      setPasswordError(err?.message || 'Error de conexión con el servidor.');
     } finally {
       setPasswordLoading(false);
     }
   };
 
-  const isPending = state.kind === 'success' && state.accessState === 'pendiente';
-  const isApproved = state.kind === 'success' && state.accessState === 'aprobado';
+  const isPending = state.kind === 'ready' && state.accessState === 'pendiente';
+  const isApproved = state.kind === 'ready' && state.accessState === 'aprobado';
 
   return (
     <main style={{ maxWidth: '560px', margin: '3rem auto', padding: '0 1rem' }}>
@@ -201,8 +285,52 @@ export const ConfirmarEmailPage: React.FC = () => {
           <>
             <h1 style={{ color: '#0f172a', fontSize: '1.5rem' }}>Procesando confirmación</h1>
             <p style={{ color: '#475569', lineHeight: 1.6 }}>
-              Estamos comprobando el enlace con Supabase. No cierres esta página.
+              {state.message || 'Estamos comprobando el enlace con Supabase. No cierres esta página.'}
             </p>
+          </>
+        )}
+
+        {state.kind === 'bot_gate' && (
+          <>
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                backgroundColor: '#e0f2fe',
+                color: '#0284c7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+                fontSize: '1.5rem',
+              }}
+            >
+              🔐
+            </div>
+            <h1 style={{ color: '#0f172a', fontSize: '1.5rem', margin: '0 0 0.5rem 0' }}>
+              Confirmación de Acceso Institucional
+            </h1>
+            <p style={{ color: '#475569', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+              Para completar la validación y establecer tu contraseña de acceso, hacé clic en el botón a continuación.
+            </p>
+            <button
+              type="button"
+              onClick={() => handleVerifyOtpClick(state.tokenHash, state.type)}
+              style={{
+                padding: '0.75rem 1.5rem',
+                backgroundColor: '#0284c7',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '0.375rem',
+                fontWeight: 700,
+                fontSize: '1rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            >
+              Continuar y Establecer Contraseña
+            </button>
           </>
         )}
 
@@ -210,18 +338,21 @@ export const ConfirmarEmailPage: React.FC = () => {
           <>
             <h1 style={{ color: '#991b1b', fontSize: '1.5rem' }}>Enlace inválido o vencido</h1>
             <p style={{ color: '#475569', lineHeight: 1.6 }}>{state.message}</p>
-            <Link to="/login" style={{ color: '#0369a1', fontWeight: 700 }}>
-              Ir al inicio de sesión
-            </Link>
+            <div style={{ marginTop: '1.5rem' }}>
+              <Link to="/login" style={{ color: '#0369a1', fontWeight: 700 }}>
+                Ir al inicio de sesión
+              </Link>
+            </div>
           </>
         )}
 
-        {state.kind === 'success' && (
+        {state.kind === 'ready' && (
           <>
             <h1 style={{ color: '#166534', fontSize: '1.5rem' }}>Correo confirmado</h1>
             <p style={{ color: '#475569', lineHeight: 1.6 }}>
-              Supabase confirmó correctamente tu dirección de correo.
+              Supabase confirmó correctamente tu dirección de correo{state.email ? ` (${state.email})` : ''}.
             </p>
+
             {isPending && (
               <p
                 style={{
@@ -229,12 +360,13 @@ export const ConfirmarEmailPage: React.FC = () => {
                   background: '#fffbeb',
                   padding: '0.85rem',
                   borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
                 }}
               >
-                Tu acceso interno continúa pendiente de aprobación administrativa. Confirmar el
-                correo no asigna permisos ni rol.
+                Tu acceso interno continúa pendiente de aprobación administrativa. Confirmar el correo no asigna permisos ni rol.
               </p>
             )}
+
             {isApproved && (
               <p
                 style={{
@@ -242,26 +374,14 @@ export const ConfirmarEmailPage: React.FC = () => {
                   background: '#f0fdf4',
                   padding: '0.85rem',
                   borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
                 }}
               >
-                Tu cuenta ya tiene acceso aprobado. Podés establecer tu contraseña o continuar al panel.
-              </p>
-            )}
-            {!isPending && !isApproved && (
-              <p
-                style={{
-                  color: '#475569',
-                  background: '#f8fafc',
-                  padding: '0.85rem',
-                  borderRadius: '0.5rem',
-                }}
-              >
-                La identidad quedó confirmada, pero el acceso operativo no está habilitado. Consultá
-                al administrador antes de ingresar.
+                Tu cuenta tiene acceso aprobado con rol administrativo. Ingresá tu nueva contraseña para completar la activación.
               </p>
             )}
 
-            {/* Formulario para establecer o cambiar contraseña */}
+            {/* Formulario para establecer contraseña */}
             <div
               style={{
                 marginTop: '1.5rem',
@@ -276,7 +396,7 @@ export const ConfirmarEmailPage: React.FC = () => {
                 Establecer contraseña de acceso
               </h3>
               <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
-                Ingresá tu contraseña para acceder a la plataforma.
+                Definí tu contraseña personal para ingresar al sistema.
               </p>
 
               {passwordSuccess ? (
@@ -291,7 +411,7 @@ export const ConfirmarEmailPage: React.FC = () => {
                     marginBottom: '1rem',
                   }}
                 >
-                  ✓ Contraseña establecida exitosamente.
+                  ✓ ¡Contraseña guardada exitosamente! Ya podés ingresar al panel de gestión.
                 </div>
               ) : (
                 <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -331,6 +451,7 @@ export const ConfirmarEmailPage: React.FC = () => {
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
                       minLength={6}
+                      autoComplete="new-password"
                     />
                   </div>
                   <div>
@@ -355,6 +476,7 @@ export const ConfirmarEmailPage: React.FC = () => {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                       minLength={6}
+                      autoComplete="new-password"
                     />
                   </div>
                   <button
@@ -371,7 +493,7 @@ export const ConfirmarEmailPage: React.FC = () => {
                       cursor: passwordLoading ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    {passwordLoading ? 'Guardando...' : 'Guardar contraseña'}
+                    {passwordLoading ? 'Guardando contraseña...' : 'Guardar contraseña e ingresar'}
                   </button>
                 </form>
               )}
