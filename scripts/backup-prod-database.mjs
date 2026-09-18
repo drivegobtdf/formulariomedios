@@ -3,6 +3,8 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 
+import { execSync } from 'node:child_process';
+
 const PROJECT_REF = process.env.SUPABASE_PROJECT_REF || 'uwzgyirilafgnbpmrkic';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://' + PROJECT_REF + '.supabase.co';
 
@@ -15,15 +17,20 @@ function getServiceKey() {
     try {
       const parsed = JSON.parse(fs.readFileSync(prodSecretsPath, 'utf8'));
       if (parsed.SUPABASE_SERVICE_ROLE_KEY) return parsed.SUPABASE_SERVICE_ROLE_KEY.trim();
-    } catch {}
+    } catch (_err) {
+      void _err;
+      // Ignorar fallo de lectura de archivo local
+    }
   }
   try {
-    const { execSync } = require('child_process');
     const out = execSync('npx.cmd supabase projects api-keys --project-ref ' + PROJECT_REF + ' --output json', { encoding: 'utf8' });
     const parsed = JSON.parse(out);
     const item = (parsed.keys || []).find(k => k.id === 'service_role' || k.name === 'service_role');
     if (item && item.api_key) return item.api_key.trim();
-  } catch {}
+  } catch (_err) {
+    void _err;
+    // Ignorar fallo de CLI
+  }
   throw new Error('SUPABASE_SERVICE_ROLE_KEY no configurado en entorno ni recuperable');
 }
 
