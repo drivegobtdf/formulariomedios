@@ -101,3 +101,6 @@ verify_jwt = false
 
 [functions.info-request-create]
 verify_jwt = false
+
+[functions.admin-user-delete]
+verify_jwt = false

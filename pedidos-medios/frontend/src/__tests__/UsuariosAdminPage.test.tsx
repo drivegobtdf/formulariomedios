@@ -142,4 +142,136 @@ describe('UsuariosAdminPage Unit Tests', () => {
       expect(approveSpy).toHaveBeenCalledWith('usr-pending-2', 'equipo');
     });
   });
+
+  it('4. Botón Eliminar: Se muestra para estados pendiente/rechazado/revocado pero no para usuario actual', async () => {
+    const listWithRevoked: gestionApi.AdminUserListItem[] = [
+      ...mockUsersList,
+      {
+        user_id: 'usr-revoked-3',
+        nombre: 'Carlos',
+        apellido: 'Gómez',
+        nombre_usuario: 'cgomez',
+        app_role: 'equipo',
+        estado_acceso: 'revocado',
+        solicitado_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ];
+
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: mockAdminProfile,
+      isLoading: false,
+      isApproved: true,
+      isAdmin: true,
+      isTeamOrAdmin: true,
+      isObserver: false,
+      signOut: vi.fn(),
+      refreshUser: vi.fn(),
+    });
+
+    vi.spyOn(gestionApi, 'fetchAdminUsers').mockResolvedValue(listWithRevoked);
+
+    render(
+      <MemoryRouter>
+        <UsuariosAdminPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('@cgomez')).toBeInTheDocument();
+    });
+
+    // Should have Eliminar buttons for pending and revoked, but NOT for self (usr-admin-1)
+    const deleteButtons = screen.getAllByRole('button', { name: /^Eliminar$/i });
+    expect(deleteButtons.length).toBe(2);
+  });
+
+  it('5. Modal de Eliminación: Abre confirmación y ejecuta adminDeleteUser al confirmar', async () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: mockAdminProfile,
+      isLoading: false,
+      isApproved: true,
+      isAdmin: true,
+      isTeamOrAdmin: true,
+      isObserver: false,
+      signOut: vi.fn(),
+      refreshUser: vi.fn(),
+    });
+
+    vi.spyOn(gestionApi, 'fetchAdminUsers').mockResolvedValue(mockUsersList);
+    const deleteSpy = vi.spyOn(gestionApi, 'adminDeleteUser').mockResolvedValue({
+      success: true,
+      message: 'Usuario eliminado permanentemente.',
+    });
+
+    render(
+      <MemoryRouter>
+        <UsuariosAdminPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('@aperez')).toBeInTheDocument();
+    });
+
+    const deleteButton = screen.getByRole('button', { name: /^Eliminar$/i });
+    fireEvent.click(deleteButton);
+
+    expect(screen.getByText(/¿Eliminar definitivamente a Ana Pérez\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/Esta acción eliminará su cuenta de acceso y no se puede deshacer/i)).toBeInTheDocument();
+
+    const confirmDeleteBtn = screen.getByRole('button', { name: /^Eliminar definitivamente$/i });
+    fireEvent.click(confirmDeleteBtn);
+
+    await waitFor(() => {
+      expect(deleteSpy).toHaveBeenCalledWith('usr-pending-2');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Usuario eliminado correctamente\./i)).toBeInTheDocument();
+    });
+  });
+
+  it('6. Error en Eliminación: Muestra mensaje de error en modal y no elimina al usuario', async () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: mockAdminProfile,
+      isLoading: false,
+      isApproved: true,
+      isAdmin: true,
+      isTeamOrAdmin: true,
+      isObserver: false,
+      signOut: vi.fn(),
+      refreshUser: vi.fn(),
+    });
+
+    vi.spyOn(gestionApi, 'fetchAdminUsers').mockResolvedValue(mockUsersList);
+    vi.spyOn(gestionApi, 'adminDeleteUser').mockRejectedValue(new Error('No es posible eliminar al único administrador'));
+
+    render(
+      <MemoryRouter>
+        <UsuariosAdminPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('@aperez')).toBeInTheDocument();
+    });
+
+    const deleteButton = screen.getByRole('button', { name: /^Eliminar$/i });
+    fireEvent.click(deleteButton);
+
+    const confirmDeleteBtn = screen.getByRole('button', { name: /^Eliminar definitivamente$/i });
+    fireEvent.click(confirmDeleteBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('No es posible eliminar al único administrador')).toBeInTheDocument();
+    });
+
+    // Cancelar modal
+    const cancelBtn = screen.getByRole('button', { name: /^Cancelar$/i });
+    fireEvent.click(cancelBtn);
+
+    // Usuario sigue presente
+    expect(screen.getByText('@aperez')).toBeInTheDocument();
+  });
 });

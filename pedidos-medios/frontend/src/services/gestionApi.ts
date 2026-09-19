@@ -689,3 +689,34 @@ export async function downloadArchivo(archivoId: string, nombreOriginal?: string
   document.body.removeChild(link);
   window.URL.revokeObjectURL(downloadUrl);
 }
+
+export async function adminDeleteUser(userId: string): Promise<{ success: boolean; message?: string; user_id?: string }> {
+  const supabase = getSupabaseClient();
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr || !sessionData.session?.access_token) {
+    throw new Error('Sesión no válida o expirada. Por favor inicie sesión nuevamente.');
+  }
+
+  const { data, error } = await supabase.functions.invoke('admin-user-delete', {
+    body: { user_id: userId },
+  });
+
+  if (error) {
+    let errorMsg = error.message || 'Error al eliminar usuario';
+    try {
+      if ((error as any).context?.json) {
+        const errJson = await (error as any).context.json();
+        if (errJson.message) errorMsg = errJson.message;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMsg);
+  }
+
+  if (!data?.success) {
+    throw new Error(data?.message || 'No se pudo eliminar el usuario');
+  }
+
+  return data;
+}

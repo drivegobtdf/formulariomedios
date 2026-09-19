@@ -8,6 +8,7 @@ import {
   adminRevokeUser,
   adminChangeUserRole,
   adminChangeUsername,
+  adminDeleteUser,
   AdminUserListItem,
 } from '../services/gestionApi';
 import { isValidNombreUsuario } from '../services/auth';
@@ -26,7 +27,7 @@ export const UsuariosAdminPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Modals state
-  const [activeModal, setActiveModal] = useState<'approve' | 'reject' | 'revoke' | 'changeRole' | 'changeUsername' | null>(null);
+  const [activeModal, setActiveModal] = useState<'approve' | 'reject' | 'revoke' | 'changeRole' | 'changeUsername' | 'delete' | null>(null);
   const [selectedUser, setSelectedUser] = useState<AdminUserListItem | null>(null);
   const [modalRole, setModalRole] = useState<'equipo' | 'observador' | 'administrador'>('equipo');
   const [modalMotivo, setModalMotivo] = useState('');
@@ -276,6 +277,31 @@ export const UsuariosAdminPage: React.FC = () => {
     }
   };
 
+  const handleOpenDelete = (u: AdminUserListItem) => {
+    setSelectedUser(u);
+    setModalError(null);
+    setActiveModal('delete');
+  };
+
+  const handleDeleteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    setModalLoading(true);
+    setModalError(null);
+    try {
+      await adminDeleteUser(selectedUser.user_id);
+      const deletedId = selectedUser.user_id;
+      closeModal();
+      setUsers((prev) => prev.filter((u) => u.user_id !== deletedId));
+      setActionSuccess('Usuario eliminado correctamente.');
+      await loadUsers();
+    } catch (err: any) {
+      setModalError(err?.message || 'Error al eliminar usuario.');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
   return (
     <div style={{ width: '100%', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Header */}
@@ -493,6 +519,15 @@ export const UsuariosAdminPage: React.FC = () => {
                               >
                                 Rechazar
                               </button>
+                              {u.user_id !== user.userId && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenDelete(u)}
+                                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', backgroundColor: '#991b1b', color: '#ffffff', border: 'none', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
+                                >
+                                  Eliminar
+                                </button>
+                              )}
                             </>
                           )}
 
@@ -523,13 +558,24 @@ export const UsuariosAdminPage: React.FC = () => {
                           )}
 
                           {(isRech || isRev) && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenApprove(u)}
-                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
-                            >
-                              Aprobar
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenApprove(u)}
+                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
+                              >
+                                Aprobar
+                              </button>
+                              {u.user_id !== user.userId && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenDelete(u)}
+                                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', backgroundColor: '#991b1b', color: '#ffffff', border: 'none', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
+                                >
+                                  Eliminar
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>
@@ -791,6 +837,49 @@ export const UsuariosAdminPage: React.FC = () => {
                   style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: '#0284c7', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                 >
                   {modalLoading ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Eliminar definitivamente */}
+      {activeModal === 'delete' && selectedUser && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '460px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 0.75rem 0', color: '#991b1b' }}>
+              ¿Eliminar definitivamente a {selectedUser.nombre} {selectedUser.apellido}?
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: '#475569', margin: '0 0 0.75rem 0', lineHeight: 1.5 }}>
+              Esta acción eliminará su cuenta de acceso y no se puede deshacer.
+              El historial de pedidos no será eliminado.
+            </p>
+            <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1.25rem 0', lineHeight: 1.5 }}>
+              Si vuelve a necesitar acceso, deberá registrarse nuevamente.
+            </p>
+
+            {modalError && (
+              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: '#fef2f2', color: '#991b1b', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                {modalError}
+              </div>
+            )}
+
+            <form onSubmit={handleDeleteSubmit}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalLoading}
+                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {modalLoading ? 'Eliminando...' : 'Eliminar definitivamente'}
                 </button>
               </div>
             </form>
