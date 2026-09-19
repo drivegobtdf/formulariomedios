@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { FormularioPublicoPage } from '../pages/FormularioPublicoPage';
 import { getLocalTodayDateString } from '../validation/formValidation';
 
@@ -12,7 +13,11 @@ window.scrollTo = vi.fn();
 
 describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () => {
   it('1. Portada Institucional Home: Muestra presentación, logo, 3 pasos simultáneos y CTAs sin desplegar campos de formulario inicialmente', () => {
-    render(<FormularioPublicoPage />);
+    render(
+      <MemoryRouter>
+        <FormularioPublicoPage />
+      </MemoryRouter>
+    );
 
     expect(
       screen.getByRole('heading', { level: 1, name: /Solicitud de Comunicación y Medios/i })

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { getPublicConfig } from '../services/config';
+import { Link } from 'react-router-dom';
 import {
   FormWizardState,
   CategoriaSlug,
@@ -865,13 +865,13 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
             >
               + Nueva solicitud
             </button>
-            <a
-              href={`${getPublicConfig().basePath}/mis-solicitudes`}
+            <Link
+              to="/mis-solicitudes"
               className="pedidos-btn-hero-secondary"
               aria-label="Mis solicitudes"
             >
               Mis solicitudes
-            </a>
+            </Link>
           </div>
 
           <div className="pedidos-flow-guide">
