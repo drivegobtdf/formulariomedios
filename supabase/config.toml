@@ -37,6 +37,10 @@ additional_redirect_urls = [
 jwt_expiry = 3600
 enable_signup = true
 
+[auth.email.template.confirmation]
+subject = "[PEDIDOS] Solicitud de acceso recibida — Verificación de correo"
+content_path = "./supabase/templates/confirmation.html"
+
 [storage]
 enabled = false
 

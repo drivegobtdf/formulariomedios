@@ -73,7 +73,10 @@ const allowedTypes = [
   'finalizado',
   'cancelado',
   'magic_link_access',
-  'en_proceso'
+  'en_proceso',
+  'acceso_aprobado',
+  'pedido_asignado',
+  'pedido_nuevo_admin'
 ];
 
 if (!allowedTypes.includes(String(p.tipo))) {

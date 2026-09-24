@@ -62,10 +62,7 @@ window.__PEDIDOS_CONFIG__ = {
 `;
 fs.writeFileSync(path.join(webDir, 'pedidos-config.js'), runtimeConfigContent, 'utf8');
 
-// 3b. Escribir web/_redirects y web/_headers para Netlify y Cloudflare Pages
-const redirectsContent = `/*    /index.html   200\n`;
-fs.writeFileSync(path.join(webDir, '_redirects'), redirectsContent, 'utf8');
-
+// 3b. Escribir web/_headers para seguridad y caché
 const headersContent = `/*
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
