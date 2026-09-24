@@ -15,10 +15,15 @@ import {
   getWhatsAppDetails,
   formatPhoneForDisplay,
   getLocalTodayDateString,
+  getLocalTomorrowDateString,
+  getUshuaiaTodayDateString,
+  getUshuaiaTomorrowDateString,
   isDateBeforeToday,
+  isDateBeforeTomorrow,
   validateNotPastDate,
   validateFechaLimite,
   DEFAULT_PAST_DATE_ERROR_MESSAGE,
+  DEFAULT_NOT_TOMORROW_ERROR_MESSAGE,
   validateMinLength,
   revalidateErrors,
 } from '../validation/formValidation';
@@ -379,37 +384,51 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
     });
   });
 
-  describe('Helpers de Fecha y Validación Reactiva', () => {
-    it('getLocalTodayDateString debe formatear la fecha local sin desfasaje por UTC', () => {
-      // 23:30 en Argentina (UTC-3)
-      const localLateDate = new Date(2026, 8, 14, 23, 30, 0); // 14 Sept 2026 23:30 local
-      expect(getLocalTodayDateString(localLateDate)).toBe('2026-09-14');
+  describe('Helpers de Fecha y Validación Reactiva (America/Argentina/Ushuaia)', () => {
+    it('getUshuaiaTodayDateString y getUshuaiaTomorrowDateString deben calcular fechas civiles sin desfasaje por UTC', () => {
+      // 23:30 en Argentina (UTC-3) -> 14 Septiembre
+      const localLateDate = new Date('2026-09-15T02:30:00Z'); // 23:30 local en Argentina
+      expect(getUshuaiaTodayDateString(localLateDate)).toBe('2026-09-14');
+      expect(getUshuaiaTomorrowDateString(localLateDate)).toBe('2026-09-15');
 
-      // 00:15 en Argentina (UTC-3)
-      const localEarlyDate = new Date(2026, 8, 15, 0, 15, 0); // 15 Sept 2026 00:15 local
-      expect(getLocalTodayDateString(localEarlyDate)).toBe('2026-09-15');
+      // 00:15 en Argentina (UTC-3) -> 15 Septiembre
+      const localEarlyDate = new Date('2026-09-15T03:15:00Z'); // 00:15 local en Argentina
+      expect(getUshuaiaTodayDateString(localEarlyDate)).toBe('2026-09-15');
+      expect(getUshuaiaTomorrowDateString(localEarlyDate)).toBe('2026-09-16');
+
+      // Compatibility aliases
+      expect(getLocalTodayDateString(localLateDate)).toBe('2026-09-14');
+      expect(isDateBeforeToday('2026-09-13', localLateDate)).toBe(true);
+      expect(isDateBeforeToday('2026-09-14', localLateDate)).toBe(false);
+      expect(DEFAULT_PAST_DATE_ERROR_MESSAGE).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
     });
 
-    it('validateNotPastDate: debe validar fechas de acuerdo a la regla global (ayer prohibido, hoy y futuro permitido)', () => {
-      const refDate = new Date(2026, 8, 14, 12, 0, 0); // 14 Sept 2026
+    it('validateNotPastDate: debe validar fechas de acuerdo a la nueva regla global (ayer y hoy prohibidos, mañana y futuro permitidos)', () => {
+      const refDate = new Date('2026-09-14T15:00:00Z'); // 14 Septiembre 2026 12:00 local Ushuaia
 
-      // Ayer -> rechaza con error canónico por defecto
-      expect(validateNotPastDate('2026-09-13', { refDate })).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
-      expect(validateNotPastDate('2026-09-13', { refDate, pastMessage: 'No podés seleccionar una fecha pasada.' })).toBe(
-        'No podés seleccionar una fecha pasada.'
-      );
+      // Test A: Hoy -> RECHAZADO
+      expect(validateNotPastDate('2026-09-14', { refDate })).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
 
-      // Hoy -> válido (null)
-      expect(validateNotPastDate('2026-09-14', { refDate })).toBeNull();
+      // Test B: Ayer -> RECHAZADO
+      expect(validateNotPastDate('2026-09-13', { refDate })).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
+      expect(
+        validateNotPastDate('2026-09-13', {
+          refDate,
+          pastMessage: 'No podés seleccionar una fecha pasada.',
+        })
+      ).toBe('No podés seleccionar una fecha pasada.');
 
-      // Mañana y futuro lejano -> válido (null)
+      // Test C: Mañana -> ACEPTADO (null)
       expect(validateNotPastDate('2026-09-15', { refDate })).toBeNull();
+
+      // Test D: Futuro lejano -> ACEPTADO (null)
+      expect(validateNotPastDate('2026-09-16', { refDate })).toBeNull();
       expect(validateNotPastDate('2027-12-31', { refDate })).toBeNull();
 
       // Campo vacío requerido (por defecto)
-      expect(validateNotPastDate('', { refDate, requiredMessage: 'Indicá la fecha del evento.' })).toBe(
-        'Indicá la fecha del evento.'
-      );
+      expect(
+        validateNotPastDate('', { refDate, requiredMessage: 'Indicá la fecha del evento.' })
+      ).toBe('Indicá la fecha del evento.');
       expect(validateNotPastDate('   ', { refDate, requiredMessage: 'Indicá la fecha.' })).toBe(
         'Indicá la fecha.'
       );
@@ -436,32 +455,39 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       );
     });
 
-    it('isDateBeforeToday y validateFechaLimite deben rechazar fechas pasadas y aceptar hoy y futuras', () => {
-      const refDate = new Date(2026, 8, 14, 12, 0, 0); // 14 Sept 2026
+    it('isDateBeforeTomorrow y validateFechaLimite deben rechazar hoy y ayer, y aceptar mañana y futuras', () => {
+      const refDate = new Date('2026-09-14T15:00:00Z'); // 14 Sept 2026 local
 
-      // Fecha pasada (ayer)
-      expect(isDateBeforeToday('2026-09-13', refDate)).toBe(true);
+      // Ayer
+      expect(isDateBeforeTomorrow('2026-09-13', refDate)).toBe(true);
       expect(validateFechaLimite('2026-09-13', undefined, undefined, refDate)).toBe(
-        DEFAULT_PAST_DATE_ERROR_MESSAGE
+        DEFAULT_NOT_TOMORROW_ERROR_MESSAGE
       );
 
-      // Fecha de hoy (misma fecha local) -> VÁLIDA
-      expect(isDateBeforeToday('2026-09-14', refDate)).toBe(false);
-      expect(validateFechaLimite('2026-09-14', undefined, undefined, refDate)).toBeNull();
+      // Hoy -> RECHAZADO (isDateBeforeTomorrow = true)
+      expect(isDateBeforeTomorrow('2026-09-14', refDate)).toBe(true);
+      expect(validateFechaLimite('2026-09-14', undefined, undefined, refDate)).toBe(
+        DEFAULT_NOT_TOMORROW_ERROR_MESSAGE
+      );
 
-      // Fecha futura (mañana) -> VÁLIDA
-      expect(isDateBeforeToday('2026-09-15', refDate)).toBe(false);
+      // Mañana -> ACEPTADO
+      expect(isDateBeforeTomorrow('2026-09-15', refDate)).toBe(false);
       expect(validateFechaLimite('2026-09-15', undefined, undefined, refDate)).toBeNull();
+
+      // Futuro posterior
+      expect(isDateBeforeTomorrow('2026-09-20', refDate)).toBe(false);
+      expect(validateFechaLimite('2026-09-20', undefined, undefined, refDate)).toBeNull();
 
       // Fecha vacía
       expect(validateFechaLimite('', undefined, undefined, refDate)).toBe(
-        'Indicá la fecha límite de entrega.'
+        'Indicá la fecha requerida.'
       );
     });
 
-    it('validateStep2: debe aplicar consistentemente la regla de fecha no pasada a los 9 campos operativos de todos los servicios', () => {
+    it('validateStep2: debe aplicar la regla >= mañana en todos los campos operativos de todos los servicios', () => {
       const yesterday = '2026-09-13';
-      const today = getLocalTodayDateString();
+      const today = '2026-09-14';
+      const tomorrow = getLocalTomorrowDateString();
 
       // 1. Diseño Gráfico -> Flyer
       const stateFlyerPast: Partial<FormWizardState> = {
@@ -469,8 +495,10 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
         diseno_piezas: ['flyer_rrss'],
         diseno_data: { flyer_rrss: { formato: '1:1', texto: 'Texto válido', fecha_limite: yesterday } },
       };
-      expect(validateStep2(stateFlyerPast as FormWizardState)['flyer_rrss.fecha_limite']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      expect(validateStep2(stateFlyerPast as FormWizardState)['flyer_rrss.fecha_limite']).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
       stateFlyerPast.diseno_data!.flyer_rrss!.fecha_limite = today;
+      expect(validateStep2(stateFlyerPast as FormWizardState)['flyer_rrss.fecha_limite']).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
+      stateFlyerPast.diseno_data!.flyer_rrss!.fecha_limite = tomorrow;
       expect(validateStep2(stateFlyerPast as FormWizardState)['flyer_rrss.fecha_limite']).toBeUndefined();
 
       // 2. Diseño Gráfico -> Invitación Digital
@@ -480,7 +508,7 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
         diseno_data: {
           invitacion_digital: {
             nombre_evento: 'Acto Oficial',
-            fecha: yesterday,
+            fecha: today,
             hora: '10:00',
             lugar: 'Casa de Gobierno',
             modalidad: 'Presencial',
@@ -488,15 +516,15 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
           },
         },
       };
-      expect(validateStep2(stateInvPast as FormWizardState)['invitacion_digital.fecha']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
-      stateInvPast.diseno_data!.invitacion_digital!.fecha = today;
+      expect(validateStep2(stateInvPast as FormWizardState)['invitacion_digital.fecha']).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
+      stateInvPast.diseno_data!.invitacion_digital!.fecha = tomorrow;
       expect(validateStep2(stateInvPast as FormWizardState)['invitacion_digital.fecha']).toBeUndefined();
 
       // 3. Cobertura de Eventos
       const stateCobPast: Partial<FormWizardState> = {
         selected_categorias: ['cobertura_eventos'],
         cobertura_data: {
-          fecha: yesterday,
+          fecha: today,
           hora_inicio: '10:00',
           lugar: 'Gimnasio Petrina',
           ciudad: 'Ushuaia',
@@ -505,20 +533,20 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
           requerimientos: 'Fotografía y video institucional',
         },
       };
-      expect(validateStep2(stateCobPast as FormWizardState)['cobertura.fecha']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
-      stateCobPast.cobertura_data!.fecha = today;
+      expect(validateStep2(stateCobPast as FormWizardState)['cobertura.fecha']).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
+      stateCobPast.cobertura_data!.fecha = tomorrow;
       expect(validateStep2(stateCobPast as FormWizardState)['cobertura.fecha']).toBeUndefined();
 
       // 4. Redes Sociales
       const stateRedesPast: Partial<FormWizardState> = {
         selected_categorias: ['redes_sociales'],
         redes_data: {
-          fecha_sugerida: yesterday,
+          fecha_sugerida: today,
           texto_copy: 'Texto del post con hashtags #TDF',
         },
       };
-      expect(validateStep2(stateRedesPast as FormWizardState)['redes.fecha_sugerida']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
-      stateRedesPast.redes_data!.fecha_sugerida = today;
+      expect(validateStep2(stateRedesPast as FormWizardState)['redes.fecha_sugerida']).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
+      stateRedesPast.redes_data!.fecha_sugerida = tomorrow;
       expect(validateStep2(stateRedesPast as FormWizardState)['redes.fecha_sugerida']).toBeUndefined();
 
       // 5. Producción Audiovisual -> Fecha límite
@@ -529,11 +557,11 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
           tipo_produccion: 'Video institucional',
           descripcion_objetivo: 'Objetivo del video institucional',
           formato: '16:9',
-          fecha_limite: yesterday,
+          fecha_limite: today,
         },
       };
-      expect(validateStep2(stateAvPast as FormWizardState)['audiovisual.fecha_limite']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
-      stateAvPast.audiovisual_data!.fecha_limite = today;
+      expect(validateStep2(stateAvPast as FormWizardState)['audiovisual.fecha_limite']).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
+      stateAvPast.audiovisual_data!.fecha_limite = tomorrow;
       expect(validateStep2(stateAvPast as FormWizardState)['audiovisual.fecha_limite']).toBeUndefined();
 
       // 6. Producción Audiovisual -> Grabación
@@ -544,16 +572,16 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
           tipo_produccion: 'Video institucional',
           descripcion_objetivo: 'Objetivo del video institucional',
           formato: '16:9',
-          fecha_limite: today,
+          fecha_limite: tomorrow,
           requiere_grabacion: true,
-          grabacion_fecha: yesterday,
+          grabacion_fecha: today,
           grabacion_hora: '14:00',
           grabacion_lugar: 'Despacho',
           grabacion_ciudad: 'Ushuaia',
         },
       };
-      expect(validateStep2(stateAvGrabPast as FormWizardState)['audiovisual.grabacion_fecha']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
-      stateAvGrabPast.audiovisual_data!.grabacion_fecha = today;
+      expect(validateStep2(stateAvGrabPast as FormWizardState)['audiovisual.grabacion_fecha']).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
+      stateAvGrabPast.audiovisual_data!.grabacion_fecha = tomorrow;
       expect(validateStep2(stateAvGrabPast as FormWizardState)['audiovisual.grabacion_fecha']).toBeUndefined();
 
       // 7. Motion Graphics
@@ -565,11 +593,11 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
           texto_contenido: 'Texto animado',
           descripcion: 'Descripción del motion graphics',
           formato: '16:9',
-          fecha_limite: yesterday,
+          fecha_limite: today,
         },
       };
-      expect(validateStep2(stateMotionPast as FormWizardState)['motion.fecha_limite']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
-      stateMotionPast.motion_data!.fecha_limite = today;
+      expect(validateStep2(stateMotionPast as FormWizardState)['motion.fecha_limite']).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
+      stateMotionPast.motion_data!.fecha_limite = tomorrow;
       expect(validateStep2(stateMotionPast as FormWizardState)['motion.fecha_limite']).toBeUndefined();
 
       // 8. Streaming
@@ -579,14 +607,14 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
           requiere_asesoramiento: false,
           tipo_streaming: 'Transmisión en vivo de un evento',
           nombre_evento: 'Sesión Inaugural',
-          fecha: yesterday,
+          fecha: today,
           hora_inicio: '11:00',
           modalidad: 'Virtual',
           descripcion_requerimientos: 'Transmisión por YouTube y Facebook Live',
         },
       };
-      expect(validateStep2(stateStreamingPast as FormWizardState)['streaming.fecha']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
-      stateStreamingPast.streaming_data!.fecha = today;
+      expect(validateStep2(stateStreamingPast as FormWizardState)['streaming.fecha']).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
+      stateStreamingPast.streaming_data!.fecha = tomorrow;
       expect(validateStep2(stateStreamingPast as FormWizardState)['streaming.fecha']).toBeUndefined();
 
       // 9. Sitios Web
@@ -597,11 +625,11 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
           tipo_web: 'Crear una página',
           descripcion_objetivo: 'Nueva página para programa provincial',
           contenido_cambios: 'Secciones institucionales y formulario',
-          fecha_limite: yesterday,
+          fecha_limite: today,
         },
       };
-      expect(validateStep2(stateWebPast as FormWizardState)['web.fecha_limite']).toBe(DEFAULT_PAST_DATE_ERROR_MESSAGE);
-      stateWebPast.web_data!.fecha_limite = today;
+      expect(validateStep2(stateWebPast as FormWizardState)['web.fecha_limite']).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
+      stateWebPast.web_data!.fecha_limite = tomorrow;
       expect(validateStep2(stateWebPast as FormWizardState)['web.fecha_limite']).toBeUndefined();
     });
 

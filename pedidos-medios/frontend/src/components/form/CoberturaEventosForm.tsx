@@ -1,6 +1,6 @@
 import React from 'react';
 import { CoberturaEventosData } from '../../types/form';
-import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
+import { ValidationErrors, getUshuaiaTomorrowDateString } from '../../validation/formValidation';
 
 interface CoberturaEventosFormProps {
   data: CoberturaEventosData;
@@ -26,7 +26,7 @@ export const CoberturaEventosForm: React.FC<CoberturaEventosFormProps> = ({ data
           <input
             type="date"
             id="cob_fecha"
-            min={getLocalTodayDateString()}
+            min={getUshuaiaTomorrowDateString()}
             className={`pedidos-input ${errors['cobertura.fecha'] ? 'error' : ''}`}
             value={data.fecha || ''}
             onChange={(e) => onChange({ fecha: e.target.value })}

@@ -7,7 +7,7 @@ import {
   CertificadoData,
   OtrosDisenoData,
 } from '../../types/form';
-import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
+import { ValidationErrors, getUshuaiaTomorrowDateString } from '../../validation/formValidation';
 
 interface DisenoGraficoFormProps {
   selectedPiezas: DisenoPiezaSlug[];
@@ -86,7 +86,7 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
             <input
               type="date"
               id="flyer_fecha_limite"
-              min={getLocalTodayDateString()}
+              min={getUshuaiaTomorrowDateString()}
               className={`pedidos-input ${errors['flyer_rrss.fecha_limite'] ? 'error' : ''}`}
               value={flyerData.fecha_limite || ''}
               onChange={(e) => onChangeFlyer({ fecha_limite: e.target.value })}
@@ -142,7 +142,7 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
             <input
               type="date"
               id="inv_fecha"
-              min={getLocalTodayDateString()}
+              min={getUshuaiaTomorrowDateString()}
               className={`pedidos-input ${errors['invitacion_digital.fecha'] ? 'error' : ''}`}
               value={invitacionData.fecha || ''}
               onChange={(e) => onChangeInvitacion({ fecha: e.target.value })}
@@ -208,7 +208,7 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
             <input
               type="date"
               id="cert_fecha"
-              min={getLocalTodayDateString()}
+              min={getUshuaiaTomorrowDateString()}
               className={`pedidos-input ${errors['certificado.fecha'] ? 'error' : ''}`}
               value={certificadoData.fecha || ''}
               onChange={(e) => onChangeCertificado({ fecha: e.target.value })}
@@ -274,7 +274,7 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
             <input
               type="date"
               id="otros_fecha"
-              min={getLocalTodayDateString()}
+              min={getUshuaiaTomorrowDateString()}
               className={`pedidos-input ${errors['otros_diseno.fecha'] ? 'error' : ''}`}
               value={otrosData.fecha || ''}
               onChange={(e) => onChangeOtros({ fecha: e.target.value })}

@@ -135,9 +135,38 @@ function formatFieldValue(key: string, val: any): React.ReactNode {
   return <span>{String(val)}</span>;
 }
 
+export function getGestionFieldLabel(
+  key: string,
+  info: Record<string, any>,
+  codigoCategoria?: string,
+  tipoNombre?: string
+): string {
+  const isDiseno =
+    codigoCategoria === 'D' ||
+    info.categoria_slug === 'diseno_grafico' ||
+    info.tipo_slug === 'flyer_rrss' ||
+    info.tipo_slug === 'invitacion_digital' ||
+    info.tipo_slug === 'certificado' ||
+    info.tipo_slug === 'otros_diseno' ||
+    (tipoNombre && /flyer|invitación|certificado|diseño/i.test(tipoNombre));
+
+  if (isDiseno) {
+    if (key === 'fecha_limite' || key === 'fecha') return 'Fecha del evento/actividad/pieza';
+    if (key === 'programa' || key === 'destinatarios' || key === 'especificaciones')
+      return 'Especificaciones del pedido';
+    if (key === 'texto') return 'Texto y contenido solicitado';
+    if (key === 'descripcion') return 'Descripción de la pieza gráfica';
+    if (key === 'medidas_soporte') return 'Medidas o soporte técnico';
+  }
+
+  return FIELD_LABELS[key] || key.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+}
+
 export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerProps> = ({
   informacion,
   informacionEspecifica,
+  codigoCategoria,
+  tipoNombre,
 }) => {
   const info = informacion || informacionEspecifica;
   if (!info || Object.keys(info).length === 0) {
@@ -224,7 +253,7 @@ export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerPr
           }}
         >
           {generalEntries.map(([key, val]) => {
-            const label = FIELD_LABELS[key] || key.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+            const label = getGestionFieldLabel(key, info, codigoCategoria, tipoNombre);
             const isFullWidth =
               typeof val === 'string' &&
               (val.length > 60 || val.includes('\n') || key === 'texto' || key === 'programa' || key === 'firmantes' || key === 'destinatarios' || key === 'descripcion' || key === 'informacion_base');

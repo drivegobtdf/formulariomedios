@@ -3,9 +3,9 @@
  * Proyecto: PEDIDOS — Secretaría de Medios
  *
  * Verifica la capa backend y Edge Function submission-create:
- * 1. Rechazo de fechas operativas pasadas (< hoy civil).
- * 2. Aceptación de fecha de hoy (= hoy civil) y futuras (> hoy civil).
- * 3. Matriz completa de validación sobre los 9 campos de fecha operativos.
+ * 1. Rechazo de fechas operativas pasadas y de hoy (< mañana civil).
+ * 2. Aceptación de fecha de mañana (= mañana civil) y futuras (> mañana civil).
+ * 3. Matriz completa de validación sobre los 11 campos de fecha operativos.
  * 4. Invariante de fecha civil sin desfasaje por UTC.
  * 5. No interferencia con fechas históricas, filtros de gestión o auditoría.
  */
@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest';
 import crypto from 'node:crypto';
 import {
   getCivilDateString,
+  getTomorrowCivilDateString,
   validateSubmissionPayloadDates,
   OPERATIONAL_DATE_RULES,
   DEFAULT_PAST_DATE_ERROR_MESSAGE,
@@ -25,19 +26,22 @@ describe('Validación Server-Side de Fechas Operativas (Backend & Edge Functions
   const todayStr = '2026-09-14';
   const yesterdayStr = '2026-09-13';
   const tomorrowStr = '2026-09-15';
+  const futureStr = '2026-09-20';
 
   describe('1. Función Canónica validateSubmissionPayloadDates', () => {
-    it('getCivilDateString debe calcular la fecha civil en America/Argentina/Ushuaia sin desfasajes UTC', () => {
+    it('getCivilDateString y getTomorrowCivilDateString deben calcular la fecha civil en America/Argentina/Ushuaia sin desfasajes UTC', () => {
       // 23:30 en Argentina (UTC-3) -> UTC es 02:30 del día 15
       const lateNightUTC = new Date('2026-09-15T02:30:00Z');
       expect(getCivilDateString(lateNightUTC)).toBe('2026-09-14');
+      expect(getTomorrowCivilDateString(lateNightUTC)).toBe('2026-09-15');
 
       // 00:15 en Argentina (UTC-3) -> UTC es 03:15 del día 15
       const earlyMorningUTC = new Date('2026-09-15T03:15:00Z');
       expect(getCivilDateString(earlyMorningUTC)).toBe('2026-09-15');
+      expect(getTomorrowCivilDateString(earlyMorningUTC)).toBe('2026-09-16');
     });
 
-    it('Cobertura de Eventos: ayer debe ser rechazada, hoy y futuro deben ser aceptadas', () => {
+    it('Cobertura de Eventos: ayer y hoy deben ser rechazadas, mañana y futuro deben ser aceptadas', () => {
       // Payload con Cobertura y fecha de ayer
       const payloadYesterday = {
         schema_version: 3,
@@ -70,7 +74,7 @@ describe('Validación Server-Side de Fechas Operativas (Backend & Edge Functions
       expect(resultYesterday.error).toContain(DEFAULT_PAST_DATE_ERROR_MESSAGE);
       expect(resultYesterday.field).toBe('cobertura_eventos.fecha');
 
-      // Payload con fecha de hoy -> VÁLIDA
+      // Payload con fecha de hoy -> RECHAZADA (regla: a partir de mañana)
       const payloadToday = {
         ...payloadYesterday,
         pedidos: [
@@ -84,8 +88,9 @@ describe('Validación Server-Side de Fechas Operativas (Backend & Edge Functions
         ],
       };
       const resultToday = validateSubmissionPayloadDates(payloadToday, refDate);
-      expect(resultToday.isValid).toBe(true);
-      expect(resultToday.error).toBeUndefined();
+      expect(resultToday.isValid).toBe(false);
+      expect(resultToday.error).toContain(DEFAULT_PAST_DATE_ERROR_MESSAGE);
+      expect(resultToday.field).toBe('cobertura_eventos.fecha');
 
       // Payload con fecha de mañana -> VÁLIDA
       const payloadTomorrow = {
@@ -102,10 +107,26 @@ describe('Validación Server-Side de Fechas Operativas (Backend & Edge Functions
       };
       const resultTomorrow = validateSubmissionPayloadDates(payloadTomorrow, refDate);
       expect(resultTomorrow.isValid).toBe(true);
+
+      // Payload con fecha futura -> VÁLIDA
+      const payloadFuture = {
+        ...payloadYesterday,
+        pedidos: [
+          {
+            ...payloadYesterday.pedidos[0],
+            informacion_especifica: {
+              ...payloadYesterday.pedidos[0].informacion_especifica,
+              fecha: futureStr,
+            },
+          },
+        ],
+      };
+      const resultFuture = validateSubmissionPayloadDates(payloadFuture, refDate);
+      expect(resultFuture.isValid).toBe(true);
     });
 
-    it('Matriz Server-Side: debe validar los 9 campos de fecha operativos en todas las categorías', () => {
-      expect(OPERATIONAL_DATE_RULES.length).toBe(9);
+    it('Matriz Server-Side: debe validar los 11 campos de fecha operativos en todas las categorías', () => {
+      expect(OPERATIONAL_DATE_RULES.length).toBe(11);
 
       for (const rule of OPERATIONAL_DATE_RULES) {
         // 1. Caso fecha = ayer -> debe fallar
@@ -140,15 +161,21 @@ describe('Validación Server-Side de Fechas Operativas (Backend & Edge Functions
         expect(resPast.field).toBe(`${rule.categoria_slug}.${rule.field_name}`);
         expect(resPast.error).toContain(DEFAULT_PAST_DATE_ERROR_MESSAGE);
 
-        // 2. Caso fecha = hoy -> debe ser válido
+        // 2. Caso fecha = hoy -> debe fallar (regla: >= mañana)
         infoPast[rule.field_name] = todayStr;
         const resToday = validateSubmissionPayloadDates(payloadPast, refDate);
-        expect(resToday.isValid).toBe(true);
+        expect(resToday.isValid).toBe(false);
+        expect(resToday.error).toContain(DEFAULT_PAST_DATE_ERROR_MESSAGE);
 
         // 3. Caso fecha = mañana -> debe ser válido
         infoPast[rule.field_name] = tomorrowStr;
         const resTomorrow = validateSubmissionPayloadDates(payloadPast, refDate);
         expect(resTomorrow.isValid).toBe(true);
+
+        // 4. Caso fecha = futura -> debe ser válido
+        infoPast[rule.field_name] = futureStr;
+        const resFuture = validateSubmissionPayloadDates(payloadPast, refDate);
+        expect(resFuture.isValid).toBe(true);
       }
     });
 
@@ -181,7 +208,7 @@ describe('Validación Server-Side de Fechas Operativas (Backend & Edge Functions
   });
 
   describe('2. Invocación HTTP Edge Function submission-create', () => {
-    it('debe rechazar con HTTP 400 Bad Request y código VALIDATION_ERROR cuando la fecha es anterior a hoy', async () => {
+    it('debe rechazar con HTTP 400 Bad Request y código VALIDATION_ERROR cuando la fecha es anterior a mañana', async () => {
       const payload = {
         schema_version: 3,
         submission_key: crypto.randomUUID(),
@@ -221,7 +248,7 @@ describe('Validación Server-Side de Fechas Operativas (Backend & Edge Functions
 
       const json = await res.json();
       expect(json.error).toBe('VALIDATION_ERROR');
-      expect(json.message).toContain('La fecha no puede ser anterior a hoy.');
+      expect(json.message).toContain(DEFAULT_PAST_DATE_ERROR_MESSAGE);
       expect(json.field).toBe('cobertura_eventos.fecha');
     });
 

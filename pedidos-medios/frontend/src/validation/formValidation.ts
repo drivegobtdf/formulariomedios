@@ -74,10 +74,12 @@ export function validateFileMetadata(file: { name: string; size: number; type: s
 }
 
 // -----------------------------------------------------------------------------
-// Helpers de Validación Reactiva y Fechas Locales
+// Helpers de Validación Reactiva y Fechas Locales (America/Argentina/Ushuaia)
 // -----------------------------------------------------------------------------
 
-export const DEFAULT_PAST_DATE_ERROR_MESSAGE = 'La fecha no puede ser anterior a hoy.';
+export const USHUAIA_TIMEZONE = 'America/Argentina/Ushuaia';
+export const DEFAULT_NOT_TOMORROW_ERROR_MESSAGE = 'La fecha debe ser a partir de mañana.';
+export const DEFAULT_PAST_DATE_ERROR_MESSAGE = DEFAULT_NOT_TOMORROW_ERROR_MESSAGE;
 
 export interface ValidateDateOptions {
   required?: boolean;
@@ -87,28 +89,70 @@ export interface ValidateDateOptions {
 }
 
 /**
- * Obtiene la fecha local actual en formato YYYY-MM-DD sin desfasaje por UTC.
+ * Obtiene la fecha del día de hoy en la zona horaria canónica de Tierra del Fuego (America/Argentina/Ushuaia)
+ * en formato civil YYYY-MM-DD sin desfasaje por UTC.
  */
-export function getLocalTodayDateString(refDate: Date = new Date()): string {
-  const year = refDate.getFullYear();
-  const month = String(refDate.getMonth() + 1).padStart(2, '0');
-  const day = String(refDate.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+export function getUshuaiaTodayDateString(refDate: Date = new Date()): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: USHUAIA_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(refDate);
+  } catch {
+    const year = refDate.getFullYear();
+    const month = String(refDate.getMonth() + 1).padStart(2, '0');
+    const day = String(refDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
 }
 
 /**
- * Valida si una fecha YYYY-MM-DD es anterior a la fecha local del día de la solicitud.
- * Regla:
- * - date < today_local -> true (inválida)
- * - date == today_local -> false (válida)
- * - date > today_local -> false (válida)
+ * Obtiene la fecha del día de mañana en la zona horaria canónica de Tierra del Fuego (America/Argentina/Ushuaia)
+ * en formato civil YYYY-MM-DD calculada sumando 1 día calendario.
  */
-export function isDateBeforeToday(dateStr: string, refDate: Date = new Date()): boolean {
+export function getUshuaiaTomorrowDateString(refDate: Date = new Date()): string {
+  const todayStr = getUshuaiaTodayDateString(refDate);
+  const [y, m, d] = todayStr.split('-').map((v) => parseInt(v, 10));
+  const tomorrowUtc = new Date(Date.UTC(y, m - 1, d + 1));
+  const tY = tomorrowUtc.getUTCFullYear();
+  const tM = String(tomorrowUtc.getUTCMonth() + 1).padStart(2, '0');
+  const tD = String(tomorrowUtc.getUTCDate()).padStart(2, '0');
+  return `${tY}-${tM}-${tD}`;
+}
+
+/**
+ * Alias retrocompatibles para fecha de hoy y de mañana
+ */
+export function getLocalTodayDateString(refDate: Date = new Date()): string {
+  return getUshuaiaTodayDateString(refDate);
+}
+
+export function getLocalTomorrowDateString(refDate: Date = new Date()): string {
+  return getUshuaiaTomorrowDateString(refDate);
+}
+
+/**
+ * Valida si una fecha YYYY-MM-DD es anterior al día de mañana (es decir, si es hoy o pasada).
+ * Regla:
+ * - date < tomorrow_ushuaia -> true (inválida: hoy o fecha pasada)
+ * - date >= tomorrow_ushuaia -> false (válida: mañana o fecha futura)
+ */
+export function isDateBeforeTomorrow(dateStr: string, refDate: Date = new Date()): boolean {
   if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
     return false;
   }
-  const todayStr = getLocalTodayDateString(refDate);
-  return dateStr.trim() < todayStr;
+  const tomorrowStr = getUshuaiaTomorrowDateString(refDate);
+  return dateStr.trim() < tomorrowStr;
+}
+
+/**
+ * Alias retrocompatible para isDateBeforeToday (aplica la regla estricta >= mañana)
+ */
+export function isDateBeforeToday(dateStr: string, refDate: Date = new Date()): boolean {
+  return isDateBeforeTomorrow(dateStr, refDate);
 }
 
 /**
@@ -117,8 +161,8 @@ export function isDateBeforeToday(dateStr: string, refDate: Date = new Date()): 
  * 1. Si está vacía y required = true (por defecto true) -> error requiredMessage.
  * 2. Si está vacía y required = false -> válido (null).
  * 3. Si no cumple formato YYYY-MM-DD o fecha de calendario no existe -> error de formato/calendario.
- * 4. Si la fecha es anterior a hoy (civil YYYY-MM-DD) -> error pastMessage ('La fecha no puede ser anterior a hoy.').
- * 5. Si la fecha es igual o posterior a hoy -> válido (null).
+ * 4. Si la fecha es hoy o anterior (date < mañana en Ushuaia) -> error pastMessage ('La fecha debe ser a partir de mañana.').
+ * 5. Si la fecha es igual o posterior a mañana -> válido (null).
  */
 export function validateNotPastDate(
   dateValue?: string,
@@ -126,7 +170,7 @@ export function validateNotPastDate(
 ): string | null {
   let required = true;
   let requiredMessage = 'Indicá una fecha válida.';
-  let pastMessage = DEFAULT_PAST_DATE_ERROR_MESSAGE;
+  let pastMessage = DEFAULT_NOT_TOMORROW_ERROR_MESSAGE;
   let refDate = new Date();
 
   if (typeof options === 'string') {
@@ -160,7 +204,7 @@ export function validateNotPastDate(
     return 'Fecha no válida en el calendario.';
   }
 
-  if (isDateBeforeToday(trimmed, refDate)) {
+  if (isDateBeforeTomorrow(trimmed, refDate)) {
     return pastMessage;
   }
 
@@ -168,12 +212,12 @@ export function validateNotPastDate(
 }
 
 /**
- * Valida un campo de fecha límite obligatoria con validación de no-anterioridad.
+ * Valida un campo de fecha límite obligatoria con validación de fecha >= mañana.
  */
 export function validateFechaLimite(
   dateValue?: string,
-  emptyMessage = 'Indicá la fecha límite de entrega.',
-  pastMessage = DEFAULT_PAST_DATE_ERROR_MESSAGE,
+  emptyMessage = 'Indicá la fecha requerida.',
+  pastMessage = DEFAULT_NOT_TOMORROW_ERROR_MESSAGE,
   refDate: Date = new Date()
 ): string | null {
   return validateNotPastDate(dateValue, {

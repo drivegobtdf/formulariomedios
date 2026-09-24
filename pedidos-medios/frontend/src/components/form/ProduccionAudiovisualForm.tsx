@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProduccionAudiovisualData, ContactoFormState } from '../../types/form';
 import { AsesoramientoCard } from './AsesoramientoCard';
-import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
+import { ValidationErrors, getUshuaiaTomorrowDateString } from '../../validation/formValidation';
 
 interface ProduccionAudiovisualFormProps {
   data: ProduccionAudiovisualData;
@@ -108,7 +108,7 @@ export const ProduccionAudiovisualForm: React.FC<ProduccionAudiovisualFormProps>
               <input
                 type="date"
                 id="av_fecha_limite"
-                min={getLocalTodayDateString()}
+                min={getUshuaiaTomorrowDateString()}
                 className={`pedidos-input ${errors['audiovisual.fecha_limite'] ? 'error' : ''}`}
                 value={data.fecha_limite || ''}
                 onChange={(e) => onChange({ fecha_limite: e.target.value })}
@@ -159,7 +159,7 @@ export const ProduccionAudiovisualForm: React.FC<ProduccionAudiovisualFormProps>
                   <input
                     type="date"
                     id="av_grab_fecha"
-                    min={getLocalTodayDateString()}
+                    min={getUshuaiaTomorrowDateString()}
                     className={`pedidos-input ${errors['audiovisual.grabacion_fecha'] ? 'error' : ''}`}
                     value={data.grabacion_fecha || ''}
                     onChange={(e) => onChange({ grabacion_fecha: e.target.value })}

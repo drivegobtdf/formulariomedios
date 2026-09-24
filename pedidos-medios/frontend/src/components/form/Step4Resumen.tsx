@@ -59,6 +59,102 @@ const FIELD_LABELS: Record<string, string> = {
   autoridades: 'Autoridades',
 };
 
+export function getPieceFieldLabel(piece: FormPieceItem, key: string): string {
+  const { categoria_slug, tipo_slug } = piece;
+
+  // 1. Diseño Gráfico
+  if (
+    categoria_slug === 'diseno_grafico' ||
+    ['flyer_rrss', 'invitacion_digital', 'certificado', 'otros_diseno'].includes(tipo_slug)
+  ) {
+    if (key === 'fecha_limite' || key === 'fecha') return 'Fecha del evento/actividad/pieza';
+    if (key === 'texto') return 'Texto y contenido solicitado';
+    if (key === 'formato') return 'Formato';
+    if (key === 'programa' || key === 'destinatarios' || key === 'especificaciones')
+      return 'Especificaciones del pedido';
+    if (key === 'nombre_actividad') return 'Nombre de la actividad';
+    if (key === 'firmantes') return 'Autoridades firmantes';
+    if (key === 'descripcion') return 'Descripción de la pieza gráfica';
+    if (key === 'medidas_soporte') return 'Medidas o soporte técnico';
+  }
+
+  // 2. Cobertura de Eventos
+  if (categoria_slug === 'cobertura_eventos' || tipo_slug === 'cobertura_eventos') {
+    if (key === 'fecha') return 'Fecha del evento';
+    if (key === 'hora_inicio') return 'Hora de inicio';
+    if (key === 'hora_fin') return 'Hora estimada de fin';
+    if (key === 'lugar') return 'Lugar / Dirección';
+    if (key === 'ciudad') return 'Ciudad';
+    if (key === 'autoridades') return 'Autoridades asistentes';
+    if (key === 'requerimientos') return 'Requerimientos de cobertura';
+  }
+
+  // 3. Gacetilla
+  if (categoria_slug === 'gacetilla' || tipo_slug === 'gacetilla') {
+    if (key === 'referente_contacto') return 'Referente o vocero de contacto';
+    if (key === 'telefono_contacto') return 'Teléfono de contacto directo';
+    if (key === 'informacion_base') return 'Información base';
+  }
+
+  // 4. Redes Sociales
+  if (categoria_slug === 'redes_sociales' || tipo_slug === 'redes_sociales') {
+    if (key === 'fecha_sugerida') return 'Fecha sugerida de publicación';
+    if (key === 'texto_copy') return 'Texto / Copy propuesto';
+    if (key === 'enlaces_referencia') return 'Enlaces de referencia';
+  }
+
+  // 5. Producción Audiovisual
+  if (categoria_slug === 'produccion_audiovisual' || tipo_slug === 'produccion_audiovisual') {
+    if (key === 'tipo_produccion') return 'Tipo de producción';
+    if (key === 'formato') return 'Formato de video';
+    if (key === 'descripcion_objetivo') return 'Descripción y objetivo';
+    if (key === 'fecha_limite') return 'Fecha límite de entrega';
+    if (key === 'grabacion_fecha') return 'Fecha de grabación';
+    if (key === 'grabacion_hora') return 'Horario de grabación';
+    if (key === 'grabacion_lugar') return 'Lugar de grabación';
+    if (key === 'grabacion_ciudad') return 'Ciudad de grabación';
+    if (key === 'material_enlace') return 'Enlace a material';
+  }
+
+  // 6. Animación y Motion Graphics
+  if (categoria_slug === 'motion_graphics' || tipo_slug === 'motion_graphics') {
+    if (key === 'tipo_motion') return 'Tipo de animación';
+    if (key === 'formato') return 'Formato visual';
+    if (key === 'texto_contenido') return 'Texto / Títulos a incluir';
+    if (key === 'descripcion') return 'Descripción del requerimiento';
+    if (key === 'fecha_limite') return 'Fecha límite de entrega';
+    if (key === 'duracion_aprox') return 'Duración aproximada';
+    if (key === 'referencias') return 'Referencias visuales';
+  }
+
+  // 7. Streaming
+  if (categoria_slug === 'streaming' || tipo_slug === 'streaming') {
+    if (key === 'tipo_streaming') return 'Tipo de requerimiento';
+    if (key === 'nombre_evento') return 'Nombre del evento / actividad';
+    if (key === 'fecha') return 'Fecha de la transmisión';
+    if (key === 'hora_inicio') return 'Hora de inicio';
+    if (key === 'hora_fin') return 'Hora estimada de fin';
+    if (key === 'modalidad') return 'Modalidad';
+    if (key === 'participantes_estimados') return 'Cantidad estimada de participantes';
+    if (key === 'lugar') return 'Lugar de la transmisión';
+    if (key === 'ciudad') return 'Ciudad';
+    if (key === 'descripcion_requerimientos') return 'Requerimientos técnicos';
+  }
+
+  // 8. Sitios Web
+  if (categoria_slug === 'sitios_web' || tipo_slug === 'sitios_web') {
+    if (key === 'tipo_web') return 'Tipo de solicitud web';
+    if (key === 'descripcion_objetivo') return 'Descripción y objetivo';
+    if (key === 'pagina_existente') return '¿Página existente?';
+    if (key === 'url_pagina') return 'Dirección web / URL actual';
+    if (key === 'contenido_cambios') return 'Contenidos / Cambios solicitados';
+    if (key === 'fecha_limite') return 'Fecha límite de puesta en línea';
+    if (key === 'enlaces_referencia') return 'Enlaces de referencia';
+  }
+
+  return FIELD_LABELS[key] || key.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+}
+
 export const Step4Resumen: React.FC<Step4ResumenProps> = ({
   state,
   pieces,
@@ -153,7 +249,7 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
                         ) {
                           return null;
                         }
-                        const label = FIELD_LABELS[key] || key.replace(/_/g, ' ');
+                        const label = getPieceFieldLabel(p, key);
                         return (
                           <li key={key}>
                             <span className="field-name">{label}:</span>

@@ -16,7 +16,7 @@ describe('InformacionEspecificaViewer Unit Tests', () => {
     expect(screen.getByText('Cuadrado 1:1 (Feed Instagram/Facebook)')).toBeInTheDocument();
     expect(screen.getByText('Texto y contenido solicitado')).toBeInTheDocument();
     expect(screen.getByText(/Texto institucional del flyer con salto/i)).toBeInTheDocument();
-    expect(screen.getByText('Fecha límite requerida')).toBeInTheDocument();
+    expect(screen.getByText('Fecha del evento/actividad/pieza')).toBeInTheDocument();
     expect(screen.getByText('30/09/2026')).toBeInTheDocument();
   });
 

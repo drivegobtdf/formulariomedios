@@ -1,7 +1,7 @@
 import React from 'react';
 import { MotionGraphicsData, ContactoFormState } from '../../types/form';
 import { AsesoramientoCard } from './AsesoramientoCard';
-import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
+import { ValidationErrors, getUshuaiaTomorrowDateString } from '../../validation/formValidation';
 
 interface MotionGraphicsFormProps {
   data: MotionGraphicsData;
@@ -125,7 +125,7 @@ export const MotionGraphicsForm: React.FC<MotionGraphicsFormProps> = ({
               <input
                 type="date"
                 id="mg_fecha"
-                min={getLocalTodayDateString()}
+                min={getUshuaiaTomorrowDateString()}
                 className={`pedidos-input ${errors['motion.fecha_limite'] ? 'error' : ''}`}
                 value={data.fecha_limite || ''}
                 onChange={(e) => onChange({ fecha_limite: e.target.value })}

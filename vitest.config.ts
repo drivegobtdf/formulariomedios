@@ -11,6 +11,7 @@ export default defineConfig({
     include: [
       'pedidos-medios/frontend/src/**/*.{test,spec}.{ts,tsx}',
       'tests/unit/**/*.{test,spec}.{ts,tsx}',
+      'tests/integration/server-side-date-validation.test.ts',
     ],
   },
   resolve: {

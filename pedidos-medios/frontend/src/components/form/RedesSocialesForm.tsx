@@ -1,6 +1,6 @@
 import React from 'react';
 import { RedesSocialesData } from '../../types/form';
-import { ValidationErrors, getLocalTodayDateString } from '../../validation/formValidation';
+import { ValidationErrors, getUshuaiaTomorrowDateString } from '../../validation/formValidation';
 
 interface RedesSocialesFormProps {
   data: RedesSocialesData;
@@ -25,7 +25,7 @@ export const RedesSocialesForm: React.FC<RedesSocialesFormProps> = ({ data, onCh
         <input
           type="date"
           id="redes_fecha"
-          min={getLocalTodayDateString()}
+          min={getUshuaiaTomorrowDateString()}
           className={`pedidos-input ${errors['redes.fecha_sugerida'] ? 'error' : ''}`}
           value={data.fecha_sugerida || ''}
           onChange={(e) => onChange({ fecha_sugerida: e.target.value })}

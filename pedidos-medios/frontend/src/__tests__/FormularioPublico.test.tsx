@@ -6,7 +6,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { FormularioPublicoPage } from '../pages/FormularioPublicoPage';
-import { getLocalTodayDateString } from '../validation/formValidation';
+import {
+  getLocalTodayDateString,
+  getUshuaiaTomorrowDateString,
+  DEFAULT_NOT_TOMORROW_ERROR_MESSAGE,
+} from '../validation/formValidation';
 
 // Mock scrollTo
 window.scrollTo = vi.fn();
@@ -262,9 +266,9 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       expect(dateInput).toHaveClass('error');
       expect(dateInput).toHaveAttribute('aria-invalid', 'true');
 
-      // Seleccionar una fecha válida (hoy)
+      // Seleccionar una fecha válida (mañana)
       fireEvent.change(dateInput, {
-        target: { value: getLocalTodayDateString() },
+        target: { value: getUshuaiaTomorrowDateString() },
       });
 
       // El error debe desaparecer inmediatamente
@@ -303,33 +307,43 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       expect(textarea).toHaveAttribute('aria-invalid', 'false');
     });
 
-    it('Escenario G, H, I, J, K, L: Validación reactiva de fecha límite (ayer inválida, hoy y futura válidas, corrección reactiva)', async () => {
+    it('Escenario G, H, I, J, K, L: Validación reactiva de fecha límite (ayer y hoy inválidas, mañana y futura válidas, corrección reactiva)', async () => {
       const { nextBtn2 } = await setupStep2WithFlyer();
 
       const dateInput = screen.getByLabelText(/Fecha del evento\/actividad\/pieza/i);
       const todayStr = getLocalTodayDateString();
 
-      // Calcular fecha de ayer y mañana en base a fecha local
+      // Calcular fecha de ayer, mañana y pasado mañana en base a fecha local
       const now = new Date();
       const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
       const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const afterTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
       const yesterdayStr = getLocalTodayDateString(yesterday);
       const tomorrowStr = getLocalTodayDateString(tomorrow);
+      const afterTomorrowStr = getLocalTodayDateString(afterTomorrow);
 
       // Ingresar fecha de ayer (Escenario G)
       fireEvent.change(dateInput, { target: { value: yesterdayStr } });
       fireEvent.click(nextBtn2);
 
       expect(
-        screen.getByText('La fecha no puede ser anterior a hoy.')
+        screen.getByText(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE)
       ).toBeInTheDocument();
       expect(dateInput).toHaveClass('error');
       expect(dateInput).toHaveAttribute('aria-invalid', 'true');
 
-      // Escenario J: Cambiar a hoy -> desaparece error sin nuevo submit (Escenario H: hoy es válida)
+      // Ingresar fecha de hoy -> sigue siendo inválida
       fireEvent.change(dateInput, { target: { value: todayStr } });
       expect(
-        screen.queryByText('La fecha no puede ser anterior a hoy.')
+        screen.getByText(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE)
+      ).toBeInTheDocument();
+      expect(dateInput).toHaveClass('error');
+      expect(dateInput).toHaveAttribute('aria-invalid', 'true');
+
+      // Escenario J: Cambiar a mañana -> desaparece error sin nuevo submit (Escenario H: mañana es válida)
+      fireEvent.change(dateInput, { target: { value: tomorrowStr } });
+      expect(
+        screen.queryByText(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE)
       ).not.toBeInTheDocument();
       expect(dateInput).not.toHaveClass('error');
       expect(dateInput).toHaveAttribute('aria-invalid', 'false');
@@ -338,13 +352,13 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       fireEvent.change(dateInput, { target: { value: yesterdayStr } });
       fireEvent.click(nextBtn2);
       expect(
-        screen.getByText('La fecha no puede ser anterior a hoy.')
+        screen.getByText(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE)
       ).toBeInTheDocument();
 
-      // Escenario K: Cambiar a fecha futura -> desaparece error sin nuevo submit (Escenario I: futura es válida)
-      fireEvent.change(dateInput, { target: { value: tomorrowStr } });
+      // Escenario K: Cambiar a fecha futura posterior -> desaparece error sin nuevo submit (Escenario I: futura es válida)
+      fireEvent.change(dateInput, { target: { value: afterTomorrowStr } });
       expect(
-        screen.queryByText('La fecha no puede ser anterior a hoy.')
+        screen.queryByText(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE)
       ).not.toBeInTheDocument();
       expect(dateInput).not.toHaveClass('error');
       expect(dateInput).toHaveAttribute('aria-invalid', 'false');
@@ -361,13 +375,13 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
 
       // Corregir todos los campos
       const textoPrueba = 'Texto completo del flyer institucional con datos oficiales.';
-      const todayStr = getLocalTodayDateString();
+      const tomorrowStr = getUshuaiaTomorrowDateString();
 
-      fireEvent.change(dateInput, { target: { value: todayStr } });
+      fireEvent.change(dateInput, { target: { value: tomorrowStr } });
       fireEvent.change(textarea, { target: { value: textoPrueba } });
 
       // Verificar que los valores se conservaron en los inputs (Escenario N)
-      expect(dateInput).toHaveValue(todayStr);
+      expect(dateInput).toHaveValue(tomorrowStr);
       expect(textarea).toHaveValue(textoPrueba);
 
       // Escenario M: Pulsar Continuar permite avanzar al Paso 3 normalmente
@@ -407,7 +421,7 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       // Completar Paso 2 con Flyer válido
       fireEvent.click(screen.getByRole('checkbox', { name: /Flyer para redes sociales/i }));
       fireEvent.change(screen.getByLabelText(/Fecha del evento\/actividad\/pieza/i), {
-        target: { value: getLocalTodayDateString() },
+        target: { value: getUshuaiaTomorrowDateString() },
       });
       fireEvent.change(screen.getByLabelText(/Texto y contenido que debe incluir el flyer/i), {
         target: { value: 'Texto de prueba para el flyer' },
@@ -571,7 +585,8 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
 
       const fechaInput = screen.getByLabelText(/Fecha del evento/i) as HTMLInputElement;
       const today = getLocalTodayDateString();
-      expect(fechaInput).toHaveAttribute('min', today);
+      const tomorrow = getUshuaiaTomorrowDateString();
+      expect(fechaInput).toHaveAttribute('min', tomorrow);
 
       // Completar otros campos obligatorios de Cobertura
       fireEvent.change(screen.getByLabelText(/Hora de inicio/i), { target: { value: '10:00' } });
@@ -581,21 +596,27 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       fireEvent.change(screen.getByLabelText(/¿Qué autoridades asistirán\?/i), { target: { value: 'Gobernador' } });
       fireEvent.change(screen.getByLabelText(/Requerimientos de cobertura/i), { target: { value: 'Cobertura fotográfica completa' } });
 
-      // Ingresar fecha pasada: 2026-09-13
+      // Ingresar fecha pasada (o de hoy): 2026-09-13 / today
       fireEvent.change(fechaInput, { target: { value: '2026-09-13' } });
 
       // Intentar avanzar al Paso 3
       const nextBtn2 = screen.getByRole('button', { name: /^Continuar$/i });
       fireEvent.click(nextBtn2);
 
-      // Debe mostrar error de fecha pasada
-      expect(screen.getByText('La fecha no puede ser anterior a hoy.')).toBeInTheDocument();
+      // Debe mostrar error de fecha anterior a mañana
+      expect(screen.getByText(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE)).toBeInTheDocument();
       expect(fechaInput).toHaveClass('error');
       expect(fechaInput).toHaveAttribute('aria-invalid', 'true');
 
-      // Corrección reactiva: cambiar a fecha de hoy -> el error desaparece de inmediato sin presionar Continuar
+      // Ingresar fecha de hoy -> sigue siendo inválida
       fireEvent.change(fechaInput, { target: { value: today } });
-      expect(screen.queryByText('La fecha no puede ser anterior a hoy.')).not.toBeInTheDocument();
+      expect(screen.getByText(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE)).toBeInTheDocument();
+      expect(fechaInput).toHaveClass('error');
+      expect(fechaInput).toHaveAttribute('aria-invalid', 'true');
+
+      // Corrección reactiva: cambiar a fecha de mañana -> el error desaparece de inmediato sin presionar Continuar
+      fireEvent.change(fechaInput, { target: { value: tomorrow } });
+      expect(screen.queryByText(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE)).not.toBeInTheDocument();
       expect(fechaInput).not.toHaveClass('error');
       expect(fechaInput).toHaveAttribute('aria-invalid', 'false');
 
@@ -606,7 +627,7 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       ).toBeInTheDocument();
     });
 
-    it('Todos los servicios con fechas operativas deben incluir el atributo min con la fecha local de hoy', async () => {
+    it('Todos los servicios con fechas operativas deben incluir el atributo min con la fecha local de mañana', async () => {
       render(<FormularioPublicoPage initialShowWizard={true} />);
 
       // Completar Paso 1 seleccionando todos los servicios con campos de fecha
@@ -628,34 +649,34 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       fireEvent.click(screen.getByRole('checkbox', { name: /Flyer para redes sociales/i }));
       fireEvent.click(screen.getByRole('checkbox', { name: /Invitación digital/i }));
 
-      const today = getLocalTodayDateString();
+      const tomorrow = getUshuaiaTomorrowDateString();
 
       // Verificar Flyer e Invitación fecha
       const disenoFechas = screen.getAllByLabelText(/Fecha del evento\/actividad\/pieza/i);
       expect(disenoFechas.length).toBeGreaterThanOrEqual(2);
       for (const input of disenoFechas) {
-        expect(input).toHaveAttribute('min', today);
+        expect(input).toHaveAttribute('min', tomorrow);
       }
 
       // Verificar Redes Sociales fecha sugerida
-      expect(screen.getByLabelText(/Fecha sugerida de publicación/i)).toHaveAttribute('min', today);
+      expect(screen.getByLabelText(/Fecha sugerida de publicación/i)).toHaveAttribute('min', tomorrow);
 
       // En Producción Audiovisual, tildar grabación
       fireEvent.click(screen.getByLabelText(/Sí, requiere grabación/i));
-      expect(screen.getByLabelText(/Fecha de grabación/i)).toHaveAttribute('min', today);
+      expect(screen.getByLabelText(/Fecha de grabación/i)).toHaveAttribute('min', tomorrow);
 
       // Verificar Producción Audiovisual y Motion Graphics fecha límite
       const fechaEntregaInputs = screen.getAllByLabelText(/Fecha límite de entrega/i);
       expect(fechaEntregaInputs.length).toBeGreaterThanOrEqual(2);
       for (const input of fechaEntregaInputs) {
-        expect(input).toHaveAttribute('min', today);
+        expect(input).toHaveAttribute('min', tomorrow);
       }
 
       // Verificar Streaming fecha
-      expect(screen.getByLabelText(/^Fecha$/i)).toHaveAttribute('min', today);
+      expect(screen.getByLabelText(/^Fecha$/i)).toHaveAttribute('min', tomorrow);
 
       // Verificar Sitios Web fecha límite
-      expect(screen.getByLabelText(/Fecha límite de puesta en línea/i)).toHaveAttribute('min', today);
+      expect(screen.getByLabelText(/Fecha límite de puesta en línea/i)).toHaveAttribute('min', tomorrow);
     });
 
     it('Cobertura de Eventos: Validación completa del selector "¿Asisten autoridades?" (8 reglas)', async () => {
@@ -671,8 +692,8 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
 
       // En Paso 2 - Cobertura de Eventos
-      const today = getLocalTodayDateString();
-      fireEvent.change(screen.getByLabelText(/Fecha del evento/i), { target: { value: today } });
+      const tomorrow = getUshuaiaTomorrowDateString();
+      fireEvent.change(screen.getByLabelText(/Fecha del evento/i), { target: { value: tomorrow } });
       fireEvent.change(screen.getByLabelText(/Hora de inicio/i), { target: { value: '11:00' } });
       fireEvent.change(screen.getByLabelText(/Lugar \/ Dirección/i), { target: { value: 'Salón Malvinas' } });
       fireEvent.change(screen.getByLabelText(/Ciudad/i), { target: { value: 'Ushuaia' } });
@@ -736,9 +757,9 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
       expect(screen.getByRole('heading', { level: 2, name: /4\. Revisá y enviá/i })).toBeInTheDocument();
 
-      // En Paso 4: muestra Autoridades con el valor y NO muestra la clave técnica asiste_autoridades
+      // En Paso 4: muestra Autoridades asistentes con el valor y NO muestra la clave técnica asiste_autoridades
       expect(screen.queryByText(/asiste_autoridades/i)).not.toBeInTheDocument();
-      expect(screen.getByText('Autoridades:')).toBeInTheDocument();
+      expect(screen.getByText('Autoridades asistentes:')).toBeInTheDocument();
       expect(screen.getByText('Gobernador y Ministros')).toBeInTheDocument();
     });
   });
