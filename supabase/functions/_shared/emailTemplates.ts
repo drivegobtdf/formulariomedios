@@ -598,11 +598,27 @@ export function renderEmail(
     // -------------------------------------------------------------------------
     case 'pedido_nuevo_admin':
     case 'admin_submission_alert': {
-      const pedidos = Array.isArray(payload.pedidos) ? payload.pedidos : [];
+      const pedidos =
+        Array.isArray(payload.pedidos) && payload.pedidos.length > 0
+          ? payload.pedidos
+          : payload.pedido_visible
+          ? [
+              {
+                id: payload.pedido_id,
+                pedido_visible: payload.pedido_visible,
+                categoria: payload.categoria,
+                tipo: payload.tipo,
+                fecha_limite: payload.fecha_limite,
+              },
+            ]
+          : [];
       const count = pedidos.length || 1;
       const codes = pedidos.map((p: any) => p.pedido_visible).filter(Boolean).join(', ');
+      const singlePedidoId = payload.pedido_id || (pedidos.length === 1 ? pedidos[0].id : null);
+      const gestionUrl = singlePedidoId
+        ? `${cleanAppUrl}/gestion/pedidos/${singlePedidoId}`
+        : `${cleanAppUrl}/gestion`;
       const subject = `[PEDIDOS Admin] Nueva solicitud ingresada: ${codes || 'Nuevos Requerimientos'}`;
-      const gestionUrl = `${cleanAppUrl}/gestion`;
       const solicitante = escapeHtml(
         payload.solicitante ||
           payload.solicitante_nombre ||
@@ -661,7 +677,7 @@ export function renderEmail(
         </table>
         <div style="text-align: center; margin: 28px 0;">
           <a href="${gestionUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
-            Ir al Panel de Gestión
+            ${singlePedidoId ? 'Ver Detalle del Pedido' : 'Ir al Panel de Gestión'}
           </a>
         </div>
       `;

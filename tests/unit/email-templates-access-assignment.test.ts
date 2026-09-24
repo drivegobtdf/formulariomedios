@@ -92,4 +92,48 @@ describe('Email Templates — Acceso Aprobado, Asignación y Alerta a Administra
     expect(rendered.html).toContain(`${appUrl}/gestion`);
     expect(rendered.text).toContain(`${appUrl}/gestion`);
   });
+
+  it('4. renderPedidoNuevoAdminEmail genera correo individual por PED con enlace directo a /gestion/pedidos/:id', () => {
+    const payload = {
+      envio_id: 'e0000000-0000-0000-0000-000000000004',
+      pedido_id: 'p0000000-0000-0000-0000-000000000099',
+      pedido_visible: 'PED-2026-D000199',
+      categoria: 'Diseño Gráfico',
+      tipo: 'Flyer para redes sociales',
+      fecha_limite: '2026-11-05',
+      nombre_apellido: 'Esteban Administrador',
+      solicitante: 'Laura Solicitante',
+      area_solicitante: 'Ministerio de Economía',
+      correo: 'laura@tdf.gob.ar',
+    };
+
+    const rendered = renderPedidoNuevoAdminEmail(payload, appUrl);
+
+    expect(rendered.subject).toContain('[PEDIDOS Admin] Nueva solicitud ingresada: PED-2026-D000199');
+    expect(rendered.n8nTipo).toBe('pedido_nuevo_admin');
+    expect(rendered.html).toContain('Esteban Administrador');
+    expect(rendered.html).toContain('PED-2026-D000199');
+    expect(rendered.html).toContain('Diseño Gráfico');
+    expect(rendered.html).toContain('Flyer para redes sociales');
+    expect(rendered.html).toContain('Ministerio de Economía');
+    expect(rendered.html).toContain(`${appUrl}/gestion/pedidos/p0000000-0000-0000-0000-000000000099`);
+    expect(rendered.text).toContain(`${appUrl}/gestion/pedidos/p0000000-0000-0000-0000-000000000099`);
+  });
+
+  it('5. renderAccesoAprobadoEmail mapea canónicamente el rol administrador a Administrador', () => {
+    const payload = {
+      user_id: 'u0000000-0000-0000-0000-000000000005',
+      nombre_apellido: 'Carlos Boss',
+      nombre: 'Carlos',
+      apellido: 'Boss',
+      nombre_usuario: 'carlos.boss',
+      app_role: 'administrador',
+    };
+
+    const rendered = renderAccesoAprobadoEmail(payload, appUrl);
+
+    expect(rendered.html).toContain('Administrador');
+    expect(rendered.text).toContain('Administrador');
+  });
 });
+

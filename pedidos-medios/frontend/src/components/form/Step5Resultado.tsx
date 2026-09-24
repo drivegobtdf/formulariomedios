@@ -73,11 +73,14 @@ export const Step5Resultado: React.FC<Step5ResultadoProps> = ({
         <div className="pedidos-result-info-box pedidos-diseno-notice" style={{ background: '#f0f9ff', borderColor: '#bae6fd', borderLeft: '4px solid #0284c7' }}>
           <div className="pedidos-result-info-icon" style={{ color: '#0284c7' }}>ℹ️</div>
           <div>
-            <h4 style={{ color: '#0369a1', margin: '0 0 0.4rem 0' }}>Recordatorio de tiempos para pedidos de Diseño Gráfico</h4>
-            <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#0f172a', fontSize: '0.9rem', lineHeight: 1.5 }}>
-              <li><strong>Plazos de entrega:</strong> de 3 a 5 días hábiles a partir de la confirmación de la solicitud.</li>
-              <li><strong>Pedidos urgentes:</strong> deben solicitarse con un mínimo de 48 horas de anticipación.</li>
+            <h4 style={{ color: '#0369a1', margin: '0 0 0.5rem 0' }}>Recordatorio de tiempos para los pedidos del área de diseño gráfico</h4>
+            <ul style={{ margin: '0 0 0.5rem 0', paddingLeft: '1.25rem', color: '#0f172a', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              <li><strong>5 días hábiles para piezas simples:</strong> Flyers RRSS, efemérides, banners y tarjetas.</li>
+              <li><strong>15 a 30 días para piezas complejas:</strong> afiches, cartelería, campañas y piezas impresas.</li>
             </ul>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569', fontStyle: 'italic' }}>
+              Estos tiempos pueden variar por imprevistos en la gestión de pedidos.
+            </p>
           </div>
         </div>
       )}
