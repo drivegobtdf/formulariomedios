@@ -90,7 +90,7 @@ export const DISENO_PIEZAS_CONFIG: DisenoPiezaMeta[] = [
   {
     slug: 'flyer_rrss',
     nombre: 'Flyer para redes sociales',
-    descripcion: 'Formato, texto general y fecha límite de publicación.',
+    descripcion: 'Texto o contenido a incluir y fecha del evento o actividad.',
   },
   {
     slug: 'invitacion_digital',

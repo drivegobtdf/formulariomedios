@@ -399,7 +399,8 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       // Compatibility aliases
       expect(getLocalTodayDateString(localLateDate)).toBe('2026-09-14');
       expect(isDateBeforeToday('2026-09-13', localLateDate)).toBe(true);
-      expect(isDateBeforeToday('2026-09-14', localLateDate)).toBe(false);
+      expect(isDateBeforeToday('2026-09-14', localLateDate)).toBe(true);
+      expect(isDateBeforeToday('2026-09-15', localLateDate)).toBe(false);
       expect(DEFAULT_PAST_DATE_ERROR_MESSAGE).toBe(DEFAULT_NOT_TOMORROW_ERROR_MESSAGE);
     });
 

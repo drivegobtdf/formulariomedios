@@ -25,6 +25,8 @@ import {
   validateStep2,
   validateStep3,
   validateStep4,
+  validateFechaLimite,
+  validateNotPastDate,
   revalidateErrors,
   ValidationErrors,
 } from '../validation/formValidation';
@@ -299,9 +301,17 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
         },
       };
       setErrors((prevErrors) => {
-        if (Object.keys(prevErrors).length === 0) return prevErrors;
         const freshErrors = validateStep2(nextState);
-        return revalidateErrors(prevErrors, freshErrors);
+        const nextErrors = revalidateErrors(prevErrors, freshErrors);
+        if (data.fecha_limite !== undefined) {
+          const dateErr = data.fecha_limite ? validateFechaLimite(data.fecha_limite) : null;
+          if (dateErr) {
+            nextErrors['flyer_rrss.fecha_limite'] = dateErr;
+          } else {
+            delete nextErrors['flyer_rrss.fecha_limite'];
+          }
+        }
+        return nextErrors;
       });
       return nextState;
     });
@@ -327,9 +337,17 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
         },
       };
       setErrors((prevErrors) => {
-        if (Object.keys(prevErrors).length === 0) return prevErrors;
         const freshErrors = validateStep2(nextState);
-        return revalidateErrors(prevErrors, freshErrors);
+        const nextErrors = revalidateErrors(prevErrors, freshErrors);
+        if (data.fecha !== undefined) {
+          const dateErr = data.fecha ? validateFechaLimite(data.fecha) : null;
+          if (dateErr) {
+            nextErrors['invitacion_digital.fecha'] = dateErr;
+          } else {
+            delete nextErrors['invitacion_digital.fecha'];
+          }
+        }
+        return nextErrors;
       });
       return nextState;
     });
@@ -348,9 +366,17 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
         },
       };
       setErrors((prevErrors) => {
-        if (Object.keys(prevErrors).length === 0) return prevErrors;
         const freshErrors = validateStep2(nextState);
-        return revalidateErrors(prevErrors, freshErrors);
+        const nextErrors = revalidateErrors(prevErrors, freshErrors);
+        if (data.fecha !== undefined) {
+          const dateErr = data.fecha ? validateNotPastDate(data.fecha, { required: false }) : null;
+          if (dateErr) {
+            nextErrors['certificado.fecha'] = dateErr;
+          } else {
+            delete nextErrors['certificado.fecha'];
+          }
+        }
+        return nextErrors;
       });
       return nextState;
     });
@@ -369,9 +395,17 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
         },
       };
       setErrors((prevErrors) => {
-        if (Object.keys(prevErrors).length === 0) return prevErrors;
         const freshErrors = validateStep2(nextState);
-        return revalidateErrors(prevErrors, freshErrors);
+        const nextErrors = revalidateErrors(prevErrors, freshErrors);
+        if (data.fecha !== undefined) {
+          const dateErr = data.fecha ? validateNotPastDate(data.fecha, { required: false }) : null;
+          if (dateErr) {
+            nextErrors['otros_diseno.fecha'] = dateErr;
+          } else {
+            delete nextErrors['otros_diseno.fecha'];
+          }
+        }
+        return nextErrors;
       });
       return nextState;
     });
@@ -384,9 +418,17 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
         cobertura_data: { ...(prev.cobertura_data || { fecha: '', hora_inicio: '', lugar: '', ciudad: '', asiste_autoridades: '', autoridades: '', requerimientos: '' }), ...data },
       };
       setErrors((prevErrors) => {
-        if (Object.keys(prevErrors).length === 0) return prevErrors;
         const freshErrors = validateStep2(nextState);
-        return revalidateErrors(prevErrors, freshErrors);
+        const nextErrors = revalidateErrors(prevErrors, freshErrors);
+        if (data.fecha !== undefined) {
+          const dateErr = data.fecha ? validateFechaLimite(data.fecha, 'Indicá la fecha del evento.') : null;
+          if (dateErr) {
+            nextErrors['cobertura.fecha'] = dateErr;
+          } else {
+            delete nextErrors['cobertura.fecha'];
+          }
+        }
+        return nextErrors;
       });
       return nextState;
     });
@@ -414,9 +456,17 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
         redes_data: { ...(prev.redes_data || { fecha_sugerida: '', texto_copy: '' }), ...data },
       };
       setErrors((prevErrors) => {
-        if (Object.keys(prevErrors).length === 0) return prevErrors;
         const freshErrors = validateStep2(nextState);
-        return revalidateErrors(prevErrors, freshErrors);
+        const nextErrors = revalidateErrors(prevErrors, freshErrors);
+        if (data.fecha_sugerida !== undefined) {
+          const dateErr = data.fecha_sugerida ? validateNotPastDate(data.fecha_sugerida, { required: false }) : null;
+          if (dateErr) {
+            nextErrors['redes.fecha_sugerida'] = dateErr;
+          } else {
+            delete nextErrors['redes.fecha_sugerida'];
+          }
+        }
+        return nextErrors;
       });
       return nextState;
     });
@@ -429,9 +479,25 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
         audiovisual_data: { ...(prev.audiovisual_data || { requiere_asesoramiento: false }), ...data },
       };
       setErrors((prevErrors) => {
-        if (Object.keys(prevErrors).length === 0) return prevErrors;
         const freshErrors = validateStep2(nextState);
-        return revalidateErrors(prevErrors, freshErrors);
+        const nextErrors = revalidateErrors(prevErrors, freshErrors);
+        if (data.fecha_limite !== undefined) {
+          const dateErr = data.fecha_limite ? validateFechaLimite(data.fecha_limite, 'Indicá la fecha límite de entrega.') : null;
+          if (dateErr) {
+            nextErrors['audiovisual.fecha_limite'] = dateErr;
+          } else {
+            delete nextErrors['audiovisual.fecha_limite'];
+          }
+        }
+        if (data.grabacion_fecha !== undefined) {
+          const dateErr = data.grabacion_fecha ? validateNotPastDate(data.grabacion_fecha, { required: false }) : null;
+          if (dateErr) {
+            nextErrors['audiovisual.grabacion_fecha'] = dateErr;
+          } else {
+            delete nextErrors['audiovisual.grabacion_fecha'];
+          }
+        }
+        return nextErrors;
       });
       return nextState;
     });
@@ -444,9 +510,17 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
         motion_data: { ...(prev.motion_data || { requiere_asesoramiento: false }), ...data },
       };
       setErrors((prevErrors) => {
-        if (Object.keys(prevErrors).length === 0) return prevErrors;
         const freshErrors = validateStep2(nextState);
-        return revalidateErrors(prevErrors, freshErrors);
+        const nextErrors = revalidateErrors(prevErrors, freshErrors);
+        if (data.fecha_limite !== undefined) {
+          const dateErr = data.fecha_limite ? validateFechaLimite(data.fecha_limite, 'Indicá la fecha límite de entrega.') : null;
+          if (dateErr) {
+            nextErrors['motion.fecha_limite'] = dateErr;
+          } else {
+            delete nextErrors['motion.fecha_limite'];
+          }
+        }
+        return nextErrors;
       });
       return nextState;
     });
@@ -459,9 +533,17 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
         streaming_data: { ...(prev.streaming_data || { requiere_asesoramiento: false }), ...data },
       };
       setErrors((prevErrors) => {
-        if (Object.keys(prevErrors).length === 0) return prevErrors;
         const freshErrors = validateStep2(nextState);
-        return revalidateErrors(prevErrors, freshErrors);
+        const nextErrors = revalidateErrors(prevErrors, freshErrors);
+        if (data.fecha !== undefined) {
+          const dateErr = data.fecha ? validateFechaLimite(data.fecha, 'Indicá la fecha de la transmisión.') : null;
+          if (dateErr) {
+            nextErrors['streaming.fecha'] = dateErr;
+          } else {
+            delete nextErrors['streaming.fecha'];
+          }
+        }
+        return nextErrors;
       });
       return nextState;
     });
@@ -474,9 +556,17 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
         web_data: { ...(prev.web_data || { requiere_asesoramiento: false }), ...data },
       };
       setErrors((prevErrors) => {
-        if (Object.keys(prevErrors).length === 0) return prevErrors;
         const freshErrors = validateStep2(nextState);
-        return revalidateErrors(prevErrors, freshErrors);
+        const nextErrors = revalidateErrors(prevErrors, freshErrors);
+        if (data.fecha_limite !== undefined) {
+          const dateErr = data.fecha_limite ? validateFechaLimite(data.fecha_limite, 'Indicá la fecha límite de publicación.') : null;
+          if (dateErr) {
+            nextErrors['web.fecha_limite'] = dateErr;
+          } else {
+            delete nextErrors['web.fecha_limite'];
+          }
+        }
+        return nextErrors;
       });
       return nextState;
     });

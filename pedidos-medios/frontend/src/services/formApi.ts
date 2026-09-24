@@ -53,7 +53,7 @@ export async function prepareSubmissionSession(submissionKey: string): Promise<S
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `Error al inicializar sesión (${res.status})`);
+    throw new Error(errorData.message || errorData.error || `Error al inicializar sesión (${res.status})`);
   }
 
   return res.json();
@@ -514,7 +514,7 @@ export async function submitMultiPedFormulario(
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || errorData.message || `Error al procesar la solicitud (${res.status})`);
+    throw new Error(errorData.message || errorData.error || `Error al procesar la solicitud (${res.status})`);
   }
 
   const rawJson = await res.json();
