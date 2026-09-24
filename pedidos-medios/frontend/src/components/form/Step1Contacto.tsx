@@ -5,10 +5,7 @@ import {
   CATEGORIAS_CONFIG,
 } from '../../types/form';
 import { ValidationErrors } from '../../validation/formValidation';
-import {
-  getCountryFlagSvg,
-  validateWhatsAppPhone,
-} from '../../utils/phoneUtils';
+import { validateWhatsAppPhone } from '../../utils/phoneUtils';
 
 interface Step1ContactoProps {
   contacto: ContactoFormState;
@@ -84,8 +81,7 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '0.4rem',
-                  padding: '0.6rem 0.75rem',
+                  padding: '0.6rem 0.85rem',
                   backgroundColor: '#f1f5f9',
                   border: '1px solid #cbd5e1',
                   borderRight: 'none',
@@ -97,11 +93,6 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
                   userSelect: 'none',
                 }}
               >
-                <span
-                  className="pedidos-country-flag-icon"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: getCountryFlagSvg('AR') }}
-                />
                 <span>Argentina (+54 9)</span>
               </div>
               <div className="pedidos-phone-number-wrapper" style={{ flex: 1 }}>

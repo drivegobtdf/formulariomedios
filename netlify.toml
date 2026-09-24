@@ -6,6 +6,7 @@
 [build]
   command = "npm run build:standalone"
   publish = "pedidos-standalone/web"
+  ignore = "[ \"$BRANCH\" = 'cloudflare-pages-production' ] || [ \"$HEAD\" = 'cloudflare-pages-production' ]"
 
 [build.environment]
   NODE_VERSION = "22"
