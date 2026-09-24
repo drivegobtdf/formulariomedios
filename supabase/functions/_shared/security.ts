@@ -44,7 +44,12 @@ export function getCorsHeaders(req: Request): Record<string, string> {
     .map((o) => o.trim().toLowerCase())
     .filter(Boolean);
 
-  const isAllowed = Boolean(origin && allowedOrigins.includes(origin.toLowerCase()));
+  const isAllowed = Boolean(
+    origin &&
+      (allowedOrigins.includes(origin.toLowerCase()) ||
+        /^https:\/\/([a-z0-9_-]+\.)?formulariomedios\.pages\.dev$/i.test(origin) ||
+        origin.toLowerCase().endsWith('.tierradelfuego.gob.ar'))
+  );
 
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
