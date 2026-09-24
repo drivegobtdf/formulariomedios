@@ -470,7 +470,214 @@ export function renderEmail(
     }
 
     // -------------------------------------------------------------------------
-    // 8. Cambio de Estado General — C04
+    // 8. Solicitud de Acceso Aprobada (Personal Interno)
+    // -------------------------------------------------------------------------
+    case 'acceso_aprobado':
+    case 'user_access_approved':
+    case 'user_approved': {
+      const subject = `[PEDIDOS] Tu solicitud de acceso operativo ha sido aprobada`;
+      const loginUrl = `${cleanAppUrl}/login`;
+      const rolDisplay = payload.app_role || payload.rol || 'equipo';
+      const rolLabel =
+        rolDisplay === 'administrador'
+          ? 'Administrador'
+          : rolDisplay === 'observador'
+          ? 'Observador'
+          : 'Equipo Operativo';
+      const usernameSafe = escapeHtml(payload.nombre_usuario || payload.username || '');
+
+      const contentHtml = `
+        <h2 style="margin: 0 0 16px 0; color: #059669; font-size: 18px;">
+          ✓ Solicitud de Acceso Aprobada
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
+          Estimado/a <strong>${nombreSafe}</strong>,
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+          Te informamos que tu solicitud de acceso al sistema <strong>PEDIDOS</strong> ha sido aprobada por la administración.
+        </p>
+        <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; padding: 14px 18px; margin: 18px 0; border-radius: 6px;">
+          <p style="margin: 0 0 6px 0; font-size: 13px; color: #166534;">
+            <strong>Usuario:</strong> ${usernameSafe ? `@${usernameSafe}` : 'Tu cuenta institucional'}
+          </p>
+          <p style="margin: 0; font-size: 13px; color: #166534;">
+            <strong>Rol asignado:</strong> ${escapeHtml(rolLabel)}
+          </p>
+        </div>
+        <p style="margin: 0 0 20px 0; font-size: 14px; color: ${BRAND_MUTED}; line-height: 1.5;">
+          Ya podés ingresar al Panel de Gestión utilizando tu correo electrónico y tu contraseña personal.
+        </p>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${loginUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Iniciar Sesión
+          </a>
+        </div>
+      `;
+
+      const text = `SOLICITUD DE ACCESO APROBADA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nTu solicitud de acceso al sistema PEDIDOS ha sido aprobada.\nRol asignado: ${rolLabel}\n\nPodés iniciar sesión en:\n${loginUrl}\n`;
+
+      return {
+        subject,
+        html: wrapHtmlLayout('Acceso Aprobado', contentHtml),
+        text,
+        n8nTipo: 'acceso_aprobado',
+      };
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. Pedido Asignado a Operador / Responsable
+    // -------------------------------------------------------------------------
+    case 'pedido_asignado':
+    case 'pedido_assigned':
+    case 'assignment_notification': {
+      const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
+      const subject = `[PEDIDOS] Te fue asignado el pedido: ${payload.pedido_visible || 'PED'}`;
+      const pedidoId = payload.pedido_id ? encodeURIComponent(String(payload.pedido_id)) : '';
+      const gestionUrl = pedidoId ? `${cleanAppUrl}/gestion/pedidos/${pedidoId}` : `${cleanAppUrl}/gestion`;
+      const catSafe = escapeHtml(payload.categoria || 'Servicio');
+      const tipSafe = escapeHtml(payload.tipo || 'General');
+      const areaSafe = escapeHtml(payload.area_solicitante || 'Gobierno');
+      const solicitanteSafe = escapeHtml(payload.solicitante_nombre || payload.nombre_solicitante || payload.nombre_apellido || 'Solicitante');
+      const fechaLimite = payload.fecha_limite ? escapeHtml(String(payload.fecha_limite)) : 'Sin especificar';
+      const motivoAsignacion = payload.motivo ? escapeHtml(String(payload.motivo)) : '';
+
+      const contentHtml = `
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
+          Asignación de Pedido de Trabajo
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
+          Hola <strong>${nombreSafe}</strong>,
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+          Se te ha asignado como responsable del pedido <strong>${pedVisible}</strong>.
+        </p>
+        <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin: 16px 0; font-size: 13px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; overflow: hidden;">
+          <tbody>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569; width: 35%;">Código PED:</td>
+              <td style="padding: 10px 14px; font-weight: 700; color: ${BRAND_PRIMARY};">${pedVisible}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569;">Categoría / Tipo:</td>
+              <td style="padding: 10px 14px;">${catSafe} — ${tipSafe}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569;">Área Solicitante:</td>
+              <td style="padding: 10px 14px;">${areaSafe} (${solicitanteSafe})</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569;">Fecha Requerida:</td>
+              <td style="padding: 10px 14px;">${fechaLimite}</td>
+            </tr>
+          </tbody>
+        </table>
+        ${motivoAsignacion ? `
+          <div style="background-color: #FEF3C7; border-left: 4px solid ${BRAND_WARNING}; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
+            <p style="margin: 0; font-size: 13px; color: #78350F;"><strong>Nota de asignación:</strong> ${motivoAsignacion}</p>
+          </div>
+        ` : ''}
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${gestionUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Ver Pedido en Gestión
+          </a>
+        </div>
+      `;
+
+      const text = `ASIGNACIÓN DE PEDIDO\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nHola ${rawNombre},\nSe te ha asignado como responsable del pedido ${payload.pedido_visible || 'PED'}.\n\n* Código: ${payload.pedido_visible || 'PED'}\n* Categoría: ${payload.categoria || ''} - ${payload.tipo || ''}\n* Área solicitante: ${payload.area_solicitante || ''}\n* Fecha requerida: ${payload.fecha_limite || 'Sin especificar'}\n\nIngresá al pedido en:\n${gestionUrl}\n`;
+
+      return {
+        subject,
+        html: wrapHtmlLayout('Asignación de Pedido', contentHtml),
+        text,
+        n8nTipo: 'pedido_asignado',
+      };
+    }
+
+    // -------------------------------------------------------------------------
+    // 10. Alerta a Administradores de Nueva Solicitud Ingresada
+    // -------------------------------------------------------------------------
+    case 'pedido_nuevo_admin':
+    case 'admin_submission_alert': {
+      const pedidos = Array.isArray(payload.pedidos) ? payload.pedidos : [];
+      const count = pedidos.length || 1;
+      const codes = pedidos.map((p: any) => p.pedido_visible).filter(Boolean).join(', ');
+      const subject = `[PEDIDOS Admin] Nueva solicitud ingresada: ${codes || 'Nuevos Requerimientos'}`;
+      const gestionUrl = `${cleanAppUrl}/gestion`;
+      const solicitante = escapeHtml(
+        payload.solicitante ||
+          payload.solicitante_nombre ||
+          payload.nombre_solicitante ||
+          payload.nombre_apellido ||
+          'Solicitante'
+      );
+      const area = escapeHtml(payload.area_solicitante || 'Gobierno');
+      const correo = escapeHtml(payload.correo || '');
+
+      let rowsHtml = '';
+      let rowsText = '';
+
+      for (const p of pedidos) {
+        const pedVis = escapeHtml(p.pedido_visible || 'N/D');
+        const cat = escapeHtml(p.categoria || 'Servicio');
+        const tip = escapeHtml(p.tipo || 'General');
+        const fechaLim = p.fecha_limite ? escapeHtml(String(p.fecha_limite)) : '-';
+
+        rowsHtml += `
+          <tr style="border-bottom: 1px solid #E5E7EB;">
+            <td style="padding: 10px 10px; font-weight: bold; color: ${BRAND_PRIMARY};">${pedVis}</td>
+            <td style="padding: 10px 10px;">${cat}</td>
+            <td style="padding: 10px 10px;">${tip}</td>
+            <td style="padding: 10px 10px; color: #4B5563;">${fechaLim}</td>
+          </tr>`;
+        rowsText += `* ${p.pedido_visible || 'N/D'} | ${p.categoria || ''} - ${p.tipo || ''} (Fecha: ${p.fecha_limite || '-'})\n`;
+      }
+
+      const contentHtml = `
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
+          Nueva Solicitud Ingresada al Sistema
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
+          Estimado/a Administrador/a <strong>${nombreSafe}</strong>,
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+          Se ha recibido una nueva solicitud pública con <strong>${count} requerimiento(s)</strong>:
+        </p>
+        <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; padding: 12px 16px; margin: 12px 0 20px 0; border-radius: 6px; font-size: 13px;">
+          <p style="margin: 0 0 4px 0;"><strong>Solicitante:</strong> ${solicitante} (${correo})</p>
+          <p style="margin: 0;"><strong>Área / Dependencia:</strong> ${area}</p>
+        </div>
+        <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin-bottom: 24px; font-size: 13px;">
+          <thead>
+            <tr style="background-color: #F3F4F6; text-align: left;">
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Código PED</th>
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Categoría</th>
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Tipo</th>
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Fecha Límite</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${gestionUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Ir al Panel de Gestión
+          </a>
+        </div>
+      `;
+
+      const text = `NUEVA SOLICITUD INGRESADA (ADMIN)\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a Administrador/a ${rawNombre},\nSe recibió una nueva solicitud de ${solicitante} (${area}, ${payload.correo || ''}) con ${count} requerimiento(s):\n\n${rowsText}\nPanel de gestión:\n${gestionUrl}\n`;
+
+      return {
+        subject,
+        html: wrapHtmlLayout('Nueva Solicitud Ingresada', contentHtml),
+        text,
+        n8nTipo: 'pedido_nuevo_admin',
+      };
+    }
+
+    // -------------------------------------------------------------------------
+    // 11. Cambio de Estado General — C04
     // -------------------------------------------------------------------------
     default: {
       const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
@@ -538,4 +745,17 @@ export function renderEnProcesoEmail(payload: Record<string, any>, appBaseUrl?: 
   return renderEmail('en_proceso', payload, appBaseUrl);
 }
 
+export function renderAccesoAprobadoEmail(payload: Record<string, any>, appBaseUrl?: string): RenderedEmail {
+  return renderEmail('acceso_aprobado', payload, appBaseUrl);
+}
+
+export function renderPedidoAsignadoEmail(payload: Record<string, any>, appBaseUrl?: string): RenderedEmail {
+  return renderEmail('pedido_asignado', payload, appBaseUrl);
+}
+
+export function renderPedidoNuevoAdminEmail(payload: Record<string, any>, appBaseUrl?: string): RenderedEmail {
+  return renderEmail('pedido_nuevo_admin', payload, appBaseUrl);
+}
+
 export const renderEmailForCommunication = renderEmail;
+

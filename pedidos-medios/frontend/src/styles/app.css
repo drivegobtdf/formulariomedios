@@ -1350,9 +1350,19 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 1rem;
+  margin-top: 1.5rem;
   gap: 1rem;
   flex-wrap: wrap;
+}
+
+.pedidos-app .pedidos-step-actions > :last-child {
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .pedidos-app .pedidos-step-actions {
+    gap: 0.75rem;
+  }
 }
 
 .pedidos-app .pedidos-btn {

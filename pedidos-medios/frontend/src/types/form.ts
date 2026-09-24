@@ -123,27 +123,31 @@ export interface ContactoFormState {
 // -----------------------------------------------------------------------------
 
 export interface FlyerRrssData {
-  formato: string;
   texto: string;
   fecha_limite: string;
+  formato?: string;
 }
 
 export interface InvitacionDigitalData {
-  nombre_evento: string;
   fecha: string;
-  hora: string;
-  lugar: string;
-  modalidad: 'Presencial' | 'Virtual' | 'Híbrida' | '';
   programa: string;
+  especificaciones?: string;
+  nombre_evento?: string;
+  hora?: string;
+  lugar?: string;
+  modalidad?: 'Presencial' | 'Virtual' | 'Híbrida' | '';
 }
 
 export interface CertificadoData {
   nombre_actividad: string;
   firmantes: string;
+  fecha?: string;
   destinatarios: string;
+  especificaciones?: string;
 }
 
 export interface OtrosDisenoData {
+  fecha?: string;
   descripcion: string;
   medidas_soporte: string;
 }

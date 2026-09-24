@@ -25,7 +25,7 @@ describe('App Component', () => {
     expect(screen.getByText(/Seguí el avance/i)).toBeInTheDocument();
     expect(screen.getByText(/Recibí el material/i)).toBeInTheDocument();
 
-    const startBtn = screen.getByRole('button', { name: /Nueva solicitud/i });
+    const startBtn = screen.getByRole('link', { name: /Nueva solicitud/i });
     expect(startBtn).toBeInTheDocument();
 
     // No debe mostrar los campos del formulario antes de pulsar el CTA

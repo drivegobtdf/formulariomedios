@@ -79,48 +79,23 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
             <span className="pedidos-badge-pill">Pieza: Flyer para redes sociales</span>
           </legend>
 
-          <div className="pedidos-form-row">
-            <div className="pedidos-form-group col-6">
-              <label htmlFor="flyer_formato" className="pedidos-label required">
-                Formato de la imagen
-              </label>
-              <select
-                id="flyer_formato"
-                className={`pedidos-select ${errors['flyer_rrss.formato'] ? 'error' : ''}`}
-                value={flyerData.formato || ''}
-                onChange={(e) => onChangeFlyer({ formato: e.target.value })}
-                aria-invalid={!!errors['flyer_rrss.formato']}
-                aria-describedby={errors['flyer_rrss.formato'] ? 'flyer_formato_error' : undefined}
-              >
-                <option value="">Seleccionar formato...</option>
-                <option value="Cuadrado 1:1 (Feed Instagram/Facebook)">Cuadrado 1:1 (Feed Instagram/Facebook)</option>
-                <option value="Vertical 9:16 (Historias / Reels / WhatsApp)">Vertical 9:16 (Historias / Reels / WhatsApp)</option>
-                <option value="Horizontal 16:9 (Twitter / Web / Prensa)">Horizontal 16:9 (Twitter / Web / Prensa)</option>
-                <option value="Adaptable a varios formatos">Adaptable a varios formatos</option>
-              </select>
-              {errors['flyer_rrss.formato'] && (
-                <span id="flyer_formato_error" className="pedidos-error-text" role="alert">{errors['flyer_rrss.formato']}</span>
-              )}
-            </div>
-
-            <div className="pedidos-form-group col-6">
-              <label htmlFor="flyer_fecha_limite" className="pedidos-label required">
-                Fecha límite requerida
-              </label>
-              <input
-                type="date"
-                id="flyer_fecha_limite"
-                min={getLocalTodayDateString()}
-                className={`pedidos-input ${errors['flyer_rrss.fecha_limite'] ? 'error' : ''}`}
-                value={flyerData.fecha_limite || ''}
-                onChange={(e) => onChangeFlyer({ fecha_limite: e.target.value })}
-                aria-invalid={!!errors['flyer_rrss.fecha_limite']}
-                aria-describedby={errors['flyer_rrss.fecha_limite'] ? 'flyer_fecha_limite_error' : undefined}
-              />
-              {errors['flyer_rrss.fecha_limite'] && (
-                <span id="flyer_fecha_limite_error" className="pedidos-error-text" role="alert">{errors['flyer_rrss.fecha_limite']}</span>
-              )}
-            </div>
+          <div className="pedidos-form-group">
+            <label htmlFor="flyer_fecha_limite" className="pedidos-label required">
+              Fecha del evento/actividad/pieza
+            </label>
+            <input
+              type="date"
+              id="flyer_fecha_limite"
+              min={getLocalTodayDateString()}
+              className={`pedidos-input ${errors['flyer_rrss.fecha_limite'] ? 'error' : ''}`}
+              value={flyerData.fecha_limite || ''}
+              onChange={(e) => onChangeFlyer({ fecha_limite: e.target.value })}
+              aria-invalid={!!errors['flyer_rrss.fecha_limite']}
+              aria-describedby={errors['flyer_rrss.fecha_limite'] ? 'flyer_fecha_limite_error' : undefined}
+            />
+            {errors['flyer_rrss.fecha_limite'] && (
+              <span id="flyer_fecha_limite_error" className="pedidos-error-text" role="alert">{errors['flyer_rrss.fecha_limite']}</span>
+            )}
           </div>
 
           <div className="pedidos-form-group">
@@ -161,115 +136,35 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
           </legend>
 
           <div className="pedidos-form-group">
-            <label htmlFor="inv_nombre_evento" className="pedidos-label required">
-              Nombre o título del evento
+            <label htmlFor="inv_fecha" className="pedidos-label required">
+              Fecha del evento/actividad/pieza
             </label>
             <input
-              type="text"
-              id="inv_nombre_evento"
-              className={`pedidos-input ${errors['invitacion_digital.nombre_evento'] ? 'error' : ''}`}
-              placeholder="Ej: Acto Oficial del Día de la Bandera"
-              value={invitacionData.nombre_evento || ''}
-              onChange={(e) => onChangeInvitacion({ nombre_evento: e.target.value })}
-              aria-invalid={!!errors['invitacion_digital.nombre_evento']}
-              aria-describedby={errors['invitacion_digital.nombre_evento'] ? 'inv_nombre_evento_error' : undefined}
+              type="date"
+              id="inv_fecha"
+              min={getLocalTodayDateString()}
+              className={`pedidos-input ${errors['invitacion_digital.fecha'] ? 'error' : ''}`}
+              value={invitacionData.fecha || ''}
+              onChange={(e) => onChangeInvitacion({ fecha: e.target.value })}
+              aria-invalid={!!errors['invitacion_digital.fecha']}
+              aria-describedby={errors['invitacion_digital.fecha'] ? 'inv_fecha_error' : undefined}
             />
-            {errors['invitacion_digital.nombre_evento'] && (
-              <span id="inv_nombre_evento_error" className="pedidos-error-text" role="alert">{errors['invitacion_digital.nombre_evento']}</span>
-            )}
-          </div>
-
-          <div className="pedidos-form-row">
-            <div className="pedidos-form-group col-4">
-              <label htmlFor="inv_fecha" className="pedidos-label required">
-                Fecha del evento
-              </label>
-              <input
-                type="date"
-                id="inv_fecha"
-                min={getLocalTodayDateString()}
-                className={`pedidos-input ${errors['invitacion_digital.fecha'] ? 'error' : ''}`}
-                value={invitacionData.fecha || ''}
-                onChange={(e) => onChangeInvitacion({ fecha: e.target.value })}
-                aria-invalid={!!errors['invitacion_digital.fecha']}
-                aria-describedby={errors['invitacion_digital.fecha'] ? 'inv_fecha_error' : undefined}
-              />
-              {errors['invitacion_digital.fecha'] && (
-                <span id="inv_fecha_error" className="pedidos-error-text" role="alert">{errors['invitacion_digital.fecha']}</span>
-              )}
-            </div>
-
-            <div className="pedidos-form-group col-4">
-              <label htmlFor="inv_hora" className="pedidos-label required">
-                Hora
-              </label>
-              <input
-                type="time"
-                id="inv_hora"
-                className={`pedidos-input ${errors['invitacion_digital.hora'] ? 'error' : ''}`}
-                value={invitacionData.hora || ''}
-                onChange={(e) => onChangeInvitacion({ hora: e.target.value })}
-                aria-invalid={!!errors['invitacion_digital.hora']}
-                aria-describedby={errors['invitacion_digital.hora'] ? 'inv_hora_error' : undefined}
-              />
-              {errors['invitacion_digital.hora'] && (
-                <span id="inv_hora_error" className="pedidos-error-text" role="alert">{errors['invitacion_digital.hora']}</span>
-              )}
-            </div>
-
-            <div className="pedidos-form-group col-4">
-              <label htmlFor="inv_modalidad" className="pedidos-label required">
-                Modalidad
-              </label>
-              <select
-                id="inv_modalidad"
-                className={`pedidos-select ${errors['invitacion_digital.modalidad'] ? 'error' : ''}`}
-                value={invitacionData.modalidad || ''}
-                onChange={(e) => onChangeInvitacion({ modalidad: e.target.value as InvitacionDigitalData['modalidad'] })}
-                aria-invalid={!!errors['invitacion_digital.modalidad']}
-                aria-describedby={errors['invitacion_digital.modalidad'] ? 'inv_modalidad_error' : undefined}
-              >
-                <option value="">Seleccionar...</option>
-                <option value="Presencial">Presencial</option>
-                <option value="Virtual">Virtual</option>
-                <option value="Híbrida">Híbrida</option>
-              </select>
-              {errors['invitacion_digital.modalidad'] && (
-                <span id="inv_modalidad_error" className="pedidos-error-text" role="alert">{errors['invitacion_digital.modalidad']}</span>
-              )}
-            </div>
-          </div>
-
-          <div className="pedidos-form-group">
-            <label htmlFor="inv_lugar" className="pedidos-label required">
-              Lugar / Dirección (o enlace si es virtual)
-            </label>
-            <input
-              type="text"
-              id="inv_lugar"
-              className={`pedidos-input ${errors['invitacion_digital.lugar'] ? 'error' : ''}`}
-              placeholder="Ej: Salón Islas Malvinas, Casa de Gobierno"
-              value={invitacionData.lugar || ''}
-              onChange={(e) => onChangeInvitacion({ lugar: e.target.value })}
-              aria-invalid={!!errors['invitacion_digital.lugar']}
-              aria-describedby={errors['invitacion_digital.lugar'] ? 'inv_lugar_error' : undefined}
-            />
-            {errors['invitacion_digital.lugar'] && (
-              <span id="inv_lugar_error" className="pedidos-error-text" role="alert">{errors['invitacion_digital.lugar']}</span>
+            {errors['invitacion_digital.fecha'] && (
+              <span id="inv_fecha_error" className="pedidos-error-text" role="alert">{errors['invitacion_digital.fecha']}</span>
             )}
           </div>
 
           <div className="pedidos-form-group">
             <label htmlFor="inv_programa" className="pedidos-label required">
-              Programa / Cronograma de actividades
+              Especificaciones del pedido
             </label>
             <textarea
               id="inv_programa"
               className={`pedidos-textarea ${errors['invitacion_digital.programa'] ? 'error' : ''}`}
               rows={3}
-              placeholder="Detalle del cronograma, oradores y orden del evento..."
+              placeholder="Detalle de la invitación, oradores, lugar/modalidad, horario y especificaciones..."
               value={invitacionData.programa || ''}
-              onChange={(e) => onChangeInvitacion({ programa: e.target.value })}
+              onChange={(e) => onChangeInvitacion({ programa: e.target.value, especificaciones: e.target.value })}
               aria-invalid={!!errors['invitacion_digital.programa']}
               aria-describedby={errors['invitacion_digital.programa'] ? 'inv_programa_error' : undefined}
             />
@@ -307,6 +202,25 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
           </div>
 
           <div className="pedidos-form-group">
+            <label htmlFor="cert_fecha" className="pedidos-label required">
+              Fecha del evento/actividad/pieza
+            </label>
+            <input
+              type="date"
+              id="cert_fecha"
+              min={getLocalTodayDateString()}
+              className={`pedidos-input ${errors['certificado.fecha'] ? 'error' : ''}`}
+              value={certificadoData.fecha || ''}
+              onChange={(e) => onChangeCertificado({ fecha: e.target.value })}
+              aria-invalid={!!errors['certificado.fecha']}
+              aria-describedby={errors['certificado.fecha'] ? 'cert_fecha_error' : undefined}
+            />
+            {errors['certificado.fecha'] && (
+              <span id="cert_fecha_error" className="pedidos-error-text" role="alert">{errors['certificado.fecha']}</span>
+            )}
+          </div>
+
+          <div className="pedidos-form-group">
             <label htmlFor="cert_firmantes" className="pedidos-label required">
               Autoridades firmantes (Nombre, Apellido y Cargo)
             </label>
@@ -327,7 +241,7 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
 
           <div className="pedidos-form-group">
             <label htmlFor="cert_destinatarios" className="pedidos-label required">
-              Lista o detalle de destinatarios
+              Especificaciones del pedido
             </label>
             <textarea
               id="cert_destinatarios"
@@ -335,7 +249,7 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
               rows={3}
               placeholder="Ingresá los nombres de los destinatarios o indicá si se adjuntará una planilla Excel en el paso 3..."
               value={certificadoData.destinatarios || ''}
-              onChange={(e) => onChangeCertificado({ destinatarios: e.target.value })}
+              onChange={(e) => onChangeCertificado({ destinatarios: e.target.value, especificaciones: e.target.value })}
               aria-invalid={!!errors['certificado.destinatarios']}
               aria-describedby={errors['certificado.destinatarios'] ? 'cert_destinatarios_error' : undefined}
             />
@@ -352,6 +266,25 @@ export const DisenoGraficoForm: React.FC<DisenoGraficoFormProps> = ({
           <legend>
             <span className="pedidos-badge-pill">Pieza: Otros requerimientos gráficos</span>
           </legend>
+
+          <div className="pedidos-form-group">
+            <label htmlFor="otros_fecha" className="pedidos-label required">
+              Fecha del evento/actividad/pieza
+            </label>
+            <input
+              type="date"
+              id="otros_fecha"
+              min={getLocalTodayDateString()}
+              className={`pedidos-input ${errors['otros_diseno.fecha'] ? 'error' : ''}`}
+              value={otrosData.fecha || ''}
+              onChange={(e) => onChangeOtros({ fecha: e.target.value })}
+              aria-invalid={!!errors['otros_diseno.fecha']}
+              aria-describedby={errors['otros_diseno.fecha'] ? 'otros_fecha_error' : undefined}
+            />
+            {errors['otros_diseno.fecha'] && (
+              <span id="otros_fecha_error" className="pedidos-error-text" role="alert">{errors['otros_diseno.fecha']}</span>
+            )}
+          </div>
 
           <div className="pedidos-form-group">
             <label htmlFor="otros_desc" className="pedidos-label required">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signUp, isValidNombreUsuario } from '../services/auth';
+import { PasswordInput } from '../components/common/PasswordInput';
 
 export const SolicitarAccesoPage: React.FC = () => {
   const navigate = useNavigate();
@@ -346,17 +347,15 @@ export const SolicitarAccesoPage: React.FC = () => {
               >
                 Contraseña
               </label>
-              <input
+              <PasswordInput
                 id="reg-password"
-                type="password"
                 required
                 autoComplete="new-password"
                 placeholder="Mínimo 6 caract."
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.55rem 0.75rem',
+                inputStyle={{
+                  padding: '0.55rem 2.2rem 0.55rem 0.75rem',
                   borderRadius: '0.375rem',
                   border: '1px solid #cbd5e1',
                   fontSize: '0.875rem',
@@ -371,17 +370,15 @@ export const SolicitarAccesoPage: React.FC = () => {
               >
                 Confirmar
               </label>
-              <input
+              <PasswordInput
                 id="reg-confirm"
-                type="password"
                 required
                 autoComplete="new-password"
                 placeholder="Repita contraseña"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.55rem 0.75rem',
+                inputStyle={{
+                  padding: '0.55rem 2.2rem 0.55rem 0.75rem',
                   borderRadius: '0.375rem',
                   border: '1px solid #cbd5e1',
                   fontSize: '0.875rem',

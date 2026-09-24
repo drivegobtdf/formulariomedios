@@ -116,40 +116,6 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
     sitios_web: generateUUID(),
   }));
 
-  const isFormDirty = useMemo(() => {
-    return Boolean(
-      state.contacto.nombre_apellido.trim() ||
-      state.contacto.correo.trim() ||
-      state.contacto.telefono.trim() ||
-      state.contacto.area_solicitante.trim() ||
-      state.selected_categorias.length > 0 ||
-      state.archivos.length > 0 ||
-      state.links.length > 0
-    );
-  }, [state]);
-
-  const handleStartWizard = useCallback(() => {
-    setShowWizard(true);
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, []);
-
-  const handleBackToHome = useCallback(() => {
-    if (state.current_step === 5) {
-      handleNewSubmission();
-      setShowWizard(false);
-      return;
-    }
-    if (isFormDirty) {
-      if (window.confirm('¿Desea volver a la portada institucional? Los datos ingresados se mantendrán guardados en memoria.')) {
-        setShowWizard(false);
-      }
-    } else {
-      setShowWizard(false);
-    }
-  }, [state.current_step, isFormDirty]);
-
   // Lista de piezas activas calculada
   const availablePieces = useMemo<FormPieceItem[]>(() => {
     const list: FormPieceItem[] = [];
@@ -857,14 +823,14 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
           </h1>
 
           <div className="pedidos-hero-actions">
-            <button
-              type="button"
+            <Link
+              to="/nueva-solicitud"
               className="pedidos-btn-hero-primary"
-              onClick={handleStartWizard}
+              onClick={() => setShowWizard(true)}
               aria-label="Iniciar nueva solicitud"
             >
               + Nueva solicitud
-            </button>
+            </Link>
             <Link
               to="/mis-solicitudes"
               className="pedidos-btn-hero-secondary"
@@ -903,17 +869,6 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
 
   return (
     <div className="pedidos-wizard-view">
-      <div className="pedidos-wizard-header-nav">
-        <button
-          type="button"
-          className="pedidos-btn-back-home"
-          onClick={handleBackToHome}
-          aria-label="Volver a la portada"
-        >
-          &larr; Volver
-        </button>
-      </div>
-
       <StepIndicator
         currentStep={state.current_step}
         onStepClick={(step) => goToStep(step)}

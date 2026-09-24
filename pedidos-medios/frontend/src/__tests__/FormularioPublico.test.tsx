@@ -30,7 +30,7 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
     expect(screen.getByText(/Seguí el avance/i)).toBeInTheDocument();
     expect(screen.getByText(/Recibí el material/i)).toBeInTheDocument();
 
-    const startBtn = screen.getByRole('button', { name: /Nueva solicitud/i });
+    const startBtn = screen.getByRole('link', { name: /Nueva solicitud/i });
     expect(startBtn).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Mis solicitudes/i })).toBeInTheDocument();
 
@@ -44,7 +44,11 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
   });
 
   it('debe navegar por los pasos al completar los campos requeridos', async () => {
-    render(<FormularioPublicoPage initialShowWizard={true} />);
+    render(
+      <MemoryRouter>
+        <FormularioPublicoPage initialShowWizard={true} />
+      </MemoryRouter>
+    );
 
     // Paso 1: Intentar continuar sin datos debe mostrar errores
     const nextBtn1 = screen.getByRole('button', { name: /^Continuar$/i });
@@ -81,10 +85,7 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
 
     // En Diseño Gráfico, seleccionar Flyer
     fireEvent.click(screen.getByRole('checkbox', { name: /Flyer para redes sociales/i }));
-    fireEvent.change(screen.getByLabelText(/Formato de la imagen/i), {
-      target: { value: 'Cuadrado 1:1 (Feed Instagram/Facebook)' },
-    });
-    fireEvent.change(screen.getByLabelText(/Fecha límite requerida/i), {
+    fireEvent.change(screen.getByLabelText(/Fecha del evento\/actividad\/pieza/i), {
       target: { value: '2026-10-15' },
     });
     fireEvent.change(screen.getByLabelText(/Texto y contenido que debe incluir el flyer/i), {
@@ -243,35 +244,33 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       // Intentar continuar con campos de flyer vacíos
       fireEvent.click(nextBtn2);
 
-      // Formato
-      expect(screen.getByText(/Seleccioná el formato del flyer\./i)).toBeInTheDocument();
       // Textarea vacío (Escenario C)
       expect(
         screen.getByText(/Ingresá el texto o contenido que debe llevar el flyer\./i)
       ).toBeInTheDocument();
       // Fecha vacía (Escenario F)
-      expect(screen.getByText(/Indicá la fecha límite de entrega\./i)).toBeInTheDocument();
+      expect(screen.getByText(/Indicá la fecha del evento\/actividad\/pieza\./i)).toBeInTheDocument();
     });
 
-    it('Escenario B: Formato vacío con error desaparece inmediatamente al seleccionar opción sin nuevo submit', async () => {
+    it('Escenario B: Fecha vacía con error desaparece inmediatamente al seleccionar fecha sin nuevo submit', async () => {
       const { nextBtn2 } = await setupStep2WithFlyer();
 
       fireEvent.click(nextBtn2);
-      expect(screen.getByText(/Seleccioná el formato del flyer\./i)).toBeInTheDocument();
+      expect(screen.getByText(/Indicá la fecha del evento\/actividad\/pieza\./i)).toBeInTheDocument();
 
-      const selectFormato = screen.getByLabelText(/Formato de la imagen/i);
-      expect(selectFormato).toHaveClass('error');
-      expect(selectFormato).toHaveAttribute('aria-invalid', 'true');
+      const dateInput = screen.getByLabelText(/Fecha del evento\/actividad\/pieza/i);
+      expect(dateInput).toHaveClass('error');
+      expect(dateInput).toHaveAttribute('aria-invalid', 'true');
 
-      // Seleccionar un formato válido
-      fireEvent.change(selectFormato, {
-        target: { value: 'Cuadrado 1:1 (Feed Instagram/Facebook)' },
+      // Seleccionar una fecha válida (hoy)
+      fireEvent.change(dateInput, {
+        target: { value: getLocalTodayDateString() },
       });
 
       // El error debe desaparecer inmediatamente
-      expect(screen.queryByText(/Seleccioná el formato del flyer\./i)).not.toBeInTheDocument();
-      expect(selectFormato).not.toHaveClass('error');
-      expect(selectFormato).toHaveAttribute('aria-invalid', 'false');
+      expect(screen.queryByText(/Indicá la fecha del evento\/actividad\/pieza\./i)).not.toBeInTheDocument();
+      expect(dateInput).not.toHaveClass('error');
+      expect(dateInput).toHaveAttribute('aria-invalid', 'false');
     });
 
     it('Escenario D & E: Textarea informa mínimo 5 caracteres, actualiza mensaje si es corto y desaparece al alcanzar el mínimo', async () => {
@@ -307,7 +306,7 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
     it('Escenario G, H, I, J, K, L: Validación reactiva de fecha límite (ayer inválida, hoy y futura válidas, corrección reactiva)', async () => {
       const { nextBtn2 } = await setupStep2WithFlyer();
 
-      const dateInput = screen.getByLabelText(/Fecha límite requerida/i);
+      const dateInput = screen.getByLabelText(/Fecha del evento\/actividad\/pieza/i);
       const todayStr = getLocalTodayDateString();
 
       // Calcular fecha de ayer y mañana en base a fecha local
@@ -357,22 +356,17 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       // Provocar errores
       fireEvent.click(nextBtn2);
 
-      const selectFormato = screen.getByLabelText(/Formato de la imagen/i);
-      const dateInput = screen.getByLabelText(/Fecha límite requerida/i);
+      const dateInput = screen.getByLabelText(/Fecha del evento\/actividad\/pieza/i);
       const textarea = screen.getByLabelText(/Texto y contenido que debe incluir el flyer/i);
 
       // Corregir todos los campos
       const textoPrueba = 'Texto completo del flyer institucional con datos oficiales.';
       const todayStr = getLocalTodayDateString();
 
-      fireEvent.change(selectFormato, {
-        target: { value: 'Vertical 9:16 (Historias / Reels / WhatsApp)' },
-      });
       fireEvent.change(dateInput, { target: { value: todayStr } });
       fireEvent.change(textarea, { target: { value: textoPrueba } });
 
       // Verificar que los valores se conservaron en los inputs (Escenario N)
-      expect(selectFormato).toHaveValue('Vertical 9:16 (Historias / Reels / WhatsApp)');
       expect(dateInput).toHaveValue(todayStr);
       expect(textarea).toHaveValue(textoPrueba);
 
@@ -412,10 +406,7 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
 
       // Completar Paso 2 con Flyer válido
       fireEvent.click(screen.getByRole('checkbox', { name: /Flyer para redes sociales/i }));
-      fireEvent.change(screen.getByLabelText(/Formato de la imagen/i), {
-        target: { value: 'Cuadrado 1:1 (Feed Instagram/Facebook)' },
-      });
-      fireEvent.change(screen.getByLabelText(/Fecha límite requerida/i), {
+      fireEvent.change(screen.getByLabelText(/Fecha del evento\/actividad\/pieza/i), {
         target: { value: getLocalTodayDateString() },
       });
       fireEvent.change(screen.getByLabelText(/Texto y contenido que debe incluir el flyer/i), {
@@ -509,13 +500,11 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
     });
   });
 
-  describe('Paso 1: Selector Internacional de WhatsApp y Validación Reactiva', () => {
-    it('debe tener Argentina por defecto, validar reglas locales y revalidar reactivamente sin nuevo submit', async () => {
+  describe('Paso 1: Validación Reactiva de WhatsApp Argentina (+54 9)', () => {
+    it('debe validar reglas locales y revalidar reactivamente sin nuevo submit', async () => {
       render(<FormularioPublicoPage initialShowWizard={true} />);
 
-      // Verificar país por defecto AR
-      const countrySelect = screen.getByLabelText(/Seleccionar país para WhatsApp/i) as HTMLSelectElement;
-      expect(countrySelect.value).toBe('AR');
+      expect(screen.getByText(/Argentina \(\+54 9\)/i)).toBeInTheDocument();
       expect(screen.getByText(/Ingresá código de área y número, sin 0 y sin 15\./i)).toBeInTheDocument();
 
       const phoneInput = screen.getByLabelText(/Número de WhatsApp/i);
@@ -546,18 +535,7 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       expect(screen.getByText('Ingresá el número sin el prefijo 15.')).toBeInTheDocument();
       expect(phoneInput).toHaveClass('error');
 
-      // Cambiar país a Chile (CL)
-      fireEvent.change(countrySelect, { target: { value: 'CL' } });
-      expect(countrySelect.value).toBe('CL');
-      expect(screen.getByText(/Ingresá un número de WhatsApp válido para Chile\./i)).toBeInTheDocument();
-
-      // Ingresar número válido chileno
-      fireEvent.change(phoneInput, { target: { value: '912345678' } });
-      expect(screen.queryByText(/Ingresá un número de WhatsApp válido para Chile\./i)).not.toBeInTheDocument();
-      expect(phoneInput).not.toHaveClass('error');
-
-      // Volver a Argentina y escribir formato con guiones/espacios
-      fireEvent.change(countrySelect, { target: { value: 'AR' } });
+      // Corregir con formato con guiones/espacios
       fireEvent.change(phoneInput, { target: { value: '2964 47-7578' } });
       expect(phoneInput).not.toHaveClass('error');
     });
@@ -652,11 +630,12 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
 
       const today = getLocalTodayDateString();
 
-      // Verificar Flyer fecha límite
-      expect(screen.getByLabelText(/Fecha límite requerida/i)).toHaveAttribute('min', today);
-
-      // Verificar Invitación fecha
-      expect(screen.getByLabelText(/Fecha del evento/i)).toHaveAttribute('min', today);
+      // Verificar Flyer e Invitación fecha
+      const disenoFechas = screen.getAllByLabelText(/Fecha del evento\/actividad\/pieza/i);
+      expect(disenoFechas.length).toBeGreaterThanOrEqual(2);
+      for (const input of disenoFechas) {
+        expect(input).toHaveAttribute('min', today);
+      }
 
       // Verificar Redes Sociales fecha sugerida
       expect(screen.getByLabelText(/Fecha sugerida de publicación/i)).toHaveAttribute('min', today);

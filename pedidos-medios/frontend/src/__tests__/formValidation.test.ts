@@ -179,7 +179,6 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       };
 
       const errs = validateStep2(state as FormWizardState);
-      expect(errs['flyer_rrss.formato']).toBeDefined();
       expect(errs['flyer_rrss.texto']).toBeDefined();
       expect(errs['flyer_rrss.fecha_limite']).toBeDefined();
     });

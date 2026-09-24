@@ -278,9 +278,6 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
           switch (pieza) {
             case 'flyer_rrss': {
               const data = state.diseno_data?.flyer_rrss;
-              if (!data?.formato || data.formato.trim() === '') {
-                errors['flyer_rrss.formato'] = 'Seleccioná el formato del flyer.';
-              }
               const textoErr = validateMinLength(
                 data?.texto,
                 5,
@@ -291,7 +288,7 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
                 errors['flyer_rrss.texto'] = textoErr;
               }
               const fechaErr = validateNotPastDate(data?.fecha_limite, {
-                requiredMessage: 'Indicá la fecha límite de entrega.',
+                requiredMessage: 'Indicá la fecha del evento/actividad/pieza.',
               });
               if (fechaErr) {
                 errors['flyer_rrss.fecha_limite'] = fechaErr;
@@ -300,26 +297,20 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
             }
             case 'invitacion_digital': {
               const data = state.diseno_data?.invitacion_digital;
-              if (!data?.nombre_evento || data.nombre_evento.trim().length < 2) {
-                errors['invitacion_digital.nombre_evento'] = 'Ingresá el nombre del evento.';
-              }
               const fechaErr = validateNotPastDate(data?.fecha, {
-                requiredMessage: 'Indicá la fecha del evento.',
+                requiredMessage: 'Indicá la fecha del evento/actividad/pieza.',
               });
               if (fechaErr) {
                 errors['invitacion_digital.fecha'] = fechaErr;
               }
-              if (!data?.hora || data.hora.trim() === '') {
-                errors['invitacion_digital.hora'] = 'Indicá el horario del evento.';
-              }
-              if (!data?.lugar || data.lugar.trim().length < 2) {
-                errors['invitacion_digital.lugar'] = 'Indicá el lugar del evento.';
-              }
-              if (!data?.modalidad) {
-                errors['invitacion_digital.modalidad'] = 'Seleccioná la modalidad (Presencial / Virtual / Híbrida).';
-              }
-              if (!data?.programa || data.programa.trim().length < 3) {
-                errors['invitacion_digital.programa'] = 'Ingresá el programa o descripción de la invitación.';
+              const especErr = validateMinLength(
+                data?.programa || data?.especificaciones,
+                3,
+                'Ingresá las especificaciones del pedido.',
+                'Ingresá al menos 3 caracteres.'
+              );
+              if (especErr) {
+                errors['invitacion_digital.programa'] = especErr;
               }
               break;
             }
@@ -328,16 +319,34 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
               if (!data?.nombre_actividad || data.nombre_actividad.trim().length < 2) {
                 errors['certificado.nombre_actividad'] = 'Ingresá el nombre de la actividad o curso.';
               }
+              const fechaErr = validateNotPastDate(data?.fecha, {
+                requiredMessage: 'Indicá la fecha del evento/actividad/pieza.',
+              });
+              if (fechaErr) {
+                errors['certificado.fecha'] = fechaErr;
+              }
               if (!data?.firmantes || data.firmantes.trim().length < 2) {
                 errors['certificado.firmantes'] = 'Ingresá las autoridades o personas firmantes.';
               }
-              if (!data?.destinatarios || data.destinatarios.trim().length < 2) {
-                errors['certificado.destinatarios'] = 'Ingresá o detallá los destinatarios del certificado.';
+              const destErr = validateMinLength(
+                data?.destinatarios || data?.especificaciones,
+                2,
+                'Ingresá las especificaciones o destinatarios del certificado.',
+                'Ingresá al menos 2 caracteres.'
+              );
+              if (destErr) {
+                errors['certificado.destinatarios'] = destErr;
               }
               break;
             }
             case 'otros_diseno': {
               const data = state.diseno_data?.otros_diseno;
+              const fechaErr = validateNotPastDate(data?.fecha, {
+                requiredMessage: 'Indicá la fecha del evento/actividad/pieza.',
+              });
+              if (fechaErr) {
+                errors['otros_diseno.fecha'] = fechaErr;
+              }
               if (!data?.descripcion || data.descripcion.trim().length < 5) {
                 errors['otros_diseno.descripcion'] = 'Describí la pieza gráfica que necesitás.';
               }

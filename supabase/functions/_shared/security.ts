@@ -38,7 +38,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || '';
   const rawAllowed =
     getEnv('ALLOWED_ORIGINS') ||
-    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://localhost:4174,http://127.0.0.1:4174,http://localhost:8080,http://127.0.0.1:8080';
+    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://localhost:4174,http://127.0.0.1:4174,http://localhost:8080,http://127.0.0.1:8080,https://formulariomedios.netlify.app,https://formulariomedios.pages.dev';
   const allowedOrigins = rawAllowed
     .split(',')
     .map((o) => o.trim().toLowerCase())

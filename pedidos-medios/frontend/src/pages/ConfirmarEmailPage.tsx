@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { getMyAccess, updatePassword } from '../services/auth';
 import { getSupabaseClient } from '../services/supabaseClient';
+import { PasswordInput } from '../components/common/PasswordInput';
 
 const AUTH_RETURN_PARAMS = [
   'access_token',
@@ -436,22 +437,19 @@ export const ConfirmarEmailPage: React.FC = () => {
                     >
                       Nueva contraseña (mínimo 6 caracteres)
                     </label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       id="new-password"
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem 0.75rem',
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      autoComplete="new-password"
+                      inputStyle={{
+                        padding: '0.5rem 2.2rem 0.5rem 0.75rem',
                         border: '1px solid #cbd5e1',
                         borderRadius: '0.375rem',
                         fontSize: '0.9rem',
                         boxSizing: 'border-box',
                       }}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                      minLength={6}
-                      autoComplete="new-password"
                     />
                   </div>
                   <div>
@@ -461,22 +459,19 @@ export const ConfirmarEmailPage: React.FC = () => {
                     >
                       Confirmar nueva contraseña
                     </label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       id="confirm-password"
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem 0.75rem',
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      autoComplete="new-password"
+                      inputStyle={{
+                        padding: '0.5rem 2.2rem 0.5rem 0.75rem',
                         border: '1px solid #cbd5e1',
                         borderRadius: '0.375rem',
                         fontSize: '0.9rem',
                         boxSizing: 'border-box',
                       }}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      minLength={6}
-                      autoComplete="new-password"
                     />
                   </div>
                   <button

@@ -29,6 +29,7 @@ const RouterContent: React.FC = () => {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<FormularioPublicoPage />} />
+        <Route path="nueva-solicitud" element={<FormularioPublicoPage initialShowWizard />} />
         <Route path="solicitud-recibida" element={<SolicitudRecibidaPage />} />
         <Route path="mis-solicitudes" element={<MisSolicitudesPage />} />
         <Route path="seguimiento" element={<MisSolicitudesPage />} />

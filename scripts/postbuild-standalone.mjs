@@ -62,6 +62,24 @@ window.__PEDIDOS_CONFIG__ = {
 `;
 fs.writeFileSync(path.join(webDir, 'pedidos-config.js'), runtimeConfigContent, 'utf8');
 
+// 3b. Escribir web/_redirects y web/_headers para Netlify y Cloudflare Pages
+const redirectsContent = `/*    /index.html   200\n`;
+fs.writeFileSync(path.join(webDir, '_redirects'), redirectsContent, 'utf8');
+
+const headersContent = `/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/pedidos-config.js
+  Cache-Control: no-cache, no-store, must-revalidate
+`;
+fs.writeFileSync(path.join(webDir, '_headers'), headersContent, 'utf8');
+
 // 4. Escribir server/apache-htaccess.example
 const htaccessContent = `# PEDIDOS — Secretaría de Medios (Gobierno de Tierra del Fuego AIAS)
 # Configuración Apache (.htaccess) para Standalone Single Page Application (SPA)

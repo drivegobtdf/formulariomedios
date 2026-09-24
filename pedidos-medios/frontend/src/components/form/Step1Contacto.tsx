@@ -6,9 +6,6 @@ import {
 } from '../../types/form';
 import { ValidationErrors } from '../../validation/formValidation';
 import {
-  COUNTRIES_LIST,
-  DEFAULT_COUNTRY_CODE,
-  getCountryConfig,
   getCountryFlagSvg,
   validateWhatsAppPhone,
 } from '../../utils/phoneUtils';
@@ -30,9 +27,6 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
   errors,
   onNext,
 }) => {
-  const selectedCountry = contacto.telefono_pais || DEFAULT_COUNTRY_CODE;
-  const countryConfig = getCountryConfig(selectedCountry);
-
   const localNumber =
     contacto.telefono_local !== undefined
       ? contacto.telefono_local
@@ -40,20 +34,11 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
       ? contacto.telefono.replace(/^\+549?/, '').replace(/^\+\d+/, '')
       : '';
 
-  const handleCountryChange = (newCountry: string) => {
-    const val = validateWhatsAppPhone(localNumber, newCountry);
-    onChangeContacto({
-      telefono_pais: newCountry,
-      telefono_local: localNumber,
-      telefono: val.isValid && val.canonical ? val.canonical : localNumber,
-    });
-  };
-
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawVal = e.target.value;
-    const val = validateWhatsAppPhone(rawVal, selectedCountry);
+    const val = validateWhatsAppPhone(rawVal, 'AR');
     onChangeContacto({
-      telefono_pais: selectedCountry,
+      telefono_pais: 'AR',
       telefono_local: rawVal,
       telefono: val.isValid && val.canonical ? val.canonical : rawVal,
     });
@@ -93,33 +78,39 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
             <label htmlFor="contacto_telefono" className="pedidos-label required">
               Número de WhatsApp
             </label>
-            <div className="pedidos-phone-input-group">
-              <div className="pedidos-country-select-wrapper">
+            <div className="pedidos-phone-input-group" style={{ display: 'flex', alignItems: 'stretch' }}>
+              <div
+                className="pedidos-phone-prefix-fixed"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.6rem 0.75rem',
+                  backgroundColor: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  borderRight: 'none',
+                  borderRadius: '0.375rem 0 0 0.375rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: '#334155',
+                  whiteSpace: 'nowrap',
+                  userSelect: 'none',
+                }}
+              >
                 <span
                   className="pedidos-country-flag-icon"
                   aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: getCountryFlagSvg(selectedCountry) }}
+                  dangerouslySetInnerHTML={{ __html: getCountryFlagSvg('AR') }}
                 />
-                <select
-                  id="contacto_pais"
-                  className="pedidos-select pedidos-country-select"
-                  value={selectedCountry}
-                  onChange={(e) => handleCountryChange(e.target.value)}
-                  aria-label="Seleccionar país para WhatsApp"
-                >
-                  {COUNTRIES_LIST.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name} ({c.displayDialCode})
-                    </option>
-                  ))}
-                </select>
+                <span>Argentina (+54 9)</span>
               </div>
-              <div className="pedidos-phone-number-wrapper">
+              <div className="pedidos-phone-number-wrapper" style={{ flex: 1 }}>
                 <input
                   type="tel"
                   id="contacto_telefono"
                   className={`pedidos-input ${errors.telefono ? 'error' : ''}`}
-                  placeholder={countryConfig.placeholder}
+                  style={{ borderRadius: '0 0.375rem 0.375rem 0' }}
+                  placeholder="2964 477578"
                   value={localNumber}
                   onChange={handleNumberChange}
                   autoComplete="tel-national"
@@ -141,7 +132,7 @@ export const Step1Contacto: React.FC<Step1ContactoProps> = ({
                 className="pedidos-hint-text"
                 style={{ fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}
               >
-                {countryConfig.helpText}
+                Ingresá código de área y número, sin 0 y sin 15.
               </span>
             )}
           </div>

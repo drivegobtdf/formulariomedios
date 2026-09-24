@@ -1,16 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signIn } from '../services/auth';
 import { useAuth } from '../auth/AuthContext';
+import { PasswordInput } from '../components/common/PasswordInput';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { refreshUser } = useAuth();
+  const { user, isLoading, isApproved, refreshUser } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoading && user && isApproved) {
+      navigate('/gestion', { replace: true });
+    }
+  }, [isLoading, user, isApproved, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +43,17 @@ export const LoginPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (user && isApproved) {
+    return (
+      <div style={{ maxWidth: '460px', margin: '4rem auto', padding: '0 1rem', textAlign: 'center' }}>
+        <div style={{ padding: '3rem 2rem', background: '#ffffff', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+          <div className="pedidos-spinner" style={{ margin: '0 auto 1rem', width: '36px', height: '36px', border: '3px solid #e2e8f0', borderTopColor: '#0b2746', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>Redirigiendo al Panel de Gestión...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: '460px', margin: '2rem auto', padding: '0 1rem' }}>
@@ -123,17 +141,15 @@ export const LoginPage: React.FC = () => {
             >
               Contraseña
             </label>
-            <input
+            <PasswordInput
               id="login-password"
-              type="password"
               required
               autoComplete="current-password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.625rem 0.75rem',
+              inputStyle={{
+                padding: '0.625rem 2.5rem 0.625rem 0.75rem',
                 borderRadius: '0.375rem',
                 border: '1px solid #cbd5e1',
                 fontSize: '0.875rem',
