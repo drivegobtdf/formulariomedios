@@ -51,7 +51,7 @@ window.__PEDIDOS_CONFIG__ = {
   basePath: '/',
 
   // URL pública canónica completa de la aplicación
-  publicAppUrl: 'https://formulariomedios.netlify.app',
+  publicAppUrl: 'https://formulariomedios.pages.dev',
 
   // Versión de contrato con la base de datos y Edge Functions
   contractVersion: '3.0',

@@ -29,6 +29,33 @@ export function escapeHtml(unsafe: unknown): string {
     .replace(/'/g, '&#039;');
 }
 
+export function extractDateFromItem(item: any): string | null {
+  if (!item || typeof item !== 'object') return null;
+  const direct =
+    item.fecha_operativa ||
+    item.fecha ||
+    item.fecha_limite ||
+    item.fecha_sugerida ||
+    item.grabacion_fecha;
+  if (direct && typeof direct === 'string' && direct.trim().length > 0 && direct.trim() !== '-') {
+    return direct.trim();
+  }
+  const info = item.informacion_especifica;
+  if (info && typeof info === 'object') {
+    const infoDate =
+      info.fecha ||
+      info.fecha_limite ||
+      info.fecha_sugerida ||
+      info.grabacion_fecha ||
+      info.fecha_publicacion ||
+      info.fecha_evento;
+    if (infoDate && typeof infoDate === 'string' && infoDate.trim().length > 0 && infoDate.trim() !== '-') {
+      return infoDate.trim();
+    }
+  }
+  return null;
+}
+
 function wrapHtmlLayout(title: string, contentHtml: string): string {
   return `<!DOCTYPE html>
 <html lang="es">
@@ -538,7 +565,7 @@ export function renderEmail(
       const tipSafe = escapeHtml(payload.tipo || 'General');
       const areaSafe = escapeHtml(payload.area_solicitante || 'Gobierno');
       const solicitanteSafe = escapeHtml(payload.solicitante_nombre || payload.nombre_solicitante || payload.nombre_apellido || 'Solicitante');
-      const fechaLimite = payload.fecha_limite ? escapeHtml(String(payload.fecha_limite)) : 'Sin especificar';
+      const fechaLimite = extractDateFromItem(payload) ? escapeHtml(String(extractDateFromItem(payload))) : 'Sin especificar';
       const motivoAsignacion = payload.motivo ? escapeHtml(String(payload.motivo)) : '';
 
       const contentHtml = `
@@ -566,7 +593,7 @@ export function renderEmail(
               <td style="padding: 10px 14px;">${areaSafe} (${solicitanteSafe})</td>
             </tr>
             <tr>
-              <td style="padding: 10px 14px; font-weight: 600; color: #475569;">Fecha Requerida:</td>
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569;">Fecha:</td>
               <td style="padding: 10px 14px;">${fechaLimite}</td>
             </tr>
           </tbody>
@@ -583,7 +610,7 @@ export function renderEmail(
         </div>
       `;
 
-      const text = `ASIGNACIÓN DE PEDIDO\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nHola ${rawNombre},\nSe te ha asignado como responsable del pedido ${payload.pedido_visible || 'PED'}.\n\n* Código: ${payload.pedido_visible || 'PED'}\n* Categoría: ${payload.categoria || ''} - ${payload.tipo || ''}\n* Área solicitante: ${payload.area_solicitante || ''}\n* Fecha requerida: ${payload.fecha_limite || 'Sin especificar'}\n\nIngresá al pedido en:\n${gestionUrl}\n`;
+      const text = `ASIGNACIÓN DE PEDIDO\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nHola ${rawNombre},\nSe te ha asignado como responsable del pedido ${payload.pedido_visible || 'PED'}.\n\n* Código: ${payload.pedido_visible || 'PED'}\n* Categoría: ${payload.categoria || ''} - ${payload.tipo || ''}\n* Área solicitante: ${payload.area_solicitante || ''}\n* Fecha: ${extractDateFromItem(payload) || 'Sin especificar'}\n\nIngresá al pedido en:\n${gestionUrl}\n`;
 
       return {
         subject,
@@ -609,6 +636,9 @@ export function renderEmail(
                 categoria: payload.categoria,
                 tipo: payload.tipo,
                 fecha_limite: payload.fecha_limite,
+                fecha: payload.fecha,
+                fecha_operativa: payload.fecha_operativa,
+                informacion_especifica: payload.informacion_especifica,
               },
             ]
           : [];
@@ -636,16 +666,17 @@ export function renderEmail(
         const pedVis = escapeHtml(p.pedido_visible || 'N/D');
         const cat = escapeHtml(p.categoria || 'Servicio');
         const tip = escapeHtml(p.tipo || 'General');
-        const fechaLim = p.fecha_limite ? escapeHtml(String(p.fecha_limite)) : '-';
+        const rawDate = extractDateFromItem(p) || extractDateFromItem(payload);
+        const fechaDisplay = rawDate ? escapeHtml(String(rawDate)) : '-';
 
         rowsHtml += `
           <tr style="border-bottom: 1px solid #E5E7EB;">
             <td style="padding: 10px 10px; font-weight: bold; color: ${BRAND_PRIMARY};">${pedVis}</td>
             <td style="padding: 10px 10px;">${cat}</td>
             <td style="padding: 10px 10px;">${tip}</td>
-            <td style="padding: 10px 10px; color: #4B5563;">${fechaLim}</td>
+            <td style="padding: 10px 10px; color: #4B5563;">${fechaDisplay}</td>
           </tr>`;
-        rowsText += `* ${p.pedido_visible || 'N/D'} | ${p.categoria || ''} - ${p.tipo || ''} (Fecha: ${p.fecha_limite || '-'})\n`;
+        rowsText += `* ${p.pedido_visible || 'N/D'} | ${p.categoria || ''} - ${p.tipo || ''} (Fecha: ${fechaDisplay})\n`;
       }
 
       const contentHtml = `
@@ -668,7 +699,7 @@ export function renderEmail(
               <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Código PED</th>
               <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Categoría</th>
               <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Tipo</th>
-              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Fecha Límite</th>
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Fecha</th>
             </tr>
           </thead>
           <tbody>

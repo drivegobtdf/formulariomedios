@@ -27,12 +27,12 @@ port = 54354
 
 [auth]
 enabled = true
-site_url = "https://formulariomedios.netlify.app"
+site_url = "https://formulariomedios.pages.dev"
 additional_redirect_urls = [
-  "https://formulariomedios.netlify.app/confirmar-email",
-  "https://formulariomedios.netlify.app/mis-solicitudes",
-  "https://formulariomedios.netlify.app/login",
-  "https://formulariomedios.netlify.app/gestion"
+  "https://formulariomedios.pages.dev/confirmar-email",
+  "https://formulariomedios.pages.dev/mis-solicitudes",
+  "https://formulariomedios.pages.dev/login",
+  "https://formulariomedios.pages.dev/gestion"
 ]
 jwt_expiry = 3600
 enable_signup = true

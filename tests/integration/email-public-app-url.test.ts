@@ -133,7 +133,7 @@ describe('Resolucion de URL Publica y Enlaces de Correo (CTA / Magic Links)', ()
 
       const expectedPortalUrl = 'http://localhost:4173/formulariomedios/mis-solicitudes';
       expect(rendered.html).toContain(`href="${expectedPortalUrl}"`);
-      expect(rendered.html).toContain('Responder Requerimiento en el Portal');
+      expect(rendered.html).toContain('Responder requerimiento');
       expect(rendered.text).toContain(expectedPortalUrl);
     });
 

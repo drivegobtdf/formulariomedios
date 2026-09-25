@@ -20,7 +20,7 @@ const serviceClient = createClient(PROD_URL, prodSecrets.SUPABASE_SERVICE_ROLE_K
 });
 
 const adminEmail = 'pablosaldiviainfo@gmail.com';
-const redirectTo = 'https://formulariomedios.netlify.app/confirmar-email';
+const redirectTo = 'https://formulariomedios.pages.dev/confirmar-email';
 
 async function sendOfficialRecovery() {
   const { data, error } = await serviceClient.auth.admin.generateLink({

@@ -171,6 +171,33 @@ function escapeHtml(unsafe) {
     .replace(/'/g, '&#039;');
 }
 
+export function extractDateFromItem(item) {
+  if (!item || typeof item !== 'object') return null;
+  const direct =
+    item.fecha_operativa ||
+    item.fecha ||
+    item.fecha_limite ||
+    item.fecha_sugerida ||
+    item.grabacion_fecha;
+  if (direct && typeof direct === 'string' && direct.trim().length > 0 && direct.trim() !== '-') {
+    return direct.trim();
+  }
+  const info = item.informacion_especifica;
+  if (info && typeof info === 'object') {
+    const infoDate =
+      info.fecha ||
+      info.fecha_limite ||
+      info.fecha_sugerida ||
+      info.grabacion_fecha ||
+      info.fecha_publicacion ||
+      info.fecha_evento;
+    if (infoDate && typeof infoDate === 'string' && infoDate.trim().length > 0 && infoDate.trim() !== '-') {
+      return infoDate.trim();
+    }
+  }
+  return null;
+}
+
 function wrapHtmlLayout(title, contentHtml) {
   return `<!DOCTYPE html>
 <html lang="es">
@@ -554,6 +581,106 @@ export function renderEmail(tipo, payload, customAppUrl) {
         html: wrapHtmlLayout('Tu solicitud está en proceso', contentHtml),
         text,
         n8nTipo: 'en_proceso'
+      };
+    }
+
+    case 'pedido_nuevo_admin':
+    case 'admin_submission_alert': {
+      const pedidos =
+        Array.isArray(payload?.pedidos) && payload.pedidos.length > 0
+          ? payload.pedidos
+          : payload?.pedido_visible
+          ? [
+              {
+                id: payload.pedido_id,
+                pedido_visible: payload.pedido_visible,
+                categoria: payload.categoria,
+                tipo: payload.tipo,
+                fecha_limite: payload.fecha_limite,
+                fecha: payload.fecha,
+                fecha_operativa: payload.fecha_operativa,
+                informacion_especifica: payload.informacion_especifica,
+              },
+            ]
+          : [];
+      const count = pedidos.length || 1;
+      const codes = pedidos.map((p) => p.pedido_visible).filter(Boolean).join(', ');
+      const singlePedidoId = payload?.pedido_id || (pedidos.length === 1 ? pedidos[0].id : null);
+      const gestionUrl = singlePedidoId
+        ? `${cleanAppUrl}/gestion/pedidos/${singlePedidoId}`
+        : `${cleanAppUrl}/gestion`;
+      const subject = `[PEDIDOS Admin] Nueva solicitud ingresada: ${codes || 'Nuevos Requerimientos'}`;
+      const solicitante = escapeHtml(
+        payload?.solicitante ||
+          payload?.solicitante_nombre ||
+          payload?.nombre_solicitante ||
+          payload?.nombre_apellido ||
+          'Solicitante'
+      );
+      const area = escapeHtml(payload?.area_solicitante || 'Gobierno');
+      const correo = escapeHtml(payload?.correo || '');
+
+      let rowsHtml = '';
+      let rowsText = '';
+
+      for (const p of pedidos) {
+        const pedVis = escapeHtml(p.pedido_visible || 'N/D');
+        const cat = escapeHtml(p.categoria || 'Servicio');
+        const tip = escapeHtml(p.tipo || 'General');
+        const rawDate = extractDateFromItem(p) || extractDateFromItem(payload);
+        const fechaDisplay = rawDate ? escapeHtml(String(rawDate)) : '-';
+
+        rowsHtml += `
+          <tr style="border-bottom: 1px solid #E5E7EB;">
+            <td style="padding: 10px 10px; font-weight: bold; color: ${BRAND_PRIMARY};">${pedVis}</td>
+            <td style="padding: 10px 10px;">${cat}</td>
+            <td style="padding: 10px 10px;">${tip}</td>
+            <td style="padding: 10px 10px; color: #4B5563;">${fechaDisplay}</td>
+          </tr>`;
+        rowsText += `* ${p.pedido_visible || 'N/D'} | ${p.categoria || ''} - ${p.tipo || ''} (Fecha: ${fechaDisplay})\n`;
+      }
+
+      const contentHtml = `
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
+          Nueva Solicitud Ingresada al Sistema
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
+          Estimado/a Administrador/a <strong>${nombreSafe}</strong>,
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+          Se ha recibido una nueva solicitud pública con <strong>${count} requerimiento(s)</strong>:
+        </p>
+        <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; padding: 12px 16px; margin: 12px 0 20px 0; border-radius: 6px; font-size: 13px;">
+          <p style="margin: 0 0 4px 0;"><strong>Solicitante:</strong> ${solicitante} (${correo})</p>
+          <p style="margin: 0;"><strong>Área / Dependencia:</strong> ${area}</p>
+        </div>
+        <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin-bottom: 24px; font-size: 13px;">
+          <thead>
+            <tr style="background-color: #F3F4F6; text-align: left;">
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Código PED</th>
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Categoría</th>
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Tipo</th>
+              <th style="padding: 10px 10px; color: ${BRAND_MUTED}; font-size: 12px; text-transform: uppercase;">Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${gestionUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            ${singlePedidoId ? 'Ver Detalle del Pedido' : 'Ir al Panel de Gestión'}
+          </a>
+        </div>
+      `;
+
+      const text = `NUEVA SOLICITUD INGRESADA (ADMIN)\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a Administrador/a ${rawNombre},\nSe recibió una nueva solicitud de ${solicitante} (${area}, ${payload?.correo || ''}) con ${count} requerimiento(s):\n\n${rowsText}\nPanel de gestión:\n${gestionUrl}\n`;
+
+      return {
+        subject,
+        html: wrapHtmlLayout('Nueva Solicitud Ingresada', contentHtml),
+        text,
+        n8nTipo: 'pedido_nuevo_admin',
       };
     }
 

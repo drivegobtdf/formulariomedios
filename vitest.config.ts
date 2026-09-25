@@ -12,6 +12,7 @@ export default defineConfig({
       'pedidos-medios/frontend/src/**/*.{test,spec}.{ts,tsx}',
       'tests/unit/**/*.{test,spec}.{ts,tsx}',
       'tests/integration/server-side-date-validation.test.ts',
+      'tests/integration/email-public-app-url.test.ts',
     ],
   },
   resolve: {

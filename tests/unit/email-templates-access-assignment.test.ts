@@ -6,7 +6,7 @@ import {
 } from '../../supabase/functions/_shared/emailTemplates.ts';
 
 describe('Email Templates — Acceso Aprobado, Asignación y Alerta a Administradores', () => {
-  const appUrl = 'https://formulariomedios.netlify.app';
+  const appUrl = 'https://formulariomedios.pages.dev';
 
   it('1. renderAccesoAprobadoEmail genera correo con rol, nombre y enlace directo a /login', () => {
     const payload = {
@@ -27,6 +27,7 @@ describe('Email Templates — Acceso Aprobado, Asignación y Alerta a Administra
     expect(rendered.html).toContain('Equipo Operativo');
     expect(rendered.html).toContain(`${appUrl}/login`);
     expect(rendered.text).toContain(`${appUrl}/login`);
+    expect(rendered.html).not.toContain('netlify.app');
   });
 
   it('2. renderPedidoAsignadoEmail genera correo al responsable con código PED, detalles y link a /gestion/pedidos/:id', () => {
@@ -54,6 +55,7 @@ describe('Email Templates — Acceso Aprobado, Asignación y Alerta a Administra
     expect(rendered.html).toContain('Asignado para armado urgente de piezas');
     expect(rendered.html).toContain(`${appUrl}/gestion/pedidos/p0000000-0000-0000-0000-000000000002`);
     expect(rendered.text).toContain(`${appUrl}/gestion/pedidos/p0000000-0000-0000-0000-000000000002`);
+    expect(rendered.html).not.toContain('netlify.app');
   });
 
   it('3. renderPedidoNuevoAdminEmail genera correo de alerta a administradores con lista de PEDs y link a /gestion', () => {
@@ -67,40 +69,59 @@ describe('Email Templates — Acceso Aprobado, Asignación y Alerta a Administra
         {
           pedido_visible: 'PED-2026-D000190',
           categoria: 'Diseño Gráfico',
-          tipo: 'Flyer RRSS',
+          tipo: 'Flyer para redes sociales',
           fecha_limite: '2026-10-25',
         },
         {
-          pedido_visible: 'PED-2026-C000191',
+          pedido_visible: 'PED-2026-D000191',
+          categoria: 'Diseño Gráfico',
+          tipo: 'Invitación digital',
+          fecha: '2026-10-28',
+        },
+        {
+          pedido_visible: 'PED-2026-C000192',
           categoria: 'Cobertura de Eventos',
           tipo: 'Cobertura Institucional',
-          fecha_limite: '2026-10-22',
+          informacion_especifica: {
+            fecha: '2026-10-22',
+            lugar: 'IPRA',
+          },
         },
       ],
-      pedidos_count: 2,
+      pedidos_count: 3,
     };
 
     const rendered = renderPedidoNuevoAdminEmail(payload, appUrl);
 
-    expect(rendered.subject).toContain('[PEDIDOS Admin] Nueva solicitud ingresada: PED-2026-D000190, PED-2026-C000191');
+    expect(rendered.subject).toContain('[PEDIDOS Admin] Nueva solicitud ingresada: PED-2026-D000190, PED-2026-D000191, PED-2026-C000192');
     expect(rendered.n8nTipo).toBe('pedido_nuevo_admin');
     expect(rendered.html).toContain('Pablo Administrador');
     expect(rendered.html).toContain('Clara Solicitante (clara@tdf.gob.ar)');
     expect(rendered.html).toContain('Dirección de Prensa');
     expect(rendered.html).toContain('PED-2026-D000190');
-    expect(rendered.html).toContain('PED-2026-C000191');
+    expect(rendered.html).toContain('2026-10-25');
+    expect(rendered.html).toContain('PED-2026-D000191');
+    expect(rendered.html).toContain('2026-10-28');
+    expect(rendered.html).toContain('PED-2026-C000192');
+    expect(rendered.html).toContain('2026-10-22');
+    expect(rendered.html).toContain('>Fecha<');
+    expect(rendered.html).not.toContain('>Fecha Límite<');
     expect(rendered.html).toContain(`${appUrl}/gestion`);
     expect(rendered.text).toContain(`${appUrl}/gestion`);
+    expect(rendered.html).not.toContain('netlify.app');
   });
 
-  it('4. renderPedidoNuevoAdminEmail genera correo individual por PED con enlace directo a /gestion/pedidos/:id', () => {
+  it('4. renderPedidoNuevoAdminEmail genera correo individual por PED con enlace directo a /gestion/pedidos/:id y fecha operativa', () => {
     const payload = {
       envio_id: 'e0000000-0000-0000-0000-000000000004',
       pedido_id: 'p0000000-0000-0000-0000-000000000099',
       pedido_visible: 'PED-2026-D000199',
       categoria: 'Diseño Gráfico',
-      tipo: 'Flyer para redes sociales',
-      fecha_limite: '2026-11-05',
+      tipo: 'Invitación digital',
+      informacion_especifica: {
+        fecha: '2026-11-05',
+        nombre_evento: 'Gala Anual',
+      },
       nombre_apellido: 'Esteban Administrador',
       solicitante: 'Laura Solicitante',
       area_solicitante: 'Ministerio de Economía',
@@ -114,10 +135,12 @@ describe('Email Templates — Acceso Aprobado, Asignación y Alerta a Administra
     expect(rendered.html).toContain('Esteban Administrador');
     expect(rendered.html).toContain('PED-2026-D000199');
     expect(rendered.html).toContain('Diseño Gráfico');
-    expect(rendered.html).toContain('Flyer para redes sociales');
+    expect(rendered.html).toContain('Invitación digital');
+    expect(rendered.html).toContain('2026-11-05');
     expect(rendered.html).toContain('Ministerio de Economía');
     expect(rendered.html).toContain(`${appUrl}/gestion/pedidos/p0000000-0000-0000-0000-000000000099`);
     expect(rendered.text).toContain(`${appUrl}/gestion/pedidos/p0000000-0000-0000-0000-000000000099`);
+    expect(rendered.html).not.toContain('netlify.app');
   });
 
   it('5. renderAccesoAprobadoEmail mapea canónicamente el rol administrador a Administrador', () => {
@@ -134,6 +157,7 @@ describe('Email Templates — Acceso Aprobado, Asignación y Alerta a Administra
 
     expect(rendered.html).toContain('Administrador');
     expect(rendered.text).toContain('Administrador');
+    expect(rendered.html).not.toContain('netlify.app');
   });
 });
 
