@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
   fetchPedidoById,
@@ -114,7 +114,9 @@ function getHistorialEventInfo(evento: string, payload: any) {
 
 export const PedidoDetallePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { isAdmin, isObserver } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isLoading: authLoading, isApproved, isAdmin, isObserver, signOut } = useAuth();
 
   const [pedido, setPedido] = useState<PedidoDetailItem | null>(null);
   const [historial, setHistorial] = useState<HistorialOperativoItem[]>([]);
@@ -155,8 +157,8 @@ export const PedidoDetallePage: React.FC = () => {
   const [showInfoReqModal, setShowInfoReqModal] = useState(false);
   const [infoReqMensaje, setInfoReqMensaje] = useState('');
 
-  const loadData = async (isSilent = false) => {
-    if (!id) return;
+  const loadData = useCallback(async (isSilent = false) => {
+    if (!id || !isApproved) return;
     if (!isSilent) setLoading(true);
     setError(null);
     try {
@@ -175,7 +177,7 @@ export const PedidoDetallePage: React.FC = () => {
     } finally {
       if (!isSilent) setLoading(false);
     }
-  };
+  }, [id, isApproved]);
 
   useEffect(() => {
     if (pedido?.responsable_user_id) {
@@ -186,6 +188,19 @@ export const PedidoDetallePage: React.FC = () => {
   }, [pedido?.responsable_user_id]);
 
   useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      const currentPath = location.pathname + location.search + location.hash;
+      navigate(`/login?returnTo=${encodeURIComponent(currentPath)}`, { replace: true });
+      return;
+    }
+
+    if (!isApproved) {
+      setLoading(false);
+      return;
+    }
+
     loadData();
 
     const handleFocus = () => {
@@ -205,7 +220,7 @@ export const PedidoDetallePage: React.FC = () => {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [id]);
+  }, [authLoading, user, isApproved, loadData, navigate, location.pathname, location.search, location.hash]);
 
   // Polling condicional (~8s) mientras existan solicitudes de información pendientes
   useEffect(() => {
@@ -438,6 +453,97 @@ export const PedidoDetallePage: React.FC = () => {
       </span>
     );
   };
+
+  // Auth Loading Gate
+  if (authLoading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#64748b' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
+        <h3>Verificando sesión...</h3>
+      </div>
+    );
+  }
+
+  // Unauthenticated Gate
+  if (!user) {
+    return (
+      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#64748b' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔒</div>
+        <p>Redirigiendo a inicio de sesión...</p>
+      </div>
+    );
+  }
+
+  // Not Approved States (Pendiente / Rechazado / Revocado)
+  if (!isApproved) {
+    const estado = user.estadoAcceso;
+    const isPendiente = estado === 'pendiente';
+    const isRechazado = estado === 'rechazado';
+    const isRevocado = estado === 'revocado';
+
+    return (
+      <div style={{ maxWidth: '520px', margin: '3rem auto', padding: '0 1rem' }}>
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '0.75rem',
+            border: '1px solid #e2e8f0',
+            padding: '2.5rem 2rem',
+            textAlign: 'center',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+          }}
+        >
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              backgroundColor: isPendiente ? '#fef3c7' : '#fee2e2',
+              color: isPendiente ? '#b45309' : '#b91c1c',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.25rem',
+              fontSize: '1.75rem',
+            }}
+          >
+            {isPendiente ? '⏳' : isRechazado ? '❌' : '🚫'}
+          </div>
+
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+            {isPendiente
+              ? 'Acceso pendiente'
+              : isRechazado
+              ? 'Acceso no aprobado'
+              : 'Acceso revocado'}
+          </h2>
+
+          <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.6, margin: '0 0 1.5rem 0' }}>
+            {isPendiente && 'Tu cuenta está en espera de aprobación por un administrador.'}
+            {isRechazado && 'Tu solicitud de acceso no fue aprobada.'}
+            {isRevocado && 'Tu acceso al sistema fue revocado.'}
+          </p>
+
+          <button
+            type="button"
+            onClick={signOut}
+            style={{
+              padding: '0.65rem 1.5rem',
+              borderRadius: '0.375rem',
+              border: '1px solid #cbd5e1',
+              backgroundColor: '#ffffff',
+              color: '#334155',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

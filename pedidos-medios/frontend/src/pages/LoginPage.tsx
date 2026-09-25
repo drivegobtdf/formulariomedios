@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { signIn } from '../services/auth';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
+import { signIn, getMyAccess, isApproved as checkIsApproved } from '../services/auth';
 import { useAuth } from '../auth/AuthContext';
 import { PasswordInput } from '../components/common/PasswordInput';
+import { getSafeReturnTo } from '../utils/urlUtils';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { user, isLoading, isApproved, refreshUser } = useAuth();
+
+  const rawReturnTo = searchParams.get('returnTo') || (location.state as any)?.from?.pathname;
+  const safeReturnTo = getSafeReturnTo(rawReturnTo, '/gestion');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,9 +21,9 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (!isLoading && user && isApproved) {
-      navigate('/gestion', { replace: true });
+      navigate(safeReturnTo, { replace: true });
     }
-  }, [isLoading, user, isApproved, navigate]);
+  }, [isLoading, user, isApproved, navigate, safeReturnTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +39,12 @@ export const LoginPage: React.FC = () => {
       const res = await signIn({ email: email.trim(), password });
       if (res.success) {
         await refreshUser();
-        navigate('/gestion');
+        const accessRes = await getMyAccess();
+        if (accessRes.success && checkIsApproved(accessRes.data ?? null)) {
+          navigate(safeReturnTo);
+        } else {
+          navigate('/gestion');
+        }
       } else {
         setError(res.error || 'Credenciales inválidas o error de autenticación.');
       }

@@ -1007,5 +1007,130 @@ describe('PedidoDetallePage Unit Tests', () => {
     // Opción de respaldo presente en el selector
     expect(screen.getByText(/Operador Anterior \(actual\)/i)).toBeInTheDocument();
   });
+
+  it('15. Auth cargando: no ejecuta fetchPedidoById y muestra indicador de verificación de sesión', () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: null,
+      isLoading: true,
+      isApproved: false,
+      isAdmin: false,
+      isTeamOrAdmin: false,
+      isObserver: false,
+      refreshUser: vi.fn(),
+      signOut: vi.fn(),
+    });
+
+    const fetchSpy = vi.spyOn(gestionApi, 'fetchPedidoById');
+
+    render(
+      <MemoryRouter initialEntries={['/gestion/pedidos/ped-d-155']}>
+        <Routes>
+          <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/Verificando sesión/i)).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('16. Usuario no autenticado: no consulta pedidos y redirige a /login con returnTo', async () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: null,
+      isLoading: false,
+      isApproved: false,
+      isAdmin: false,
+      isTeamOrAdmin: false,
+      isObserver: false,
+      refreshUser: vi.fn(),
+      signOut: vi.fn(),
+    });
+
+    const fetchSpy = vi.spyOn(gestionApi, 'fetchPedidoById');
+
+    render(
+      <MemoryRouter initialEntries={['/gestion/pedidos/ped-d-155?tab=archivos#historial']}>
+        <Routes>
+          <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+          <Route
+            path="/login"
+            element={<div data-testid="login-gate">Página de Login Mock</div>}
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByTestId('login-gate')).toBeInTheDocument();
+    });
+  });
+
+  it('17. Usuario autenticado pero no aprobado: no consulta pedidos y muestra tarjeta de acceso restringido', () => {
+    const mockPending: UserProfile = {
+      userId: 'usr-pen-1',
+      email: 'pendiente@medios.tdf.gob.ar',
+      nombre: 'Carlos',
+      apellido: 'Pérez',
+      nombreUsuario: 'cperez',
+      appRole: 'observador',
+      estadoAcceso: 'pendiente',
+    };
+
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: mockPending,
+      isLoading: false,
+      isApproved: false,
+      isAdmin: false,
+      isTeamOrAdmin: false,
+      isObserver: false,
+      refreshUser: vi.fn(),
+      signOut: vi.fn(),
+    });
+
+    const fetchSpy = vi.spyOn(gestionApi, 'fetchPedidoById');
+
+    render(
+      <MemoryRouter initialEntries={['/gestion/pedidos/ped-d-155']}>
+        <Routes>
+          <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Acceso pendiente')).toBeInTheDocument();
+    expect(screen.getByText(/Tu cuenta está en espera de aprobación/i)).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('18. Usuario aprobado pero pedido inexistente: muestra error "Pedido no encontrado" solo tras confirmar 404 real', async () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: mockAdminProfile,
+      isLoading: false,
+      isApproved: true,
+      isAdmin: true,
+      isTeamOrAdmin: true,
+      isObserver: false,
+      refreshUser: vi.fn(),
+      signOut: vi.fn(),
+    });
+
+    vi.spyOn(gestionApi, 'fetchPedidoById').mockRejectedValue(new Error('Pedido no encontrado'));
+    vi.spyOn(gestionApi, 'fetchInternalUsers').mockResolvedValue([]);
+
+    render(
+      <MemoryRouter initialEntries={['/gestion/pedidos/ped-inexistente']}>
+        <Routes>
+          <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Error al cargar el pedido')).toBeInTheDocument();
+      expect(screen.getByText('Pedido no encontrado')).toBeInTheDocument();
+    });
+  });
 });
+
 
