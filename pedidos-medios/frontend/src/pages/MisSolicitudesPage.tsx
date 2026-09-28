@@ -6,6 +6,7 @@ import {
   solicitanteGetPedidoDetail,
   solicitanteSubmitInfoResponse,
   solicitanteSessionRevoke,
+  downloadSolicitanteDeliveryFile,
   SolicitantePedidoListItem,
   SolicitantePedidoDetailDTO,
 } from '../services/trackingApi';
@@ -144,6 +145,26 @@ export const MisSolicitudesPage: React.FC = () => {
   const [submittingResponse, setSubmittingResponse] = useState(false);
   const [responseError, setResponseError] = useState<string | null>(null);
   const [responseSuccess, setResponseSuccess] = useState<string | null>(null);
+
+  // Delivery File Download State
+  const [downloadingArchivoId, setDownloadingArchivoId] = useState<string | null>(null);
+
+  const handleDownloadDeliveryFile = async (archivoId: string, nombreOriginal?: string) => {
+    if (!sessionToken || !selectedPedido) return;
+    setDownloadingArchivoId(archivoId);
+    try {
+      await downloadSolicitanteDeliveryFile(
+        sessionToken,
+        selectedPedido.pedido_visible || selectedPedido.id,
+        archivoId,
+        nombreOriginal
+      );
+    } catch (err: any) {
+      alert(`Error al descargar el archivo: ${err.message || 'Error desconocido'}`);
+    } finally {
+      setDownloadingArchivoId(null);
+    }
+  };
 
   // Cooldown countdown timer
   useEffect(() => {
@@ -1197,10 +1218,59 @@ export const MisSolicitudesPage: React.FC = () => {
                     <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#166534', margin: '0 0 0.5rem 0' }}>
                       Entrega final · v{selectedPedido.entrega.version}
                     </h3>
-                    {selectedPedido.entrega.nota_publica && (
+                    {(selectedPedido.entrega.nota_publica || selectedPedido.entrega.nota) && (
                       <p style={{ margin: '0 0 0.75rem 0', color: '#1e293b', fontSize: '0.875rem' }}>
-                        {selectedPedido.entrega.nota_publica}
+                        {selectedPedido.entrega.nota_publica || selectedPedido.entrega.nota}
                       </p>
+                    )}
+                    {selectedPedido.entrega.archivos && selectedPedido.entrega.archivos.length > 0 && (
+                      <div style={{ marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.8125rem', color: '#166534' }}>
+                          Archivos entregados ({selectedPedido.entrega.archivos.length}):
+                        </strong>
+                        {selectedPedido.entrega.archivos.map((fa: any) => (
+                          <div
+                            key={fa.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '0.5rem 0.75rem',
+                              backgroundColor: '#ffffff',
+                              border: '1px solid #86efac',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.8125rem',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                              <span>📄</span>
+                              <span style={{ fontWeight: 600, color: '#1e293b', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                {fa.nombre_original}
+                              </span>
+                              {fa.size_bytes && (
+                                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({formatFileSize(fa.size_bytes)})</span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadDeliveryFile(fa.id, fa.nombre_original)}
+                              disabled={downloadingArchivoId === fa.id}
+                              style={{
+                                backgroundColor: '#16a34a',
+                                color: '#ffffff',
+                                border: 'none',
+                                padding: '0.35rem 0.75rem',
+                                borderRadius: '0.25rem',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                cursor: downloadingArchivoId === fa.id ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              {downloadingArchivoId === fa.id ? 'Descargando...' : '📥 Descargar'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     )}
                     {selectedPedido.entrega.url_entrega && (
                       <a
@@ -1218,7 +1288,7 @@ export const MisSolicitudesPage: React.FC = () => {
                           textDecoration: 'none',
                         }}
                       >
-                        Abrir entrega
+                        Abrir entrega externa
                       </a>
                     )}
                   </div>

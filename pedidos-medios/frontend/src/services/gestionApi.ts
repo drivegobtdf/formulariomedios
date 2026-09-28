@@ -528,19 +528,125 @@ export async function changePedidoState(pedidoId: string, targetState: string, e
 
 export async function finalizePedido(pedidoId: string, expectedVersion: number, entrega?: {
   archivo_id?: string;
+  archivo_ids?: string[];
   enlace_externo?: string;
   nota?: string;
 }) {
   const supabase = getSupabaseClient();
+  let filesArray: string[] | null = null;
+  if (entrega?.archivo_ids && entrega.archivo_ids.length > 0) {
+    filesArray = entrega.archivo_ids;
+  } else if (entrega?.archivo_id) {
+    filesArray = [entrega.archivo_id];
+  }
+
   const { data, error } = await supabase.rpc('pedido_finalize', {
     p_pedido_id: pedidoId,
     p_expected_version: expectedVersion,
-    p_archivos_entrega: entrega?.archivo_id ? [entrega.archivo_id] : null,
+    p_archivos_entrega: filesArray,
     p_url_entrega: entrega?.enlace_externo || null,
     p_nota_entrega: entrega?.nota || null,
   });
   if (error) throw new Error(error.message);
   return data;
+}
+
+export async function uploadDeliveryFile(
+  pedidoId: string,
+  file: File,
+  _onProgress?: (percentage: number) => void
+): Promise<{ archivo_id: string; nombre_original: string; size_bytes: number }> {
+  const supabase = getSupabaseClient();
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr || !sessionData.session?.access_token) {
+    throw new Error('Sesión no válida o expirada. Por favor inicie sesión nuevamente.');
+  }
+
+  const token = sessionData.session.access_token;
+  const supabaseUrl = (supabase as any).supabaseUrl || import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = (supabase as any).supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  // 1. Preparar subida de entrega
+  const prepareRes = await fetch(`${supabaseUrl}/functions/v1/delivery-upload-prepare`, {
+    method: 'POST',
+    headers: {
+      'apikey': anonKey,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      pedido_id: pedidoId,
+      expected_name: file.name,
+      expected_size: file.size,
+      mime_type: file.type || 'application/octet-stream',
+    }),
+  });
+
+  if (!prepareRes.ok) {
+    let msg = `Error al preparar subida (${prepareRes.status})`;
+    try {
+      const j = await prepareRes.json();
+      if (j.message) msg = j.message;
+    } catch {}
+    throw new Error(msg);
+  }
+
+  const prepData = await prepareRes.json();
+  const reservationId = prepData.reservation_id;
+  const targetUploadUrl = prepData.relay_upload_url || prepData.drive_session_ref;
+
+  // 2. Subir contenido binario
+  const uploadRes = await fetch(targetUploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': file.type || 'application/octet-stream',
+    },
+    body: file,
+  });
+
+  if (!uploadRes.ok) {
+    let msg = `Error al subir archivo a Google Drive (${uploadRes.status})`;
+    try {
+      const j = await uploadRes.json();
+      if (j.message) msg = j.message;
+    } catch {}
+    throw new Error(msg);
+  }
+
+  const uploadResult = await uploadRes.json().catch(() => ({}));
+  const driveFileId = uploadResult.drive_file_id || prepData.drive_file_id;
+
+  // 3. Completar y verificar subida
+  const completeRes = await fetch(`${supabaseUrl}/functions/v1/delivery-upload-complete`, {
+    method: 'POST',
+    headers: {
+      'apikey': anonKey,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      pedido_id: pedidoId,
+      reservation_id: reservationId,
+      drive_file_id: driveFileId,
+    }),
+  });
+
+  if (!completeRes.ok) {
+    let msg = `Error al verificar subida (${completeRes.status})`;
+    try {
+      const j = await completeRes.json();
+      if (j.message) msg = j.message;
+    } catch {}
+    throw new Error(msg);
+  }
+
+  const completeData = await completeRes.json();
+  return {
+    archivo_id: completeData.archivo_id,
+    nombre_original: file.name,
+    size_bytes: file.size,
+  };
 }
 
 export async function cancelPedido(pedidoId: string, motivo: string, expectedVersion: number) {

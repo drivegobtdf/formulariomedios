@@ -37,6 +37,8 @@ export interface DriveAdapter {
   getAccessToken(): Promise<string>;
   ensureRootFolder(folderName?: string): Promise<string>;
   ensureStagingFolder(rootFolderId: string, stagingFolderName?: string): Promise<string>;
+  ensureFolder(parentFolderId: string, folderName: string): Promise<string>;
+  moveFile(fileId: string, targetFolderId: string, sourceFolderId?: string): Promise<void>;
   createResumableUploadSession(options: {
     fileName: string;
     mimeType: string;
@@ -208,6 +210,94 @@ export class GoogleDriveAdapter implements DriveAdapter {
     const createdData = (await createRes.json()) as { id: string };
     this.stagingFolderId = createdData.id;
     return this.stagingFolderId;
+  }
+
+  /**
+   * Asegura la existencia de una carpeta específica bajo una carpeta padre en Google Drive
+   */
+  async ensureFolder(parentFolderId: string, folderName: string): Promise<string> {
+    const token = await this.getAccessToken();
+
+    const sanitizedName = folderName.replace(/'/g, "\\'");
+    const query = encodeURIComponent(
+      `mimeType = 'application/vnd.google-apps.folder' and name = '${sanitizedName}' and '${parentFolderId}' in parents and trashed = false`
+    );
+    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&spaces=drive`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (searchRes.ok) {
+      const searchData = (await searchRes.json()) as { files: Array<{ id: string; name: string }> };
+      if (searchData.files && searchData.files.length > 0) {
+        return searchData.files[0].id;
+      }
+    }
+
+    // Crear la carpeta si no existe
+    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentFolderId],
+      }),
+    });
+
+    if (!createRes.ok) {
+      const errText = await createRes.text();
+      throw new Error(`DRIVE_FOLDER_ERROR: Error al crear carpeta '${folderName}': ${createRes.status} ${errText}`);
+    }
+
+    const createdData = (await createRes.json()) as { id: string };
+    return createdData.id;
+  }
+
+  /**
+   * Mueve un archivo de Google Drive agregando targetFolderId y removiendo sourceFolderId
+   */
+  async moveFile(fileId: string, targetFolderId: string, sourceFolderId?: string): Promise<void> {
+    const token = await this.getAccessToken();
+
+    let removeParents = sourceFolderId || '';
+
+    // Si no se proporcionó el folder origen, consultar los parents actuales del archivo
+    if (!removeParents) {
+      const getRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (getRes.ok) {
+        const data = (await getRes.json()) as { parents?: string[] };
+        if (data.parents && data.parents.length > 0) {
+          if (data.parents.includes(targetFolderId)) {
+            return;
+          }
+          removeParents = data.parents.join(',');
+        }
+      }
+    }
+
+    const patchUrl = new URL(`https://www.googleapis.com/drive/v3/files/${fileId}`);
+    patchUrl.searchParams.set('addParents', targetFolderId);
+    if (removeParents) {
+      patchUrl.searchParams.set('removeParents', removeParents);
+    }
+    patchUrl.searchParams.set('fields', 'id,parents');
+
+    const patchRes = await fetch(patchUrl.toString(), {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!patchRes.ok) {
+      const errText = await patchRes.text();
+      throw new Error(`DRIVE_MOVE_ERROR: Error al mover archivo ${fileId} a carpeta ${targetFolderId}: ${patchRes.status} ${errText}`);
+    }
   }
 
   /**
@@ -394,6 +484,17 @@ export class MockDriveAdapter implements DriveAdapter {
     return `mock_staging_folder_${rootFolderId}_${stagingFolderName}`;
   }
 
+  async ensureFolder(parentFolderId: string, folderName: string): Promise<string> {
+    return `mock_folder_${parentFolderId}_${folderName.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  }
+
+  async moveFile(fileId: string, targetFolderId: string, _sourceFolderId?: string): Promise<void> {
+    const entry = this.inMemoryFiles.get(fileId);
+    if (entry) {
+      entry.metadata.parents = [targetFolderId];
+    }
+  }
+
   async createResumableUploadSession(options: {
     fileName: string;
     mimeType: string;
@@ -560,4 +661,26 @@ export function getDriveAdapter(): DriveAdapter {
 
 export function setDriveAdapter(adapter: DriveAdapter): void {
   defaultAdapterInstance = adapter;
+}
+
+/**
+ * Genera un nombre de archivo único si ya existe en la lista dada
+ * Ejemplo: archivo.pdf -> archivo (2).pdf -> archivo (3).pdf
+ */
+export function computeUniqueFileName(existingFileNames: string[], originalName: string): string {
+  if (!existingFileNames.includes(originalName)) {
+    return originalName;
+  }
+  const lastDot = originalName.lastIndexOf('.');
+  const baseName = lastDot > 0 ? originalName.substring(0, lastDot) : originalName;
+  const ext = lastDot > 0 ? originalName.substring(lastDot) : '';
+
+  let counter = 2;
+  while (true) {
+    const candidate = `${baseName} (${counter})${ext}`;
+    if (!existingFileNames.includes(candidate)) {
+      return candidate;
+    }
+    counter++;
+  }
 }

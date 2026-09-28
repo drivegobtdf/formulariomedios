@@ -47,11 +47,19 @@ export interface SolicitantePedidoDetailDTO {
     created_at: string;
   }>;
   entrega?: {
-    id: string;
+    id?: string;
     version: number;
     nota_publica?: string;
+    nota?: string;
     url_entrega?: string;
     created_at: string;
+    archivos?: Array<{
+      id: string;
+      nombre_original: string;
+      size_bytes?: number;
+      mime_type?: string;
+      created_at?: string;
+    }>;
   } | null;
   archivos_adjuntos: Array<{
     id: string;
@@ -442,4 +450,45 @@ export async function submitInfoResponse(payload: {
   }
 
   return res.json();
+}
+
+/**
+ * Descarga segura de un archivo de entrega vigente para el solicitante autenticado
+ */
+export async function downloadSolicitanteDeliveryFile(
+  sessionToken: string,
+  pedidoRef: string,
+  archivoId: string,
+  fileName?: string
+): Promise<void> {
+  const config = getPublicConfig();
+  const endpoint = `${config.supabaseUrl}/functions/v1/solicitante-delivery-download?pedido_id=${encodeURIComponent(pedidoRef)}&archivo_id=${encodeURIComponent(archivoId)}`;
+
+  const res = await fetch(endpoint, {
+    method: 'GET',
+    headers: {
+      'apikey': config.supabaseAnonKey,
+      'x-solicitante-session': sessionToken.trim(),
+    },
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Error al descargar archivo (${res.status})`;
+    try {
+      const j = await res.json();
+      if (j.message) errorMsg = j.message;
+      else if (j.error) errorMsg = j.error;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  const blob = await res.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = fileName || 'archivo_entrega';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(downloadUrl);
 }

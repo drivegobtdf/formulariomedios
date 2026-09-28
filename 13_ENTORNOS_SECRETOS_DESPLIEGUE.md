@@ -77,7 +77,9 @@ Server-side:
 - Google refresh token;
 - n8n integration secret;
 - email provider secrets;
-- encryption keys.
+- encryption keys;
+- ENVIRONMENT (obligatorio en Supabase PROD: ENVIRONMENT=production; en TEST/desarrollo permanece ausente o 'test' para activar el guardián de allowlist fail-safe);
+- PUBLIC_APP_URL (obligatorio en PROD: https://formulariomedios.pages.dev).
 
 Nunca Git.
 

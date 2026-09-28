@@ -137,7 +137,7 @@ export default async function handler(req: Request): Promise<Response> {
           toEmail.endsWith('@tierradelfuego.gob.ar') ||
           toEmail.endsWith('@tdf.gob.ar');
 
-        if (!isAuthorizedTestEmail && Deno.env.get('ENVIRONMENT') !== 'production') {
+        if (!isAuthorizedTestEmail && getEnv('ENVIRONMENT') !== 'production') {
           throw {
             semanticType: 'PERMANENT_RECIPIENT_REJECTED',
             status: 422,

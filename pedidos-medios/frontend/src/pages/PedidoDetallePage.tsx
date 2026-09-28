@@ -7,6 +7,7 @@ import {
   assignPedido,
   changePedidoState,
   finalizePedido,
+  uploadDeliveryFile,
   cancelPedido,
   reopenPedido,
   archivePedido,
@@ -143,6 +144,32 @@ export const PedidoDetallePage: React.FC = () => {
   const [showFinalizeModal, setShowFinalizeModal] = useState(false);
   const [entregaUrl, setEntregaUrl] = useState('');
   const [entregaNota, setEntregaNota] = useState('');
+  const [deliveryFiles, setDeliveryFiles] = useState<Array<{
+    id: string;
+    file: File;
+    name: string;
+    size: number;
+    status: 'pending' | 'uploading' | 'completed' | 'error';
+    archivoId?: string;
+    error?: string;
+  }>>([]);
+
+  const handleDeliveryFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const newFiles = Array.from(e.target.files).map((f) => ({
+      id: Math.random().toString(36).substring(2, 9),
+      file: f,
+      name: f.name,
+      size: f.size,
+      status: 'pending' as const,
+    }));
+    setDeliveryFiles((prev) => [...prev, ...newFiles]);
+    e.target.value = '';
+  };
+
+  const removeDeliveryFile = (fileId: string) => {
+    setDeliveryFiles((prev) => prev.filter((f) => f.id !== fileId));
+  };
 
   // Cancel / Reopen modal
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -288,17 +315,67 @@ export const PedidoDetallePage: React.FC = () => {
   const handleFinalize = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pedido) return;
+
+    const cleanUrl = entregaUrl.trim();
+    if (deliveryFiles.length === 0 && !cleanUrl) {
+      setModalError('Adjuntá al menos un archivo o ingresá un enlace de entrega.');
+      return;
+    }
+
+    if (cleanUrl && !cleanUrl.match(/^https?:\/\/.+/i)) {
+      setModalError('La URL de entrega debe ser un enlace válido HTTP o HTTPS.');
+      return;
+    }
+
     setActionLoading(true);
     setModalError(null);
     setError(null);
+
     try {
+      // 1. Subir cualquier archivo que esté en estado 'pending' o 'error'
+      const updatedFiles = [...deliveryFiles];
+      for (let i = 0; i < updatedFiles.length; i++) {
+        const item = updatedFiles[i];
+        if (item.status === 'completed' && item.archivoId) {
+          continue;
+        }
+
+        item.status = 'uploading';
+        setDeliveryFiles([...updatedFiles]);
+
+        try {
+          const res = await uploadDeliveryFile(pedido.id, item.file);
+          item.status = 'completed';
+          item.archivoId = res.archivo_id;
+          setDeliveryFiles([...updatedFiles]);
+        } catch (uploadErr: any) {
+          item.status = 'error';
+          item.error = uploadErr.message || 'Error al subir archivo';
+          setDeliveryFiles([...updatedFiles]);
+          throw new Error(`Error al subir ${item.name}: ${item.error}`);
+        }
+      }
+
+      // 2. Recolectar archivo_ids completados
+      const finalArchivoIds = updatedFiles
+        .filter((f) => f.status === 'completed' && f.archivoId)
+        .map((f) => f.archivoId as string);
+
+      if (finalArchivoIds.length === 0 && !cleanUrl) {
+        throw new Error('Adjuntá al menos un archivo o ingresá un enlace de entrega.');
+      }
+
+      // 3. Llamar RPC pedido_finalize
       await finalizePedido(pedido.id, pedido.version, {
-        enlace_externo: entregaUrl.trim() || undefined,
+        archivo_ids: finalArchivoIds.length > 0 ? finalArchivoIds : undefined,
+        enlace_externo: cleanUrl || undefined,
         nota: entregaNota.trim() || undefined,
       });
+
       setShowFinalizeModal(false);
       setEntregaUrl('');
       setEntregaNota('');
+      setDeliveryFiles([]);
       setSuccessMessage('Pedido finalizado y entrega registrada exitosamente.');
       await loadData();
     } catch (err: any) {
@@ -1723,26 +1800,113 @@ export const PedidoDetallePage: React.FC = () => {
             )}
 
             <form onSubmit={handleFinalize}>
+              {/* Archivos de entrega */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.35rem', color: '#1e293b' }}>
+                  Archivos de entrega (opcional si hay enlace)
+                </label>
+                <div style={{ border: '2px dashed #cbd5e1', borderRadius: '0.5rem', padding: '1rem', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                  <input
+                    type="file"
+                    id="delivery-file-input"
+                    multiple
+                    disabled={actionLoading}
+                    onChange={handleDeliveryFileSelect}
+                    style={{ display: 'none' }}
+                  />
+                  <label
+                    htmlFor="delivery-file-input"
+                    style={{
+                      display: 'inline-block',
+                      backgroundColor: '#ffffff',
+                      color: '#0284c7',
+                      border: '1px solid #0284c7',
+                      padding: '0.45rem 1rem',
+                      borderRadius: '0.375rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      cursor: actionLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Seleccionar archivos
+                  </label>
+                  <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    PDF, PNG, JPG, DOCX, ZIP · Hasta 10 MB por archivo
+                  </p>
+                </div>
+
+                {deliveryFiles.length > 0 && (
+                  <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '140px', overflowY: 'auto' }}>
+                    {deliveryFiles.map((df) => (
+                      <div
+                        key={df.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.4rem 0.6rem',
+                          backgroundColor: '#f1f5f9',
+                          borderRadius: '0.375rem',
+                          fontSize: '0.8125rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                          <span style={{ fontWeight: 600, color: '#334155', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                            {df.name}
+                          </span>
+                          <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({formatFileSize(df.size)})</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {df.status === 'completed' && <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.75rem' }}>✓ Listo</span>}
+                          {df.status === 'uploading' && <span style={{ color: '#0284c7', fontSize: '0.75rem' }}>Subiendo...</span>}
+                          {df.status === 'error' && <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>⚠️ Error</span>}
+                          {!actionLoading && (
+                            <button
+                              type="button"
+                              onClick={() => removeDeliveryFile(df.id)}
+                              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.875rem', padding: '0 0.2rem' }}
+                              title="Quitar archivo"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Enlace externo */}
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Enlace de entrega (Drive u otro)</label>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: '#1e293b' }}>
+                  Enlace externo (opcional)
+                </label>
                 <input
                   type="url"
                   placeholder="https://drive.google.com/..."
                   value={entregaUrl}
+                  disabled={actionLoading}
                   onChange={(e) => setEntregaUrl(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', boxSizing: 'border-box' }}
                 />
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Nota de entrega</label>
+
+              {/* Nota de entrega */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: '#1e293b' }}>
+                  Nota de entrega (opcional)
+                </label>
                 <textarea
                   rows={3}
                   placeholder="Detalles o instrucciones de la entrega..."
                   value={entregaNota}
+                  disabled={actionLoading}
                   onChange={(e) => setEntregaNota(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', boxSizing: 'border-box' }}
                 />
               </div>
+
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                 <button
                   type="button"

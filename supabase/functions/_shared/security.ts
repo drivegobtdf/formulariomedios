@@ -277,3 +277,51 @@ export function timingSafeEqualString(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
+/**
+ * Resuelve la URL base pública del relay de almacenamiento.
+ * Valida mediante la API URL y compara exact origin.
+ * Solo permite localhost en entorno local explícito.
+ * En Cloud, si falta una URL pública válida, arroja un error controlado (sin fallback a 127.0.0.1).
+ */
+export function resolvePublicRelayBaseUrl(
+  publicSupabaseUrl = getEnv('PUBLIC_SUPABASE_URL'),
+  supabaseUrlEnv = getEnv('SUPABASE_URL'),
+  isExplicitLocal = Boolean(
+    getEnv('ENVIRONMENT') === 'local' ||
+    getEnv('APP_ENV') === 'local' ||
+    getEnv('LOCAL_DEV') === 'true' ||
+    (getEnv('SUPABASE_URL') || '').includes('127.0.0.1') ||
+    (getEnv('SUPABASE_URL') || '').includes('localhost')
+  )
+): string {
+  if (publicSupabaseUrl) {
+    try {
+      const parsed = new URL(publicSupabaseUrl);
+      if (parsed.protocol === 'https:') {
+        return parsed.origin;
+      }
+      if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') && isExplicitLocal) {
+        return parsed.origin;
+      }
+    } catch {
+      // Ignorar URL no parseable
+    }
+  }
+
+  if (supabaseUrlEnv) {
+    try {
+      const parsed = new URL(supabaseUrlEnv);
+      if (parsed.protocol === 'https:') {
+        return parsed.origin;
+      }
+      if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') && isExplicitLocal) {
+        return parsed.origin;
+      }
+    } catch {
+      // Ignorar URL no parseable
+    }
+  }
+
+  throw new Error('CONFIG_ERROR: No se encontró una URL pública o local válida configurada para el relay de almacenamiento');
+}
+
