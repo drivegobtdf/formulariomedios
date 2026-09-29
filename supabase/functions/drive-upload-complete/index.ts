@@ -63,14 +63,27 @@ export default async function handler(req: Request): Promise<Response> {
     } else if (session_token) {
       // 1B. Validación de sesión de solicitante
       const tokenHash = await computeSha256Hex(String(session_token).trim());
-      const { data: solSession, error: sessErr } = await supabase
-        .from('solicitante_sessions')
+      let solSession: any = null;
+      const { data: sessEs } = await supabase
+        .from('solicitante_sesiones')
         .select('correo, expires_at')
         .eq('session_token_hash', tokenHash)
+        .is('revoked_at', null)
         .gt('expires_at', new Date().toISOString())
         .maybeSingle();
+      
+      solSession = sessEs;
+      if (!solSession) {
+        const { data: sessEn } = await supabase
+          .from('solicitante_sessions')
+          .select('correo, expires_at')
+          .eq('session_token_hash', tokenHash)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+        solSession = sessEn;
+      }
 
-      if (sessErr || !solSession) {
+      if (!solSession) {
         return new Response(
           JSON.stringify({ error: 'SESSION_INVALID', message: 'Sesión de solicitante no válida' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

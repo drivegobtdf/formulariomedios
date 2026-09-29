@@ -343,20 +343,123 @@ export function renderEmail(
             <p style="margin: 0; font-size: 13px; color: #166534;"><strong>Nota de entrega:</strong> ${notaCierreSafe}</p>
           </div>
         ` : ''}
-        <div style="text-align: center; margin: 24px 0;">
+        <div style="text-align: center; margin: 24px 0; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
           <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
             Ver Detalle en Mis Solicitudes
+          </a>
+          <a href="${portalUrl}" style="display: inline-block; background-color: #F59E0B; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Solicitar Revisión
           </a>
         </div>
       `;
 
-      const text = `SOLICITUD FINALIZADA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nEl pedido ${payload.pedido_visible || 'PED'} ha sido completado y finalizado.${entregaBlockText}\nPuede consultar el historial completo en: ${portalUrl}\n`;
+      const text = `SOLICITUD FINALIZADA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nEl pedido ${payload.pedido_visible || 'PED'} ha sido completado y finalizado.${entregaBlockText}\nPuede consultar el historial o solicitar revisión en: ${portalUrl}\n`;
 
       return {
         subject,
         html: wrapHtmlLayout('Solicitud Finalizada', contentHtml),
         text,
         n8nTipo: 'finalizado',
+      };
+    }
+
+    // -------------------------------------------------------------------------
+    // 4B. Solicitud de Revisión / Retrabajo — C04, C13
+    // -------------------------------------------------------------------------
+    case 'revision_solicitada':
+    case 'pedido_revision_solicitada': {
+      const pedidosList = Array.isArray(payload.pedidos) && payload.pedidos.length > 0
+        ? payload.pedidos
+        : payload.pedido_visible
+        ? [{ pedido_visible: payload.pedido_visible, servicio: `${payload.categoria || ''}${payload.tipo ? ' - ' + payload.tipo : ''}`.trim(), revision_number: payload.revision_number || 1 }]
+        : [];
+      const count = pedidosList.length || 1;
+      const codes = pedidosList.map((p: any) => p.pedido_visible).filter(Boolean).join(', ');
+      const subject = `[PEDIDOS] Solicitud de Revisión Recibida: ${codes || payload.pedido_visible || 'PED'}`;
+      const rawToken = (payload.magic_token || payload.raw_token || payload.token || '').trim();
+      const firstPedVisible = (pedidosList[0]?.pedido_visible || payload.pedido_visible || '').trim();
+      const portalUrl = rawToken
+        ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}${firstPedVisible ? `&pedido=${encodeURIComponent(firstPedVisible)}` : ''}`
+        : `${cleanAppUrl}/mis-solicitudes`;
+      const motivoRaw = payload.motivo || payload.extra?.motivo || '';
+      const motivoSafe = escapeHtml(motivoRaw);
+      const archivosCount = Number(payload.archivos_count || 0);
+
+      let pedidosHtml = '';
+      let pedidosText = '';
+
+      if (pedidosList.length > 1) {
+        pedidosHtml = `
+          <p style="margin: 0 0 12px 0; font-size: 14px; line-height: 1.5;">
+            Hemos recibido tu solicitud de revisión para los siguientes <strong>${count} pedidos</strong>, los cuales han reingresado al circuito de trabajo con prioridad de atención:
+          </p>
+          <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin-bottom: 20px; font-size: 13px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
+            <thead>
+              <tr style="background-color: #F1F5F9; text-align: left;">
+                <th style="padding: 8px 12px; font-size: 12px; color: ${BRAND_MUTED}; text-transform: uppercase;">Código PED</th>
+                <th style="padding: 8px 12px; font-size: 12px; color: ${BRAND_MUTED}; text-transform: uppercase;">Servicio</th>
+                <th style="padding: 8px 12px; font-size: 12px; color: ${BRAND_MUTED}; text-transform: uppercase;">Revisión #</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pedidosList.map((p: any) => `
+                <tr style="border-top: 1px solid #E2E8F0;">
+                  <td style="padding: 8px 12px; font-weight: 700; color: ${BRAND_PRIMARY};">${escapeHtml(p.pedido_visible || 'PED')}</td>
+                  <td style="padding: 8px 12px;">${escapeHtml(p.servicio || p.categoria || 'Servicio')}</td>
+                  <td style="padding: 8px 12px; font-weight: 600; color: #D97706;">#${p.revision_number || 1}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        pedidosText = pedidosList.map((p: any) => `* ${p.pedido_visible} (${p.servicio || 'Servicio'}) — Rev #${p.revision_number || 1}`).join('\n');
+      } else {
+        const singlePed = pedidosList[0] || { pedido_visible: payload.pedido_visible || 'PED', revision_number: payload.revision_number || 1 };
+        const catSafe = escapeHtml(payload.categoria || '');
+        const tipSafe = escapeHtml(payload.tipo || '');
+        pedidosHtml = `
+          <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+            Hemos recibido tu solicitud de revisión para el pedido <strong>${escapeHtml(singlePed.pedido_visible || 'PED')}</strong> (${catSafe}${tipSafe ? ' - ' + tipSafe : ''}). El pedido ha reingresado al circuito de trabajo con prioridad de atención.
+          </p>
+        `;
+        pedidosText = `Pedido: ${singlePed.pedido_visible || 'PED'}\n`;
+      }
+
+      const contentHtml = `
+        <h2 style="margin: 0 0 16px 0; color: #D97706; font-size: 18px;">
+          Solicitud de Revisión Registrada
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
+          Estimado/a <strong>${nombreSafe}</strong>,
+        </p>
+        ${pedidosHtml}
+        <div style="background-color: #FFFBEB; border-left: 4px solid #D97706; padding: 14px; margin: 16px 0; border-radius: 4px;">
+          <p style="margin: 0 0 6px 0; font-weight: 700; color: #92400E; font-size: 13px;">
+            Motivo de revisión indicado:
+          </p>
+          <p style="margin: 0; font-size: 14px; color: #78350F; white-space: pre-wrap;">
+            "${motivoSafe}"
+          </p>
+          ${archivosCount > 0 ? `
+            <p style="margin: 8px 0 0 0; font-size: 12px; color: #92400E;">
+              <strong>Archivos de referencia:</strong> ${archivosCount} adjunto(s)
+            </p>
+          ` : ''}
+        </div>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Seguir en Mis Solicitudes
+          </a>
+        </div>
+      `;
+
+      const text = `SOLICITUD DE REVISIÓN REGISTRADA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nHemos recibido tu solicitud de revisión para:\n${pedidosText}\n\nMotivo:\n"${motivoRaw}"\n${archivosCount > 0 ? `Archivos de referencia: ${archivosCount} adjunto(s)\n` : ''}\nPortal: ${portalUrl}\n`;
+
+      return {
+        subject,
+        html: wrapHtmlLayout('Solicitud de Revisión', contentHtml),
+        text,
+        n8nTipo: 'revision_solicitada',
       };
     }
 
@@ -802,6 +905,10 @@ export function renderPedidoAsignadoEmail(payload: Record<string, any>, appBaseU
 
 export function renderPedidoNuevoAdminEmail(payload: Record<string, any>, appBaseUrl?: string): RenderedEmail {
   return renderEmail('pedido_nuevo_admin', payload, appBaseUrl);
+}
+
+export function renderRevisionSolicitadaEmail(payload: Record<string, any>, appBaseUrl?: string): RenderedEmail {
+  return renderEmail('revision_solicitada', payload, appBaseUrl);
 }
 
 export const renderEmailForCommunication = renderEmail;

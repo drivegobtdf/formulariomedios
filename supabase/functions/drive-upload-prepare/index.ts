@@ -263,48 +263,82 @@ export default async function handler(req: Request): Promise<Response> {
       targetExpiresAt = sol.expires_at;
       targetContexto = 'informacion_respuesta';
       targetSubmissionKey = `info_${sol.id}`;
-    } else if (session_token && solicitud_id) {
+    } else if (session_token && (targets === 'revision_adjunto' || body.envio_id || body.contexto === 'revision' || body.solicitud_id)) {
       // 1B. Validación de sesión autenticada de solicitante
       const tokenHash = await computeSha256Hex(String(session_token).trim());
-      const { data: solSession, error: sessErr } = await supabase
-        .from('solicitante_sessions')
+      let solSession: any = null;
+      
+      const { data: sessEs } = await supabase
+        .from('solicitante_sesiones')
         .select('correo, expires_at')
         .eq('session_token_hash', tokenHash)
+        .is('revoked_at', null)
         .gt('expires_at', new Date().toISOString())
         .maybeSingle();
+      
+      solSession = sessEs;
+      if (!solSession) {
+        const { data: sessEn } = await supabase
+          .from('solicitante_sessions')
+          .select('correo, expires_at')
+          .eq('session_token_hash', tokenHash)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+        solSession = sessEn;
+      }
 
-      if (sessErr || !solSession) {
+      if (!solSession) {
         return new Response(
           JSON.stringify({ error: 'SESSION_INVALID', message: 'Sesión de solicitante inválida o expirada' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const { data: sol, error: solErr } = await supabase
-        .from('solicitudes_informacion')
-        .select('id, pedido_id, estado, expires_at')
-        .eq('id', solicitud_id)
-        .maybeSingle();
+      if (solicitud_id) {
+        const { data: sol, error: solErr } = await supabase
+          .from('solicitudes_informacion')
+          .select('id, pedido_id, estado, expires_at')
+          .eq('id', solicitud_id)
+          .maybeSingle();
 
-      if (solErr || !sol) {
-        return new Response(
-          JSON.stringify({ error: 'SOLICITUD_NOT_FOUND', message: 'Solicitud de información no encontrada' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        if (solErr || !sol) {
+          return new Response(
+            JSON.stringify({ error: 'SOLICITUD_NOT_FOUND', message: 'Solicitud de información no encontrada' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (sol.estado !== 'pendiente' || new Date(sol.expires_at).getTime() <= Date.now()) {
+          return new Response(
+            JSON.stringify({ error: 'SOLICITUD_EXPIRED', message: 'La solicitud de información ha expirado tras 48 horas corridas' }),
+            { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        targetSolicitudId = sol.id;
+        targetPedidoId = sol.pedido_id;
+        targetExpiresAt = sol.expires_at;
+        targetContexto = 'informacion_respuesta';
+        targetSubmissionKey = `info_${sol.id}`;
+      } else {
+        const envioId = (body.envio_id || body.envioId || '').trim();
+        if (envioId) {
+          const { data: envData } = await supabase
+            .from('envios_formulario')
+            .select('id, correo')
+            .eq('id', envioId)
+            .maybeSingle();
+          if (!envData || envData.correo.toLowerCase() !== solSession.correo.toLowerCase()) {
+            return new Response(
+              JSON.stringify({ error: 'FORBIDDEN', message: 'El envío no corresponde a la sesión del solicitante' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+        targetExpiresAt = solSession.expires_at;
+        targetContexto = 'revision';
+        targetSubmissionKey = envioId ? `rev_${envioId}` : `rev_${crypto.randomUUID()}`;
       }
-
-      if (sol.estado !== 'pendiente' || new Date(sol.expires_at).getTime() <= Date.now()) {
-        return new Response(
-          JSON.stringify({ error: 'SOLICITUD_EXPIRED', message: 'La solicitud de información ha expirado tras 48 horas corridas' }),
-          { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      targetSolicitudId = sol.id;
-      targetPedidoId = sol.pedido_id;
-      targetExpiresAt = sol.expires_at;
-      targetContexto = 'informacion_respuesta';
-      targetSubmissionKey = `info_${sol.id}`;
     } else {
       // 1C. Validación de sesión pública estándar
       if (!session_id || !capability_token) {

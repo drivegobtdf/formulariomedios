@@ -399,6 +399,124 @@ export async function uploadFileForInfoResponse(
   };
 }
 
+export async function uploadFileForRevision(
+  sessionToken: string,
+  envioId: string,
+  clientFileRef: string,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<UploadResult> {
+  const config = getPublicConfig();
+  if (onProgress) onProgress(5);
+
+  const prepareUrl = `${config.supabaseUrl}/functions/v1/drive-upload-prepare`;
+  const prepHeaders: Record<string, string> = {
+    'apikey': config.supabaseAnonKey,
+    'Authorization': `Bearer ${config.supabaseAnonKey}`,
+    'Content-Type': 'application/json',
+    'x-session-token': sessionToken.trim(),
+    'x-solicitante-session': sessionToken.trim(),
+  };
+
+  const prepRes = await fetch(prepareUrl, {
+    method: 'POST',
+    headers: prepHeaders,
+    body: JSON.stringify({
+      session_token: sessionToken.trim(),
+      envio_id: envioId.trim(),
+      client_file_ref: clientFileRef,
+      expected_name: file.name,
+      expected_size: file.size,
+      mime_type: file.type || 'application/octet-stream',
+      targets: 'revision_adjunto',
+    }),
+  });
+
+  if (!prepRes.ok) {
+    const prepErr = await prepRes.json().catch(() => ({}));
+    throw new Error(prepErr.message || prepErr.error || `Error preparando subida de adjunto (${prepRes.status})`);
+  }
+
+  const prepData = await prepRes.json();
+  if (onProgress) onProgress(20);
+
+  let driveFileId = prepData.drive_file_id || '';
+  const targetUploadUrl = resolveUploadRelayUrl(
+    prepData.relay_url,
+    prepData.reservation_id,
+    config.supabaseUrl
+  );
+
+  const isAuthorized = isOriginAuthorized(targetUploadUrl, config.supabaseUrl);
+  if (!isAuthorized) {
+    throw new Error('SECURITY_ERROR: Destino de almacenamiento no autorizado. Transferencia cancelada.');
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', targetUploadUrl);
+    
+    xhr.setRequestHeader('apikey', config.supabaseAnonKey);
+    xhr.setRequestHeader('Authorization', `Bearer ${config.supabaseAnonKey}`);
+    xhr.setRequestHeader('x-session-token', sessionToken.trim());
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        const pct = Math.round(20 + (event.loaded / event.total) * 60);
+        onProgress(pct);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          if (res.drive_file_id) driveFileId = res.drive_file_id;
+        } catch {}
+        resolve();
+      } else {
+        reject(new Error(`Fallo en la transferencia de archivo al almacenamiento (${xhr.status}): ${xhr.responseText}`));
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Fallo de conexión en streaming hacia el relay de almacenamiento'));
+    };
+
+    xhr.send(file);
+  });
+
+  if (onProgress) onProgress(85);
+
+  const completeUrl = `${config.supabaseUrl}/functions/v1/drive-upload-complete`;
+  const compRes = await fetch(completeUrl, {
+    method: 'POST',
+    headers: prepHeaders,
+    body: JSON.stringify({
+      session_token: sessionToken.trim(),
+      reservation_id: prepData.reservation_id,
+      client_file_ref: prepData.client_file_ref || clientFileRef,
+      drive_file_id: driveFileId,
+    }),
+  });
+
+  if (!compRes.ok) {
+    const compErr = await compRes.json().catch(() => ({}));
+    throw new Error(compErr.message || compErr.error || `Error verificando archivo en backend (${compRes.status})`);
+  }
+
+  const compData: UploadCompleteResponse = await compRes.json();
+  if (onProgress) onProgress(100);
+
+  return {
+    archivo_id: compData.archivo_id,
+    drive_file_id: compData.drive_file_id || driveFileId,
+    reservation_id: prepData.reservation_id,
+    client_file_ref: prepData.client_file_ref || clientFileRef,
+  };
+}
+
 /**
  * Mapea y valida la respuesta del backend RPC submission_create_core
  * hacia el modelo canónico del frontend.

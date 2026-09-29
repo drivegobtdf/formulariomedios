@@ -521,8 +521,9 @@ export const GestionDashboardPage: React.FC = () => {
                       key={ped.id}
                       to={`/gestion/pedidos/${ped.id}`}
                       style={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e2e8f0',
+                        backgroundColor: ped.retrabajo_activo ? '#fffbeb' : '#ffffff',
+                        border: ped.retrabajo_activo ? '1px solid #fde68a' : '1px solid #e2e8f0',
+                        borderLeft: ped.retrabajo_activo ? '4px solid #d97706' : undefined,
                         borderRadius: '0.5rem',
                         padding: '1rem',
                         textDecoration: 'none',
@@ -533,11 +534,11 @@ export const GestionDashboardPage: React.FC = () => {
                         transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#0284c7';
+                        e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#d97706' : '#0284c7';
                         e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.08)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#e2e8f0';
+                        e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#fde68a' : '#e2e8f0';
                         e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
                       }}
                     >
@@ -555,6 +556,25 @@ export const GestionDashboardPage: React.FC = () => {
                           {styleInfo.label}
                         </span>
                       </div>
+                      {ped.retrabajo_activo && (
+                        <div
+                          style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 800,
+                            color: '#b45309',
+                            backgroundColor: '#fef3c7',
+                            border: '1px solid #fde68a',
+                            borderRadius: '0.25rem',
+                            padding: '0.2rem 0.45rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            width: 'fit-content',
+                          }}
+                        >
+                          🔄 DEVUELTO - RETRABAJAR {ped.revision_count ? `· Rev #${ped.revision_count}` : ''}
+                        </div>
+                      )}
                       <div style={{ fontSize: '0.825rem', color: '#334155', fontWeight: 500 }}>
                         {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                       </div>
@@ -661,8 +681,9 @@ export const GestionDashboardPage: React.FC = () => {
                         key={ped.id}
                         to={`/gestion/pedidos/${ped.id}`}
                         style={{
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #cbd5e1',
+                          backgroundColor: ped.retrabajo_activo ? '#fffbeb' : '#ffffff',
+                          border: ped.retrabajo_activo ? '1px solid #fde68a' : '1px solid #cbd5e1',
+                          borderLeft: ped.retrabajo_activo ? '4px solid #d97706' : undefined,
                           borderRadius: '0.5rem',
                           padding: '0.85rem',
                           textDecoration: 'none',
@@ -673,11 +694,11 @@ export const GestionDashboardPage: React.FC = () => {
                           transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = '#0284c7';
+                          e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#d97706' : '#0284c7';
                           e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.08)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = '#cbd5e1';
+                          e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#fde68a' : '#cbd5e1';
                           e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
                         }}
                       >
@@ -690,6 +711,27 @@ export const GestionDashboardPage: React.FC = () => {
                             {new Date(ped.created_at).toLocaleDateString()}
                           </span>
                         </div>
+
+                        {/* DEVUELTO - RETRABAJAR Badge if applicable */}
+                        {ped.retrabajo_activo && (
+                          <div
+                            style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 800,
+                              color: '#b45309',
+                              backgroundColor: '#fef3c7',
+                              border: '1px solid #fde68a',
+                              borderRadius: '0.25rem',
+                              padding: '0.2rem 0.45rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              width: 'fit-content',
+                            }}
+                          >
+                            🔄 DEVUELTO - RETRABAJAR {ped.revision_count ? `· Rev #${ped.revision_count}` : ''}
+                          </div>
+                        )}
 
                         {/* Service Category & Type */}
                         <div style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 500 }}>
@@ -757,7 +799,7 @@ export const GestionDashboardPage: React.FC = () => {
                 {paginatedPedidos.map((ped) => {
                   const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: '#334155', bg: '#f1f5f9' };
                   return (
-                    <tr key={ped.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <tr key={ped.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: ped.retrabajo_activo ? '#fffbeb' : undefined }}>
                       <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f172a' }}>
                         {ped.pedido_visible}
                       </td>
@@ -766,9 +808,16 @@ export const GestionDashboardPage: React.FC = () => {
                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{ped.tipo_nombre || 'Pieza'}</div>
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '9999px', backgroundColor: styleInfo.bg, color: styleInfo.color }}>
-                          {styleInfo.label}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '9999px', backgroundColor: styleInfo.bg, color: styleInfo.color }}>
+                            {styleInfo.label}
+                          </span>
+                          {ped.retrabajo_activo && (
+                            <span style={{ fontSize: '0.675rem', fontWeight: 800, padding: '0.15rem 0.4rem', borderRadius: '0.25rem', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}>
+                              🔄 DEVUELTO {ped.revision_count ? `(#${ped.revision_count})` : ''}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: ped.responsable_nombre ? '#334155' : '#b91c1c', fontWeight: 500 }}>
                         {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}

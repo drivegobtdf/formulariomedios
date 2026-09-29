@@ -27,6 +27,16 @@ import { WhatsAppPhoneLink } from '../components/WhatsAppPhoneLink';
 function getHistorialEventInfo(evento: string, payload: any) {
   const norm = (evento || '').toLowerCase();
 
+  if (norm.includes('revision') || norm === 'revision_solicitada') {
+    const revNum = payload?.revision_number ? ` #${payload.revision_number}` : '';
+    const motivo = payload?.motivo ? ` · Motivo: "${payload.motivo}"` : '';
+    return {
+      title: `Solicitud de Revisión / Retrabajo${revNum}`,
+      icon: '🔄',
+      color: '#d97706',
+      desc: `El solicitante devolvió el pedido para revisión${motivo}`,
+    };
+  }
   if (norm.includes('cread') || norm === 'pedido_creado') {
     return {
       title: 'Pedido Creado',
@@ -765,6 +775,11 @@ export const PedidoDetallePage: React.FC = () => {
                 {pedido.pedido_visible}
               </h1>
               {getEstadoBadge(pedido.estado)}
+              {pedido.retrabajo_activo && (
+                <span style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 800, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  🔄 DEVUELTO - RETRABAJAR {pedido.revision_count ? `(Rev #${pedido.revision_count})` : ''}
+                </span>
+              )}
               {pedido.archivado && (
                 <span style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.75rem' }}>
                   ARCHIVADO
@@ -1131,6 +1146,88 @@ export const PedidoDetallePage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Solicitud de Revisión / Retrabajo Activa */}
+      {pedido.retrabajo_activo && (() => {
+        const activeRev = pedido.revisiones?.find(r => r.estado === 'abierta' || r.estado === 'en_tratamiento') || pedido.revisiones?.[0];
+        return (
+          <div
+            style={{
+              backgroundColor: '#fffbeb',
+              border: '1.5px solid #f59e0b',
+              borderRadius: '0.5rem',
+              padding: '1.25rem',
+              marginBottom: '1.25rem',
+              boxShadow: '0 2px 4px rgba(217, 119, 6, 0.08)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#b45309', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                🔄 SOLICITUD DE REVISIÓN ACTIVA {activeRev ? `· Revisión #${activeRev.revision_number}` : ''}
+              </h3>
+              {activeRev?.requested_at && (
+                <span style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: 600 }}>
+                  Solicitada: {new Date(activeRev.requested_at).toLocaleString('es-AR')}
+                </span>
+              )}
+            </div>
+
+            <div style={{ backgroundColor: '#ffffff', border: '1px solid #fde68a', borderRadius: '0.375rem', padding: '0.85rem 1rem', marginTop: '0.5rem' }}>
+              <p style={{ margin: 0, color: '#1e293b', fontSize: '0.9rem', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                <strong>Motivo de devolución / retrabajo:</strong> {activeRev?.motivo || 'El solicitante solicitó revisión de la entrega previa.'}
+              </p>
+            </div>
+
+            {activeRev?.archivos && activeRev.archivos.length > 0 && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <strong style={{ fontSize: '0.8125rem', color: '#92400e', display: 'block', marginBottom: '0.35rem' }}>
+                  Archivos de referencia adjuntos ({activeRev.archivos.length}):
+                </strong>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {activeRev.archivos.map((fa: any) => (
+                    <div
+                      key={fa.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0.45rem 0.75rem',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #fde68a',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.8125rem',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span>📎</span>
+                        <span style={{ fontWeight: 600, color: '#1e293b' }}>{fa.nombre_original}</span>
+                        {fa.size_bytes && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({formatFileSize(fa.size_bytes)})</span>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(fa.id, fa.nombre_original)}
+                        disabled={downloadingFileId === fa.id}
+                        style={{
+                          backgroundColor: '#d97706',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '0.25rem 0.65rem',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: downloadingFileId === fa.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {downloadingFileId === fa.id ? 'Descargando...' : '📥 Descargar'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Main 3-Column Responsive Grid */}
       <div className="pedidos-detalle-grid">

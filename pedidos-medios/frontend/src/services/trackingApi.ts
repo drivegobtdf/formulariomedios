@@ -3,15 +3,56 @@ import { getPublicConfig } from './config';
 // Types for Solicitante "Mis Solicitudes" Flow
 export interface SolicitantePedidoListItem {
   id: string;
+  envio_id?: string;
   pedido_visible: string;
   categoria_nombre: string;
   tipo_nombre: string;
   estado: string;
+  retrabajo_activo?: boolean;
+  revision_count?: number;
   created_at: string;
   updated_at: string;
   tiene_entrega: boolean;
+  tiene_revision_abierta?: boolean;
   solicitudes_pendientes?: number;
   solicitudes_pendientes_count?: number;
+}
+
+export interface SolicitanteRevisablePedidoItem {
+  id: string;
+  pedido_visible: string;
+  categoria_id?: string;
+  categoria_nombre: string;
+  tipo_id?: string;
+  tipo_nombre: string;
+  estado: string;
+  retrabajo_activo?: boolean;
+  revision_count?: number;
+  is_eligible: boolean;
+  ineligible_reason?: string | null;
+  entrega_vigente?: {
+    id: string;
+    version: number;
+    enlace_externo?: string;
+    nota?: string;
+    created_at: string;
+  } | null;
+  revision_activa?: {
+    id: string;
+    revision_number: number;
+    estado: string;
+    motivo: string;
+    requested_at: string;
+  } | null;
+}
+
+export interface SolicitanteEnvioRevisableResponse {
+  success: boolean;
+  envio_id: string;
+  nombre_apellido: string;
+  correo: string;
+  area_solicitante: string;
+  pedidos: SolicitanteRevisablePedidoItem[];
 }
 
 export interface SolicitantePedidosResponse {
@@ -22,6 +63,7 @@ export interface SolicitantePedidosResponse {
 
 export interface SolicitantePedidoDetailDTO {
   id: string;
+  envio_id?: string;
   pedido_visible: string;
   anio: number;
   numero: number;
@@ -29,6 +71,9 @@ export interface SolicitantePedidoDetailDTO {
   categoria_nombre: string;
   tipo_nombre: string;
   estado: string;
+  retrabajo_activo?: boolean;
+  revision_count?: number;
+  tiene_revision_abierta?: boolean;
   created_at: string;
   updated_at: string;
   informacion_especifica: Record<string, any>;
@@ -61,6 +106,28 @@ export interface SolicitantePedidoDetailDTO {
       created_at?: string;
     }>;
   } | null;
+  revision_activa?: {
+    id: string;
+    revision_number: number;
+    estado: string;
+    motivo: string;
+    requested_at: string;
+    archivos?: Array<{
+      id: string;
+      nombre_original: string;
+      size_bytes?: number;
+      mime_type?: string;
+    }>;
+  } | null;
+  revisiones_historial?: Array<{
+    id: string;
+    revision_number: number;
+    estado: string;
+    motivo: string;
+    requested_at: string;
+    resolved_at?: string;
+    resolucion_notas?: string;
+  }>;
   archivos_adjuntos: Array<{
     id: string;
     nombre: string;
@@ -491,4 +558,77 @@ export async function downloadSolicitanteDeliveryFile(
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(downloadUrl);
+}
+
+/**
+ * 7. Consulta los pedidos de un envío y su elegibilidad para solicitar revisión
+ */
+export async function solicitanteGetEnvioRevisablePedidos(
+  sessionToken: string,
+  envioId: string
+): Promise<SolicitanteEnvioRevisableResponse> {
+  const config = getPublicConfig();
+  const endpoint = `${config.supabaseUrl}/functions/v1/solicitante-revision-envio`;
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'apikey': config.supabaseAnonKey,
+      'Authorization': `Bearer ${config.supabaseAnonKey}`,
+      'Content-Type': 'application/json',
+      'x-solicitante-session': sessionToken.trim(),
+    },
+    body: JSON.stringify({ envio_id: envioId.trim() }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.message || data.error || `Error consultando envío (${res.status})`);
+    (err as any).code = data.code || data.error;
+    (err as any).status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+/**
+ * 8. Envía una solicitud de revisión atómica Multi-PED
+ */
+export async function solicitanteSubmitRevisionRequest(
+  sessionToken: string,
+  payload: {
+    envio_id: string;
+    pedido_ids: string[];
+    motivo: string;
+    archivos_ids?: string[];
+  }
+): Promise<{ success: boolean; revision_solicitud_id: string; pedidos_revisados: any[] }> {
+  const config = getPublicConfig();
+  const endpoint = `${config.supabaseUrl}/functions/v1/solicitante-revision-request`;
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'apikey': config.supabaseAnonKey,
+      'Authorization': `Bearer ${config.supabaseAnonKey}`,
+      'Content-Type': 'application/json',
+      'x-solicitante-session': sessionToken.trim(),
+    },
+    body: JSON.stringify({
+      session_token: sessionToken.trim(),
+      envio_id: payload.envio_id.trim(),
+      pedido_ids: payload.pedido_ids,
+      motivo: payload.motivo.trim(),
+      archivos_ids: payload.archivos_ids || [],
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.message || data.error || `Error enviando solicitud de revisión (${res.status})`);
+    (err as any).code = data.code || data.error;
+    (err as any).status = res.status;
+    throw err;
+  }
+  return data;
 }

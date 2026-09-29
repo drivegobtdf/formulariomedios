@@ -17,6 +17,7 @@ import {
   isSessionStorageAvailable,
 } from '../services/sessionStorageService';
 import { InfoResponseForm } from '../components/InfoResponseForm';
+import { SolicitarRevisionModal } from '../components/SolicitarRevisionModal';
 import { formatFileSize } from '../utils/formatUtils';
 
 interface UrlParamsResult {
@@ -148,6 +149,18 @@ export const MisSolicitudesPage: React.FC = () => {
 
   // Delivery File Download State
   const [downloadingArchivoId, setDownloadingArchivoId] = useState<string | null>(null);
+
+  // Multi-PED Revision Modal State
+  const [revisionModalOpen, setRevisionModalOpen] = useState(false);
+  const [revisionModalEnvioId, setRevisionModalEnvioId] = useState<string | null>(null);
+  const [revisionModalPedidoId, setRevisionModalPedidoId] = useState<string | null>(null);
+  const [revisionSuccessBanner, setRevisionSuccessBanner] = useState<string | null>(null);
+
+  const handleOpenRevisionModal = (envioId: string, pedidoId?: string) => {
+    setRevisionModalEnvioId(envioId);
+    setRevisionModalPedidoId(pedidoId || null);
+    setRevisionModalOpen(true);
+  };
 
   const handleDownloadDeliveryFile = async (archivoId: string, nombreOriginal?: string) => {
     if (!sessionToken || !selectedPedido) return;
@@ -479,7 +492,28 @@ export const MisSolicitudesPage: React.FC = () => {
     }
   };
 
-  const getEstadoBadge = (estado: string) => {
+  const getEstadoBadge = (estado: string, retrabajoActivo?: boolean, revCount?: number) => {
+    if (retrabajoActivo) {
+      return (
+        <span
+          style={{
+            backgroundColor: '#fffbeb',
+            color: '#b45309',
+            border: '1px solid #fde68a',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '9999px',
+            fontWeight: 700,
+            fontSize: '0.8125rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.3rem',
+          }}
+        >
+          🔄 DEVUELTO - RETRABAJAR {revCount ? `· Rev #${revCount}` : ''}
+        </span>
+      );
+    }
+
     const map: Record<string, { label: string; bg: string; color: string; border: string }> = {
       'Nuevo': { label: 'Nuevo', bg: '#e0f2fe', color: '#0369a1', border: '#bae6fd' },
       'En revisión': { label: 'En Revisión', bg: '#fef3c7', color: '#b45309', border: '#fde68a' },
@@ -717,6 +751,36 @@ export const MisSolicitudesPage: React.FC = () => {
       {/* VIEW 4: ACTIVE SESSION -> Wide List of Pedidos + Inspection Modal */}
       {viewMode === 'AUTHENTICATED' && sessionToken && (
         <div>
+          {revisionSuccessBanner && (
+            <div
+              style={{
+                backgroundColor: '#ecfdf5',
+                border: '1px solid #6ee7b7',
+                borderRadius: '0.5rem',
+                padding: '0.85rem 1.25rem',
+                marginBottom: '1.25rem',
+                color: '#065f46',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>✓</span>
+                <span>{revisionSuccessBanner}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRevisionSuccessBanner(null)}
+                style={{ background: 'transparent', border: 'none', color: '#047857', cursor: 'pointer', fontSize: '1rem' }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* 4 Summary KPI Cards */}
           <div className="mis-solicitudes-kpis">
             <div className="mis-solicitudes-kpi-card">
@@ -943,12 +1007,16 @@ export const MisSolicitudesPage: React.FC = () => {
                               {new Date(p.created_at).toLocaleDateString('es-AR')}
                             </td>
                             <td style={{ padding: '1rem 1.25rem' }}>
-                              {getEstadoBadge(p.estado)}
+                              {getEstadoBadge(p.estado, p.retrabajo_activo, p.revision_count)}
                             </td>
                             <td style={{ padding: '1rem 1.25rem' }}>
                               {pendingCount > 0 ? (
                                 <span style={{ backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d', padding: '0.25rem 0.6rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                   ⚠️ {pendingCount} pendiente{pendingCount > 1 ? 's' : ''}
+                                </span>
+                              ) : p.retrabajo_activo ? (
+                                <span style={{ backgroundColor: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', padding: '0.25rem 0.6rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  🔄 En retrabajo
                                 </span>
                               ) : p.tiene_entrega ? (
                                 <span style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '0.25rem 0.6rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -959,7 +1027,7 @@ export const MisSolicitudesPage: React.FC = () => {
                               )}
                             </td>
                             <td style={{ padding: '1rem 1.25rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              <div style={{ display: 'inline-flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                              <div style={{ display: 'inline-flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                                 {pendingCount > 0 && (
                                   <button
                                     type="button"
@@ -976,6 +1044,24 @@ export const MisSolicitudesPage: React.FC = () => {
                                     }}
                                   >
                                     Responder
+                                  </button>
+                                )}
+                                {p.estado === 'Finalizado' && p.envio_id && !p.tiene_revision_abierta && !p.retrabajo_activo && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenRevisionModal(p.envio_id!, p.id)}
+                                    style={{
+                                      backgroundColor: '#fffbeb',
+                                      color: '#b45309',
+                                      border: '1px solid #fde68a',
+                                      padding: '0.4rem 0.85rem',
+                                      borderRadius: '0.375rem',
+                                      fontWeight: 700,
+                                      fontSize: '0.8125rem',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Solicitar revisión
                                   </button>
                                 )}
                                 <button
@@ -1021,7 +1107,7 @@ export const MisSolicitudesPage: React.FC = () => {
                               Ingreso: {new Date(p.created_at).toLocaleDateString('es-AR')}
                             </div>
                           </div>
-                          <div>{getEstadoBadge(p.estado)}</div>
+                          <div>{getEstadoBadge(p.estado, p.retrabajo_activo, p.revision_count)}</div>
                         </div>
 
                         <div>
@@ -1035,13 +1121,14 @@ export const MisSolicitudesPage: React.FC = () => {
                           </div>
                         )}
 
-                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
                           {pendingCount > 0 && (
                             <button
                               type="button"
                               onClick={() => handleSelectPedido(p.pedido_visible)}
                               style={{
                                 flex: 1,
+                                minWidth: '120px',
                                 backgroundColor: '#d97706',
                                 color: '#ffffff',
                                 border: 'none',
@@ -1055,11 +1142,32 @@ export const MisSolicitudesPage: React.FC = () => {
                               Responder
                             </button>
                           )}
+                          {p.estado === 'Finalizado' && p.envio_id && !p.tiene_revision_abierta && !p.retrabajo_activo && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenRevisionModal(p.envio_id!, p.id)}
+                              style={{
+                                flex: 1,
+                                minWidth: '130px',
+                                backgroundColor: '#fffbeb',
+                                color: '#b45309',
+                                border: '1px solid #fde68a',
+                                padding: '0.6rem',
+                                borderRadius: '0.375rem',
+                                fontWeight: 700,
+                                fontSize: '0.85rem',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Solicitar revisión
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleSelectPedido(p.pedido_visible)}
                             style={{
                               flex: 1,
+                              minWidth: '100px',
                               backgroundColor: '#f1f5f9',
                               color: '#0f172a',
                               border: '1px solid #cbd5e1',
@@ -1129,9 +1237,67 @@ export const MisSolicitudesPage: React.FC = () => {
                     </p>
                   </div>
                   <div>
-                    {getEstadoBadge(selectedPedido.estado)}
+                    {getEstadoBadge(selectedPedido.estado, selectedPedido.retrabajo_activo, selectedPedido.revision_count)}
                   </div>
                 </div>
+
+                {/* Active Revision Banner */}
+                {selectedPedido.revision_activa && (
+                  <div style={{ border: '1px solid #fde68a', backgroundColor: '#fffbeb', borderRadius: '0.5rem', padding: '1.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#b45309', margin: 0 }}>
+                        🔄 Solicitud de Revisión Activa · Revisión #{selectedPedido.revision_activa.revision_number}
+                      </h3>
+                      <span style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: 600 }}>
+                        Solicitada: {new Date(selectedPedido.revision_activa.requested_at).toLocaleString('es-AR')}
+                      </span>
+                    </div>
+                    <p style={{ margin: '0 0 0.75rem 0', color: '#1e293b', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>
+                      <strong>Motivo:</strong> {selectedPedido.revision_activa.motivo}
+                    </p>
+                    {selectedPedido.revision_activa.archivos && selectedPedido.revision_activa.archivos.length > 0 && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.8125rem', color: '#92400e' }}>
+                          Archivos de referencia adjuntos ({selectedPedido.revision_activa.archivos.length}):
+                        </strong>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.35rem' }}>
+                          {selectedPedido.revision_activa.archivos.map((fa: any) => (
+                            <div key={fa.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: '#1e293b', backgroundColor: '#ffffff', padding: '0.4rem 0.6rem', borderRadius: '0.375rem', border: '1px solid #fde68a' }}>
+                              <span>📎</span>
+                              <span>{fa.nombre_original}</span>
+                              {fa.size_bytes && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({formatFileSize(fa.size_bytes)})</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Request Revision Button in Detail Modal if Finalized */}
+                {selectedPedido.estado === 'Finalizado' && selectedPedido.envio_id && !selectedPedido.tiene_revision_abierta && !selectedPedido.retrabajo_activo && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.25rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenRevisionModal(selectedPedido.envio_id!, selectedPedido.id)}
+                      style={{
+                        backgroundColor: '#fffbeb',
+                        color: '#b45309',
+                        border: '1px solid #fde68a',
+                        padding: '0.6rem 1.25rem',
+                        borderRadius: '0.375rem',
+                        fontWeight: 700,
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      🔄 Solicitar revisión de este envío / pedido
+                    </button>
+                  </div>
+                )}
 
                 {/* Response Feedback Alerts */}
                 {responseSuccess && (
@@ -1331,6 +1497,33 @@ export const MisSolicitudesPage: React.FC = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Solicitar Revisión Modal */}
+      {revisionModalOpen && revisionModalEnvioId && sessionToken && (
+        <SolicitarRevisionModal
+          isOpen={revisionModalOpen}
+          envioId={revisionModalEnvioId}
+          initialPedidoId={revisionModalPedidoId || undefined}
+          sessionToken={sessionToken}
+          onClose={() => {
+            setRevisionModalOpen(false);
+            setRevisionModalEnvioId(null);
+            setRevisionModalPedidoId(null);
+          }}
+          onSuccess={(_revisionSolId, updatedCount) => {
+            setRevisionModalOpen(false);
+            setRevisionModalEnvioId(null);
+            setRevisionModalPedidoId(null);
+            setRevisionSuccessBanner(
+              `Se ha enviado la solicitud de revisión para ${updatedCount} pedido(s). Los pedidos seleccionados volvieron a estado Nuevo para su correspondiente retrabajo.`
+            );
+            loadPedidos(sessionToken);
+            if (selectedPedido) {
+              handleSelectPedido(selectedPedido.pedido_visible);
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -33,6 +33,10 @@ export interface PedidoListItem {
   numero: number;
   codigo_categoria: string;
   estado: string;
+  retrabajo_activo?: boolean;
+  revision_requested_at?: string | null;
+  revision_count?: number;
+  envio_id?: string;
   categoria_id: string;
   tipo_servicio_id: string;
   categoria_nombre?: string;
@@ -124,6 +128,25 @@ export interface PedidoDetailItem extends PedidoListItem {
     entregado_por: string;
     entregado_por_nombre?: string;
     created_at: string;
+  }>;
+  revisiones?: Array<{
+    id: string;
+    solicitud_id: string;
+    pedido_id: string;
+    revision_number: number;
+    estado: string;
+    motivo: string;
+    requested_at: string;
+    resolved_at?: string | null;
+    resolucion_notas?: string | null;
+    archivos?: Array<{
+      id: string;
+      nombre_original: string;
+      size_bytes?: number;
+      mime_type?: string;
+      drive_file_id?: string;
+      created_at?: string;
+    }>;
   }>;
 }
 
@@ -267,6 +290,10 @@ export async function fetchPedidos(filters?: {
       numero,
       codigo_categoria,
       estado,
+      retrabajo_activo,
+      revision_requested_at,
+      revision_count,
+      envio_id,
       categoria_id,
       tipo_servicio_id,
       responsable_user_id,
@@ -302,7 +329,10 @@ export async function fetchPedidos(filters?: {
     query = query.or(`pedido_visible.ilike.%${s}%`);
   }
 
-  query = query.order('created_at', { ascending: false });
+  query = query
+    .order('retrabajo_activo', { ascending: false, nullsFirst: false })
+    .order('revision_requested_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false });
 
   const [pedidosRes, users] = await Promise.all([
     query,
@@ -320,6 +350,10 @@ export async function fetchPedidos(filters?: {
     numero: p.numero,
     codigo_categoria: p.codigo_categoria,
     estado: p.estado,
+    retrabajo_activo: Boolean(p.retrabajo_activo),
+    revision_requested_at: p.revision_requested_at,
+    revision_count: p.revision_count || 0,
+    envio_id: p.envio_id,
     categoria_id: p.categoria_id,
     tipo_servicio_id: p.tipo_servicio_id,
     categoria_nombre: p.categorias_servicio?.nombre,
@@ -347,6 +381,10 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       numero,
       codigo_categoria,
       estado,
+      retrabajo_activo,
+      revision_requested_at,
+      revision_count,
+      envio_id,
       categoria_id,
       tipo_servicio_id,
       responsable_user_id,
@@ -434,6 +472,26 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     .eq('pedido_id', pedidoId)
     .order('version', { ascending: false });
 
+  // Revisiones
+  const { data: revisionesData } = await supabase
+    .from('revision_pedidos')
+    .select(`
+      id,
+      solicitud_id,
+      pedido_id,
+      revision_number,
+      estado,
+      motivo,
+      requested_at,
+      resolved_at,
+      resolucion_notas,
+      revision_archivos (
+        archivos ( id, nombre_original, size_bytes, mime_type, drive_file_id, created_at )
+      )
+    `)
+    .eq('pedido_id', pedidoId)
+    .order('revision_number', { ascending: false });
+
   return {
     id: p.id,
     pedido_visible: p.pedido_visible,
@@ -441,6 +499,10 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     numero: p.numero,
     codigo_categoria: p.codigo_categoria,
     estado: p.estado,
+    retrabajo_activo: Boolean(p.retrabajo_activo),
+    revision_requested_at: p.revision_requested_at,
+    revision_count: p.revision_count || 0,
+    envio_id: p.envio_id,
     categoria_id: p.categoria_id,
     tipo_servicio_id: p.tipo_servicio_id,
     categoria_nombre: (p.categorias_servicio as any)?.nombre,
@@ -499,6 +561,20 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       entregado_por: e.entregado_por,
       entregado_por_nombre: userMap.get(e.entregado_por) || undefined,
       created_at: e.created_at,
+    })),
+    revisiones: (revisionesData || []).map((r: any) => ({
+      id: r.id,
+      solicitud_id: r.solicitud_id,
+      pedido_id: r.pedido_id,
+      revision_number: r.revision_number,
+      estado: r.estado,
+      motivo: r.motivo,
+      requested_at: r.requested_at,
+      resolved_at: r.resolved_at,
+      resolucion_notas: r.resolucion_notas,
+      archivos: (r.revision_archivos || [])
+        .map((ra: any) => ra.archivos)
+        .filter(Boolean),
     })),
   };
 }
