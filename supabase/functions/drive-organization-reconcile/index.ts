@@ -26,6 +26,7 @@ export default async function handler(req: Request): Promise<Response> {
     const dispatchSecret = req.headers.get('x-pedidos-dispatch-secret') || '';
     const apiKey = (req.headers.get('apikey') || '').trim();
     const expectedSecret = getEnv('N8N_DISPATCH_SECRET');
+    const directServiceKey = getEnv('SUPABASE_SERVICE_ROLE_KEY') || getEnv('SUPABASE_SECRET_KEY') || '';
 
     const bearerToken = (authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader).trim();
     let isAuthorized = false;
@@ -33,7 +34,9 @@ export default async function handler(req: Request): Promise<Response> {
     // A. Clave de servicio
     if (
       (bearerToken && serviceRoleKey && timingSafeEqualString(bearerToken, serviceRoleKey)) ||
-      (apiKey && serviceRoleKey && timingSafeEqualString(apiKey, serviceRoleKey))
+      (apiKey && serviceRoleKey && timingSafeEqualString(apiKey, serviceRoleKey)) ||
+      (bearerToken && directServiceKey && timingSafeEqualString(bearerToken, directServiceKey)) ||
+      (apiKey && directServiceKey && timingSafeEqualString(apiKey, directServiceKey))
     ) {
       isAuthorized = true;
     }
@@ -46,11 +49,7 @@ export default async function handler(req: Request): Promise<Response> {
     // C. JWT de usuario administrador autenticado
     if (!isAuthorized && bearerToken) {
       try {
-        const userClient = createClient(supabaseUrl, getEnv('SUPABASE_ANON_KEY') || '', {
-          global: { headers: { Authorization: `Bearer ${bearerToken}` } },
-          auth: { persistSession: false, autoRefreshToken: false },
-        });
-        const { data: { user }, error: userErr } = await userClient.auth.getUser();
+        const { data: { user }, error: userErr } = await adminClient.auth.getUser(bearerToken);
         if (!userErr && user) {
           const roleCheck = await verifyUserRole(adminClient, user.id);
           if (roleCheck.approved && roleCheck.role === 'administrador') {
