@@ -25,6 +25,7 @@ export default async function handler(req: Request): Promise<Response> {
     const authHeader = req.headers.get('authorization') || '';
     const dispatchSecret = req.headers.get('x-pedidos-dispatch-secret') || '';
     const apiKey = (req.headers.get('apikey') || '').trim();
+    const reconcileSecret = getEnv('DRIVE_RECONCILE_SECRET');
     const expectedSecret = getEnv('N8N_DISPATCH_SECRET');
     const directServiceKey = getEnv('SUPABASE_SERVICE_ROLE_KEY') || getEnv('SUPABASE_SECRET_KEY') || '';
 
@@ -41,8 +42,13 @@ export default async function handler(req: Request): Promise<Response> {
       isAuthorized = true;
     }
 
-    // B. Secreto de despacho n8n / scheduler
-    if (!isAuthorized && expectedSecret && dispatchSecret && timingSafeEqualString(dispatchSecret, expectedSecret)) {
+    // B. Secreto de despacho dedicado (DRIVE_RECONCILE_SECRET) o scheduler (N8N_DISPATCH_SECRET)
+    if (
+      !isAuthorized &&
+      dispatchSecret &&
+      ((reconcileSecret && timingSafeEqualString(dispatchSecret, reconcileSecret)) ||
+       (expectedSecret && timingSafeEqualString(dispatchSecret, expectedSecret)))
+    ) {
       isAuthorized = true;
     }
 

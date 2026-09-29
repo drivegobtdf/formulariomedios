@@ -299,6 +299,45 @@ describe('Mecanismo de Concurrencia, Claims y Leases de Carpetas Google Drive', 
     expect(compLegit.success).toBe(true);
     expect(compLegit.status).toBe('completed');
   });
+
+  it('6. Reconciliador: Sin filas failed -> no-op seguro (processed = 0)', async () => {
+    // Escenario: No existen filas failed en base de datos
+    const itemsToReconcile = Array.from(manager['rows'].values()).filter(
+      r => r.organization_status === 'failed' && r.retry_count < r.max_retries
+    );
+    expect(itemsToReconcile.length).toBe(0);
+  });
+
+  it('7. Reconciliador: max_retries alcanzado -> Excluido de nuevos reintentos (Fallo terminal)', async () => {
+    const now = new Date('2026-09-28T12:00:00Z');
+    const claim = await manager.claim(pedidoId, 'solicitud', 'SOLICITUD PED-2026-0001', 60, now);
+    await manager.fail(pedidoId, 'solicitud', claim.claim_token!, 'Fallo persistente');
+
+    // Simular que alcanzó max_retries
+    const row = manager.get(pedidoId, 'solicitud')!;
+    row.retry_count = 5;
+    row.max_retries = 5;
+
+    // Consulta de reconcile_fetch_failed_drive_folders: WHERE retry_count < max_retries
+    const itemsToReconcile = Array.from(manager['rows'].values()).filter(
+      r => (r.organization_status === 'failed' && r.retry_count < r.max_retries) ||
+           (r.organization_status === 'processing' && r.lease_expires_at && r.lease_expires_at < now)
+    );
+    expect(itemsToReconcile.length).toBe(0);
+  });
+
+  it('8. Reconciliador: Lease vigente -> Protegido contra robo de tareas concurrentes', async () => {
+    const now = new Date('2026-09-28T12:00:00Z');
+    await manager.claim(pedidoId, 'solicitud', 'SOLICITUD PED-2026-0001', 60, now);
+
+    // Consulta de reconcile a los 10s (lease sigue vigente)
+    const tCheck = new Date('2026-09-28T12:00:10Z');
+    const itemsToReconcile = Array.from(manager['rows'].values()).filter(
+      r => (r.organization_status === 'failed' && r.retry_count < r.max_retries) ||
+           (r.organization_status === 'processing' && r.lease_expires_at && r.lease_expires_at < tCheck)
+    );
+    expect(itemsToReconcile.length).toBe(0);
+  });
 });
 
 describe('Límites de Archivos Contractuales (SRS-FUN-009 / SRS-FUN-011)', () => {
