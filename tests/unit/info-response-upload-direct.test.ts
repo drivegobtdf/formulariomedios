@@ -42,14 +42,14 @@ describe('Flujo Directo de Adjuntos en Respuesta a Requerimiento de Información
       }
     });
 
-    it('Archivo > 10 MiB → REJECT', () => {
+    it('Archivo > 25 MB → REJECT', () => {
       const fileName = 'video_pesado.zip';
       const mimeType = 'application/zip';
-      const sizeBytes = 10 * 1024 * 1024 + 1; // 1 byte por encima del límite
+      const sizeBytes = 25 * 1024 * 1024 + 1; // 1 byte por encima del límite
 
       const result = validateFileMetadata(fileName, mimeType, sizeBytes);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('10 MB');
+      expect(result.error).toContain('25 MB');
     });
 
     it('Archivo con extensión o MIME no permitido → REJECT', () => {
@@ -65,9 +65,9 @@ describe('Flujo Directo de Adjuntos en Respuesta a Requerimiento de Información
       }
     });
 
-    it('Límite estricto de máximo 10 archivos por presentación', () => {
-      expect(MAX_FILES_PER_SUBMISSION).toBe(10);
-      const currentFilesCount = 10;
+    it('Límite estricto de máximo 5 archivos por presentación', () => {
+      expect(MAX_FILES_PER_SUBMISSION).toBe(5);
+      const currentFilesCount = 5;
       const isExceeded = currentFilesCount >= MAX_FILES_PER_SUBMISSION;
       expect(isExceeded).toBe(true);
     });

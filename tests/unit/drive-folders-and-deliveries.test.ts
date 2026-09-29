@@ -60,16 +60,22 @@ describe('1. Google Drive Adapter & Helpers Unit Tests', () => {
 });
 
 describe('2. Validación de Archivos y Metadatos Contractuales', () => {
-  it('Acepta formatos permitidos (PDF, PNG, JPG, DOCX, ZIP) menores a 10 MB', () => {
+  it('Acepta formatos permitidos (PDF, PNG, JPG, DOCX, ZIP) menores a 25 MB para solicitante y 10 MB para entregables', () => {
     expect(validateFileMetadata('diseño.pdf', 'application/pdf', 1024).valid).toBe(true);
     expect(validateFileMetadata('render.png', 'image/png', 2 * 1024 * 1024).valid).toBe(true);
     expect(validateFileMetadata('foto.jpg', 'image/jpeg', 500 * 1024).valid).toBe(true);
     expect(validateFileMetadata('documento.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 100 * 1024).valid).toBe(true);
-    expect(validateFileMetadata('assets.zip', 'application/zip', 9 * 1024 * 1024).valid).toBe(true);
+    expect(validateFileMetadata('assets.zip', 'application/zip', 24 * 1024 * 1024).valid).toBe(true);
   });
 
-  it('Rechaza archivos mayores a 10 MB', () => {
-    const res = validateFileMetadata('video.mp4', 'video/mp4', MAX_FILE_SIZE_BYTES + 1);
+  it('Rechaza archivos mayores a 25 MB en el formulario del solicitante', () => {
+    const res = validateFileMetadata('video.zip', 'application/zip', MAX_FILE_SIZE_BYTES + 1);
+    expect(res.valid).toBe(false);
+    expect(res.error).toContain('25 MB');
+  });
+
+  it('Rechaza archivos mayores a 10 MB en entregables de equipo interno', () => {
+    const res = validateFileMetadata('entrega.zip', 'application/zip', 10 * 1024 * 1024 + 1, 10 * 1024 * 1024);
     expect(res.valid).toBe(false);
     expect(res.error).toContain('10 MB');
   });

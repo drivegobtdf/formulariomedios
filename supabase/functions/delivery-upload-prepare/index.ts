@@ -4,8 +4,8 @@ import {
   getCorsHeaders,
   validateFileMetadata,
   verifyUserRole,
-  MAX_FILE_SIZE_BYTES,
-  MAX_FILES_PER_SUBMISSION,
+  MAX_FILE_SIZE_ENTREGA_BYTES,
+  MAX_FILES_ENTREGA,
   getSupabaseConfig,
   resolvePublicRelayBaseUrl,
 } from '../_shared/security.ts';
@@ -200,8 +200,8 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // 4. Validar metadata del archivo
-    const metaCheck = validateFileMetadata(expected_name, mime_type, Number(expected_size));
+    // 4. Validar metadata del archivo (Límite entregable: 10 MB)
+    const metaCheck = validateFileMetadata(expected_name, mime_type, Number(expected_size), MAX_FILE_SIZE_ENTREGA_BYTES);
     if (!metaCheck.valid) {
       return new Response(
         JSON.stringify({ error: 'METADATA_INVALID', message: metaCheck.error }),
@@ -209,7 +209,7 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // 5. Validar límite de archivos de entrega para este pedido
+    // 5. Validar límite de archivos de entrega para este pedido (Límite entregable: 10 archivos)
     const { count: currentFilesCount, error: countErr } = await adminClient
       .from('archivos')
       .select('id', { count: 'exact', head: true })
@@ -222,31 +222,64 @@ export default async function handler(req: Request): Promise<Response> {
         ).data?.map((r) => r.archivo_id) || []
       );
 
-    if (!countErr && (currentFilesCount || 0) >= MAX_FILES_PER_SUBMISSION) {
+    if (!countErr && (currentFilesCount || 0) >= MAX_FILES_ENTREGA) {
       return new Response(
         JSON.stringify({
           error: 'MAX_FILES_EXCEEDED',
-          message: `Se ha alcanzado el límite máximo de ${MAX_FILES_PER_SUBMISSION} archivos de entrega por pedido`,
+          message: `Se ha alcanzado el límite máximo de ${MAX_FILES_ENTREGA} archivos de entrega por pedido`,
         }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // 6. Resolver/Crear carpeta ENVIADO-{pedido_visible} en Google Drive
+    // 6. Resolver/Crear carpeta ENVIADO-{pedido_visible} mediante Claim Atómico en PostgreSQL
     const driveAdapter = getDriveAdapter();
-    const rootFolderId = await driveAdapter.ensureRootFolder();
     const folderName = `ENVIADO-${ped.pedido_visible}`;
-    const entregaFolderId = await driveAdapter.ensureFolder(rootFolderId, folderName);
+    let entregaFolderId: string | null = null;
+    let claimData: any = null;
 
-    // Persistir folder mapping en PostgreSQL
-    await adminClient.rpc('register_pedido_drive_folder', {
-      p_pedido_id: ped.id,
-      p_folder_type: 'enviado',
-      p_drive_folder_id: entregaFolderId,
-      p_folder_name: folderName,
-      p_organization_status: 'completed',
-      p_last_error: null,
-    });
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data, error } = await adminClient.rpc('claim_pedido_drive_folder', {
+        p_pedido_id: ped.id,
+        p_folder_type: 'enviado',
+        p_folder_name: folderName,
+        p_lease_seconds: 60,
+      });
+      if (error) throw error;
+      claimData = data;
+      if (claimData.status === 'completed' || claimData.status === 'claimed') {
+        break;
+      }
+      // Esperar 300ms antes del siguiente reintento si está locked por otra subida paralela
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+
+    if (claimData.status === 'completed' && claimData.drive_folder_id) {
+      entregaFolderId = claimData.drive_folder_id;
+    } else if (claimData.status === 'claimed') {
+      try {
+        const rootFolderId = await driveAdapter.ensureRootFolder();
+        entregaFolderId = await driveAdapter.ensureFolder(rootFolderId, folderName);
+
+        await adminClient.rpc('complete_pedido_drive_folder', {
+          p_pedido_id: ped.id,
+          p_folder_type: 'enviado',
+          p_claim_token: claimData.claim_token,
+          p_drive_folder_id: entregaFolderId,
+          p_folder_name: folderName,
+        });
+      } catch (driveErr) {
+        await adminClient.rpc('fail_pedido_drive_folder', {
+          p_pedido_id: ped.id,
+          p_folder_type: 'enviado',
+          p_claim_token: claimData.claim_token,
+          p_last_error: (driveErr as Error)?.message || 'Error al crear carpeta ENVIADO en Google Drive',
+        });
+        throw driveErr;
+      }
+    } else {
+      throw new Error('No se pudo asegurar el claim exclusivo de la carpeta de entrega en Google Drive');
+    }
 
     // 7. Resolver nombre único para evitar colisiones visuales en Drive
     const { data: existingFiles } = await adminClient

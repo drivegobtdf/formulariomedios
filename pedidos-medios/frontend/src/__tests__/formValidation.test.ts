@@ -266,7 +266,7 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
   });
 
   describe('Paso 3: Validación de Archivos y Adjuntos', () => {
-    it('debe rechazar archivos mayores a 10 MB', () => {
+    it('debe rechazar archivos mayores a 25 MB', () => {
       const err = validateFileMetadata({
         name: 'documento.pdf',
         size: MAX_FILE_SIZE_LIMIT + 1,
@@ -274,6 +274,17 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       });
 
       expect(err).toContain('supera el tamaño máximo');
+      expect(err).toContain('25 MB');
+    });
+
+    it('debe aceptar archivos de hasta 25 MB', () => {
+      const err = validateFileMetadata({
+        name: 'documento.pdf',
+        size: 25 * 1024 * 1024,
+        type: 'application/pdf',
+      });
+
+      expect(err).toBeNull();
     });
 
     it('debe rechazar extensiones no permitidas', () => {
@@ -306,6 +317,34 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       expect(
         validateFileMetadata({ name: 'recursos.zip', size: 1024, type: 'application/zip' })
       ).toBeNull();
+    });
+
+    it('debe validar límite de 5 archivos en validateStep3', () => {
+      const fiveFiles = Array(5).fill(null).map((_, i) => ({
+        client_file_ref: `ref-${i}`,
+        name: `file-${i}.pdf`,
+        size: 1024,
+        type: 'application/pdf',
+        mime: 'application/pdf',
+        status: 'verified' as const,
+        progress: 100,
+        targets: 'all' as const,
+      }));
+      const okErrs = validateStep3(fiveFiles, []);
+      expect(okErrs['archivos']).toBeUndefined();
+
+      const sixFiles = Array(6).fill(null).map((_, i) => ({
+        client_file_ref: `ref-${i}`,
+        name: `file-${i}.pdf`,
+        size: 1024,
+        type: 'application/pdf',
+        mime: 'application/pdf',
+        status: 'verified' as const,
+        progress: 100,
+        targets: 'all' as const,
+      }));
+      const exceedErrs = validateStep3(sixFiles, []);
+      expect(exceedErrs['archivos']).toContain('Podés adjuntar como máximo 5 archivos por presentación (actualmente: 6)');
     });
 
     it('debe validar límites de archivos y links en validateStep3 con mensaje unificado', () => {

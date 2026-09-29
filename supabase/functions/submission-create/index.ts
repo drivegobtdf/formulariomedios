@@ -51,47 +51,61 @@ async function organizeCitizenSubmissionFiles(supabase: SupabaseClient, pedidos:
 
       const folderName = `SOLICITUD ${ped.pedido_visible}`;
 
-      // 2. Resolver o crear carpetas en Google Drive
-      const rootFolderId = await driveAdapter.ensureRootFolder();
-      const stagingFolderId = await driveAdapter.ensureStagingFolder(rootFolderId, '_incoming');
-      const solicitudFolderId = await driveAdapter.ensureFolder(rootFolderId, folderName);
-
-      // 3. Registrar estado inicial de persistencia en PostgreSQL
-      await supabase.rpc('register_pedido_drive_folder', {
+      // 2. Reclamo atómico en PostgreSQL antes de side effects en Google Drive
+      const { data: claimData, error: claimErr } = await supabase.rpc('claim_pedido_drive_folder', {
         p_pedido_id: ped.id,
         p_folder_type: 'solicitud',
-        p_drive_folder_id: solicitudFolderId,
         p_folder_name: folderName,
-        p_organization_status: 'processing',
-        p_last_error: null,
+        p_lease_seconds: 60,
       });
 
-      // 4. Mover cada archivo de _incoming a la carpeta SOLICITUD
-      for (const file of filesToMove) {
-        await driveAdapter.moveFile(file.drive_file_id, solicitudFolderId, stagingFolderId);
+      if (claimErr || !claimData) {
+        console.warn(`[SUBMISSION_CREATE] Error al reclamar carpeta de solicitud para ${ped.pedido_visible}:`, claimErr?.message);
+        continue;
       }
 
-      // 5. Marcar organización completada
-      await supabase.rpc('register_pedido_drive_folder', {
-        p_pedido_id: ped.id,
-        p_folder_type: 'solicitud',
-        p_drive_folder_id: solicitudFolderId,
-        p_folder_name: folderName,
-        p_organization_status: 'completed',
-        p_last_error: null,
-      });
+      let solicitudFolderId: string | null = null;
+      let claimToken: string | null = null;
+
+      if (claimData.status === 'completed' && claimData.drive_folder_id) {
+        solicitudFolderId = claimData.drive_folder_id;
+      } else if (claimData.status === 'claimed') {
+        claimToken = claimData.claim_token;
+        const rootFolderId = await driveAdapter.ensureRootFolder();
+        solicitudFolderId = await driveAdapter.ensureFolder(rootFolderId, folderName);
+      } else {
+        // Estado locked por otro worker: saltar para evitar conflicto
+        continue;
+      }
+
+      const rootFolderId = await driveAdapter.ensureRootFolder();
+      const stagingFolderId = await driveAdapter.ensureStagingFolder(rootFolderId, '_incoming');
+
+      // 3. Mover cada archivo de _incoming a la carpeta SOLICITUD
+      for (const file of filesToMove) {
+        await driveAdapter.moveFile(file.drive_file_id, solicitudFolderId!, stagingFolderId);
+      }
+
+      // 4. Completar registro atómicamente si poseemos el claim
+      if (claimToken) {
+        await supabase.rpc('complete_pedido_drive_folder', {
+          p_pedido_id: ped.id,
+          p_folder_type: 'solicitud',
+          p_claim_token: claimToken,
+          p_drive_folder_id: solicitudFolderId!,
+          p_folder_name: folderName,
+        });
+      }
     } catch (driveErr: unknown) {
       const errMsg = (driveErr as Error)?.message || 'Error desconocido al mover archivos en Google Drive';
       console.warn(`[SUBMISSION_CREATE] Advertencia al organizar archivos en Google Drive para ${ped.pedido_visible}: ${errMsg}`);
 
       // Registrar falla en PostgreSQL para recuperación/retry seguro
       try {
-        await supabase.rpc('register_pedido_drive_folder', {
+        await supabase.rpc('fail_pedido_drive_folder', {
           p_pedido_id: ped.id,
           p_folder_type: 'solicitud',
-          p_drive_folder_id: 'pending_creation',
-          p_folder_name: `SOLICITUD ${ped.pedido_visible}`,
-          p_organization_status: 'failed',
+          p_claim_token: null,
           p_last_error: errMsg,
         });
       } catch {

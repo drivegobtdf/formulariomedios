@@ -104,7 +104,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
       <div className="pedidos-card">
         <h3 className="pedidos-card-title">Archivos</h3>
         <p className="pedidos-hint-text" style={{ marginBottom: '1rem' }}>
-          Formatos: PDF, PNG, JPG, DOCX, ZIP · Máx. 10 archivos · 10 MiB c/u
+          Formatos: PDF, PNG, JPG, DOCX, ZIP · Máx. 5 archivos · Hasta 25 MB por archivo
         </p>
 
         <div

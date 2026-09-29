@@ -6,9 +6,18 @@ import { getEnv, getSupabaseConfig, resolvePublicAppUrl } from './env.ts';
 export { getEnv, getSupabaseConfig, resolvePublicAppUrl };
 export type { SupabaseConfig } from './env.ts';
 
-// Constantes contractuales vigentes (Revisión 3.0)
-export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB = 10,485,760 bytes
-export const MAX_FILES_PER_SUBMISSION = 10;
+// Constantes contractuales vigentes (Revisión 3.0 / SRS-FUN-009 / SRS-FUN-011)
+export const MAX_FILES_SOLICITANTE = 5;
+export const MAX_FILE_SIZE_SOLICITANTE_BYTES = 25 * 1024 * 1024; // 25 MB = 26,214,400 bytes
+
+// Alias retrocompatibles para el formulario público del solicitante
+export const MAX_FILES_PER_SUBMISSION = MAX_FILES_SOLICITANTE;
+export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_SOLICITANTE_BYTES;
+
+// Constantes para entregables de equipo interno (Finalización)
+export const MAX_FILES_ENTREGA = 10;
+export const MAX_FILE_SIZE_ENTREGA_BYTES = 10 * 1024 * 1024; // 10 MB = 10,485,760 bytes
+
 export const SESSION_TTL_SECONDS = 7200; // 2 horas
 
 export const ALLOWED_MIME_TYPES = new Set<string>([
@@ -112,9 +121,14 @@ export async function verifyCapabilityToken(token: string, expectedHash: string)
 }
 
 /**
- * Valida el nombre y extensión de un archivo
+ * Valida el nombre, tipo y extensión de un archivo contra un tamaño máximo dado
  */
-export function validateFileMetadata(name: string, mimeType: string, sizeBytes: number): { valid: boolean; error?: string } {
+export function validateFileMetadata(
+  name: string,
+  mimeType: string,
+  sizeBytes: number,
+  maxSizeBytes: number = MAX_FILE_SIZE_SOLICITANTE_BYTES
+): { valid: boolean; error?: string } {
   if (!name || name.trim().length === 0) {
     return { valid: false, error: 'El nombre del archivo es obligatorio' };
   }
@@ -123,8 +137,9 @@ export function validateFileMetadata(name: string, mimeType: string, sizeBytes: 
     return { valid: false, error: 'El tamaño del archivo debe ser mayor a 0 bytes' };
   }
 
-  if (sizeBytes > MAX_FILE_SIZE_BYTES) {
-    return { valid: false, error: `El archivo excede el tamaño máximo permitido de 10 MB (${MAX_FILE_SIZE_BYTES} bytes)` };
+  if (sizeBytes > maxSizeBytes) {
+    const maxMb = (maxSizeBytes / (1024 * 1024)).toFixed(0);
+    return { valid: false, error: `El archivo excede el tamaño máximo permitido de ${maxMb} MB (${maxSizeBytes} bytes)` };
   }
 
   const normalizedMime = mimeType.trim().toLowerCase();

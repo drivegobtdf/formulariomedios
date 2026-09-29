@@ -44,8 +44,8 @@ export function isValidHttpUrl(urlString: string): boolean {
   }
 }
 
-export const MAX_FILES_LIMIT = 10;
-export const MAX_FILE_SIZE_LIMIT = 10 * 1024 * 1024; // 10,485,760 bytes
+export const MAX_FILES_LIMIT = 5;
+export const MAX_FILE_SIZE_LIMIT = 25 * 1024 * 1024; // 25 MB = 26,214,400 bytes
 
 export const ALLOWED_MIME_TYPES: string[] = [
   'application/pdf',
@@ -59,7 +59,7 @@ export const ALLOWED_EXTENSIONS: string[] = ['.pdf', '.png', '.jpg', '.jpeg', '.
 
 export function validateFileMetadata(file: { name: string; size: number; type: string }): string | null {
   if (file.size > MAX_FILE_SIZE_LIMIT) {
-    return `El archivo supera el tamaño máximo permitido de 10 MB (${(file.size / (1024 * 1024)).toFixed(2)} MB).`;
+    return `El archivo supera el tamaño máximo permitido de 25 MB (${(file.size / (1024 * 1024)).toFixed(2)} MB).`;
   }
 
   const ext = '.' + file.name.split('.').pop()?.toLowerCase();
