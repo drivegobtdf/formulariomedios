@@ -162,6 +162,53 @@ export function getGestionFieldLabel(
   return FIELD_LABELS[key] || key.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
 
+const CANONICAL_FIELD_ORDER = [
+  'nombre_evento',
+  'nombre_actividad',
+  'formato',
+  'tipo_produccion',
+  'tipo_motion',
+  'tipo_streaming',
+  'tipo_web',
+  'fecha_limite',
+  'fecha',
+  'fecha_sugerida',
+  'grabacion_fecha',
+  'hora',
+  'hora_inicio',
+  'hora_fin',
+  'grabacion_hora',
+  'lugar',
+  'grabacion_lugar',
+  'ciudad',
+  'grabacion_ciudad',
+  'modalidad',
+  'asiste_autoridades',
+  'autoridades',
+  'firmantes',
+  'destinatarios',
+  'programa',
+  'requerimientos',
+  'descripcion',
+  'descripcion_objetivo',
+  'descripcion_requerimientos',
+  'medidas_soporte',
+  'referente_contacto',
+  'telefono_contacto',
+  'informacion_base',
+  'texto',
+  'texto_copy',
+  'enlaces_referencia',
+  'material_enlace',
+  'duracion_aprox',
+  'participantes_estimados',
+  'pagina_existente',
+  'url_pagina',
+  'contenido_cambios',
+  'requiere_grabacion',
+  'referencias',
+];
+
 export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerProps> = ({
   informacion,
   informacionEspecifica,
@@ -181,10 +228,17 @@ export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerPr
   const objetivoAsesoramiento = info.objetivo_asesoramiento || info.requerimiento_inicial;
   const contactoPreferido = info.contacto_preferido;
 
-  // Filtrar claves para el listado general
-  const generalEntries = Object.entries(info).filter(
-    ([k]) => !IGNORED_KEYS.has(k)
-  );
+  // Filtrar y ordenar claves canónicamente para el listado general
+  const generalEntries = Object.entries(info)
+    .filter(([k]) => !IGNORED_KEYS.has(k))
+    .sort(([a], [b]) => {
+      const idxA = CANONICAL_FIELD_ORDER.indexOf(a);
+      const idxB = CANONICAL_FIELD_ORDER.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return 0;
+    });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

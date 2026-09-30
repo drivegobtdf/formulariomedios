@@ -486,6 +486,15 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
 
       case 'cobertura_eventos': {
         const data = state.cobertura_data;
+        if (!data?.nombre_evento || data.nombre_evento.trim().length === 0) {
+          errors['cobertura.nombre_evento'] = 'Indicá el nombre del evento.';
+        } else if (/<[^>]*>/i.test(data.nombre_evento)) {
+          errors['cobertura.nombre_evento'] = 'El nombre del evento no puede contener etiquetas HTML.';
+        } else if (data.nombre_evento.trim().length > 200) {
+          errors['cobertura.nombre_evento'] = 'El nombre del evento no puede superar los 200 caracteres.';
+        } else if (data.nombre_evento.trim().length < 2) {
+          errors['cobertura.nombre_evento'] = 'Ingresá al menos 2 caracteres.';
+        }
         const fechaErr = validateNotPastDate(data?.fecha, {
           requiredMessage: 'Indicá la fecha de la cobertura.',
         });

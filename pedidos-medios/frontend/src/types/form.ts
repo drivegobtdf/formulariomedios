@@ -153,6 +153,7 @@ export interface OtrosDisenoData {
 }
 
 export interface CoberturaEventosData {
+  nombre_evento: string;
   fecha: string;
   hora_inicio: string;
   hora_fin?: string;

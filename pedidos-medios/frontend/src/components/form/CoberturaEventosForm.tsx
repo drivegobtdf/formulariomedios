@@ -18,6 +18,26 @@ export const CoberturaEventosForm: React.FC<CoberturaEventosFormProps> = ({ data
         </p>
       </div>
 
+      <div className="pedidos-form-group">
+        <label htmlFor="cob_nombre_evento" className="pedidos-label required">
+          Nombre del evento
+        </label>
+        <input
+          type="text"
+          id="cob_nombre_evento"
+          className={`pedidos-input ${errors['cobertura.nombre_evento'] ? 'error' : ''}`}
+          placeholder="Ej: Acto de inauguración del nuevo edificio del IPRA"
+          maxLength={200}
+          value={data.nombre_evento || ''}
+          onChange={(e) => onChange({ nombre_evento: e.target.value })}
+          aria-invalid={!!errors['cobertura.nombre_evento']}
+          aria-describedby={errors['cobertura.nombre_evento'] ? 'cob_nombre_evento_error' : undefined}
+        />
+        {errors['cobertura.nombre_evento'] && (
+          <span id="cob_nombre_evento_error" className="pedidos-error-text" role="alert">{errors['cobertura.nombre_evento']}</span>
+        )}
+      </div>
+
       <div className="pedidos-form-row">
         <div className="pedidos-form-group col-4">
           <label htmlFor="cob_fecha" className="pedidos-label required">

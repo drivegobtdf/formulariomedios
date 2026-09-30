@@ -80,6 +80,7 @@ export function getPieceFieldLabel(piece: FormPieceItem, key: string): string {
 
   // 2. Cobertura de Eventos
   if (categoria_slug === 'cobertura_eventos' || tipo_slug === 'cobertura_eventos') {
+    if (key === 'nombre_evento') return 'Nombre del evento';
     if (key === 'fecha') return 'Fecha del evento';
     if (key === 'hora_inicio') return 'Hora de inicio';
     if (key === 'hora_fin') return 'Hora estimada de fin';

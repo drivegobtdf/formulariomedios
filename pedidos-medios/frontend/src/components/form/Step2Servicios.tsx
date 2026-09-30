@@ -104,6 +104,7 @@ export const Step2Servicios: React.FC<Step2ServiciosProps> = ({
         <CoberturaEventosForm
           data={
             state.cobertura_data || {
+              nombre_evento: '',
               fecha: '',
               hora_inicio: '',
               hora_fin: '',

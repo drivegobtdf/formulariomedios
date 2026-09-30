@@ -36,8 +36,9 @@ describe('InformacionEspecificaViewer Unit Tests', () => {
     expect(screen.getByText(/WhatsApp/i)).toBeInTheDocument();
   });
 
-  it('3. Renderiza Cobertura de Eventos con lugar, ciudad, fechas y horarios', () => {
+  it('3. Renderiza Cobertura de Eventos con nombre del evento, lugar, ciudad, fechas y horarios', () => {
     const data = {
+      nombre_evento: 'Inauguración Hospital de Tolhuin',
       fecha: '2026-10-15',
       hora_inicio: '10:00',
       hora_fin: '12:30',
@@ -49,12 +50,30 @@ describe('InformacionEspecificaViewer Unit Tests', () => {
 
     render(<InformacionEspecificaViewer informacion={data} codigoCategoria="C" />);
 
+    expect(screen.getByText(/Nombre del evento/i)).toBeInTheDocument();
+    expect(screen.getByText('Inauguración Hospital de Tolhuin')).toBeInTheDocument();
     expect(screen.getByText('15/10/2026')).toBeInTheDocument();
     expect(screen.getByText('10:00')).toBeInTheDocument();
     expect(screen.getByText('12:30')).toBeInTheDocument();
     expect(screen.getByText('Casa de Gobierno')).toBeInTheDocument();
     expect(screen.getByText('Ushuaia')).toBeInTheDocument();
     expect(screen.getByText('Gobernador y Ministros')).toBeInTheDocument();
+  });
+
+  it('3b. Renderiza PED histórico de Cobertura de Eventos sin nombre_evento de forma resiliente', () => {
+    const historicalData = {
+      fecha: '2026-08-10',
+      hora_inicio: '09:00',
+      lugar: 'Salón Malvinas',
+      ciudad: 'Ushuaia',
+      requerimientos: 'Cobertura fotográfica',
+    };
+
+    render(<InformacionEspecificaViewer informacion={historicalData} codigoCategoria="C" />);
+
+    expect(screen.getByText('10/08/2026')).toBeInTheDocument();
+    expect(screen.getByText('09:00')).toBeInTheDocument();
+    expect(screen.getByText('Salón Malvinas')).toBeInTheDocument();
   });
 
   it('4. Renderiza campos booleanos como Sí / No y enlaces como tags <a> seguros', () => {

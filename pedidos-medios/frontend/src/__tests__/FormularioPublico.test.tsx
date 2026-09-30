@@ -589,6 +589,7 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       expect(fechaInput).toHaveAttribute('min', tomorrow);
 
       // Completar otros campos obligatorios de Cobertura
+      fireEvent.change(screen.getByLabelText(/Nombre del evento/i), { target: { value: 'Acto de Inauguración' } });
       fireEvent.change(screen.getByLabelText(/Hora de inicio/i), { target: { value: '10:00' } });
       fireEvent.change(screen.getByLabelText(/Lugar \/ Dirección/i), { target: { value: 'Gimnasio Petrina' } });
       fireEvent.change(screen.getByLabelText(/Ciudad/i), { target: { value: 'Ushuaia' } });
@@ -693,6 +694,7 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
 
       // En Paso 2 - Cobertura de Eventos
       const tomorrow = getUshuaiaTomorrowDateString();
+      fireEvent.change(screen.getByLabelText(/Nombre del evento/i), { target: { value: 'Acto de Conmemoración' } });
       fireEvent.change(screen.getByLabelText(/Fecha del evento/i), { target: { value: tomorrow } });
       fireEvent.change(screen.getByLabelText(/Hora de inicio/i), { target: { value: '11:00' } });
       fireEvent.change(screen.getByLabelText(/Lugar \/ Dirección/i), { target: { value: 'Salón Malvinas' } });

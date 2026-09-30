@@ -188,10 +188,11 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       expect(errs['flyer_rrss.fecha_limite']).toBeDefined();
     });
 
-    it('debe validar que Cobertura de Eventos requiera fecha, hora, lugar, ciudad, requerimientos y opción de autoridades', () => {
+    it('debe validar que Cobertura de Eventos requiera nombre_evento, fecha, hora, lugar, ciudad, requerimientos y opción de autoridades', () => {
       const state: Partial<FormWizardState> = {
         selected_categorias: ['cobertura_eventos'],
         cobertura_data: {
+          nombre_evento: '',
           fecha: '',
           hora_inicio: '',
           lugar: '',
@@ -203,6 +204,7 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       };
 
       const errs = validateStep2(state as FormWizardState);
+      expect(errs['cobertura.nombre_evento']).toBe('Indicá el nombre del evento.');
       expect(errs['cobertura.fecha']).toBeDefined();
       expect(errs['cobertura.hora_inicio']).toBeDefined();
       expect(errs['cobertura.lugar']).toBeDefined();
@@ -211,10 +213,46 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       expect(errs['cobertura.requerimientos']).toBeDefined();
     });
 
+    it('debe validar reglas específicas del campo nombre_evento (no nulo, no vacío, no HTML, max 200 caracteres)', () => {
+      const state: Partial<FormWizardState> = {
+        selected_categorias: ['cobertura_eventos'],
+        cobertura_data: {
+          nombre_evento: '',
+          fecha: '2026-12-01',
+          hora_inicio: '10:00',
+          lugar: 'Casa de Gobierno',
+          ciudad: 'Ushuaia',
+          asiste_autoridades: 'no',
+          requerimientos: 'Cobertura completa',
+        },
+      };
+
+      // 1. Vacío o espacios
+      state.cobertura_data!.nombre_evento = '   ';
+      expect(validateStep2(state as FormWizardState)['cobertura.nombre_evento']).toBe('Indicá el nombre del evento.');
+
+      // 2. Menos de 2 caracteres
+      state.cobertura_data!.nombre_evento = 'A';
+      expect(validateStep2(state as FormWizardState)['cobertura.nombre_evento']).toBe('Ingresá al menos 2 caracteres.');
+
+      // 3. Con etiquetas HTML
+      state.cobertura_data!.nombre_evento = '<script>alert(1)</script> Acto';
+      expect(validateStep2(state as FormWizardState)['cobertura.nombre_evento']).toBe('El nombre del evento no puede contener etiquetas HTML.');
+
+      // 4. Más de 200 caracteres
+      state.cobertura_data!.nombre_evento = 'A'.repeat(201);
+      expect(validateStep2(state as FormWizardState)['cobertura.nombre_evento']).toBe('El nombre del evento no puede superar los 200 caracteres.');
+
+      // 5. Válido
+      state.cobertura_data!.nombre_evento = 'Acto de Apertura de Sesiones Ordinarias';
+      expect(validateStep2(state as FormWizardState)['cobertura.nombre_evento']).toBeUndefined();
+    });
+
     it('debe validar selector de autoridades: sin selección bloquea, "no" es válido sin autoridades, "si" exige nombres', () => {
       const baseState: Partial<FormWizardState> = {
         selected_categorias: ['cobertura_eventos'],
         cobertura_data: {
+          nombre_evento: 'Acto de Inauguración',
           fecha: '2026-12-01',
           hora_inicio: '10:00',
           lugar: 'Casa de Gobierno',
@@ -564,6 +602,7 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
       const stateCobPast: Partial<FormWizardState> = {
         selected_categorias: ['cobertura_eventos'],
         cobertura_data: {
+          nombre_evento: 'Inauguración Petrina',
           fecha: today,
           hora_inicio: '10:00',
           lugar: 'Gimnasio Petrina',

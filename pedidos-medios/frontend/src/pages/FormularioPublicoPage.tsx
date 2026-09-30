@@ -70,7 +70,7 @@ const INITIAL_STATE: FormWizardState = {
     certificado: { nombre_actividad: '', firmantes: '', destinatarios: '' },
     otros_diseno: { descripcion: '', medidas_soporte: '' },
   },
-  cobertura_data: { fecha: '', hora_inicio: '', hora_fin: '', lugar: '', ciudad: '', asiste_autoridades: '', autoridades: '', requerimientos: '' },
+  cobertura_data: { nombre_evento: '', fecha: '', hora_inicio: '', hora_fin: '', lugar: '', ciudad: '', asiste_autoridades: '', autoridades: '', requerimientos: '' },
   gacetilla_data: { referente_contacto: '', telefono_contacto: '', informacion_base: '' },
   redes_data: { fecha_sugerida: '', texto_copy: '', enlaces_referencia: '' },
   audiovisual_data: { requiere_asesoramiento: false },
@@ -415,7 +415,7 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
     setState((prev) => {
       const nextState = {
         ...prev,
-        cobertura_data: { ...(prev.cobertura_data || { fecha: '', hora_inicio: '', lugar: '', ciudad: '', asiste_autoridades: '', autoridades: '', requerimientos: '' }), ...data },
+        cobertura_data: { ...(prev.cobertura_data || { nombre_evento: '', fecha: '', hora_inicio: '', lugar: '', ciudad: '', asiste_autoridades: '', autoridades: '', requerimientos: '' }), ...data },
       };
       setErrors((prevErrors) => {
         const freshErrors = validateStep2(nextState);
