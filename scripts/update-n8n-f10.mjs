@@ -76,7 +76,9 @@ const allowedTypes = [
   'en_proceso',
   'acceso_aprobado',
   'pedido_asignado',
-  'pedido_nuevo_admin'
+  'pedido_nuevo_admin',
+  'pedido_retrabajo_solicitado',
+  'revision_solicitada'
 ];
 
 if (!allowedTypes.includes(String(p.tipo))) {
