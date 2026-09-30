@@ -75,11 +75,18 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // 3. Validar que el pedido pertenezca al correo del solicitante
-    const { data: ped, error: pedErr } = await supabase
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let pedQuery = supabase
       .from('pedidos')
-      .select('id, pedido_visible, envios_formulario:envio_id(correo)')
-      .or(`id.eq.${pedidoRef},pedido_visible.eq.${pedidoRef}`)
-      .maybeSingle();
+      .select('id, pedido_visible, envios_formulario:envio_id(correo)');
+
+    if (UUID_REGEX.test(pedidoRef)) {
+      pedQuery = pedQuery.eq('id', pedidoRef);
+    } else {
+      pedQuery = pedQuery.eq('pedido_visible', pedidoRef);
+    }
+
+    const { data: ped, error: pedErr } = await pedQuery.maybeSingle();
 
     if (pedErr || !ped) {
       return new Response(

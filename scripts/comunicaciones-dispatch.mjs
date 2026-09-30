@@ -448,7 +448,7 @@ export function renderEmail(tipo, payload, customAppUrl) {
         ` : ''}
         <div style="text-align: center; margin: 24px 0;">
           <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
-            Ver Detalle en Mis Solicitudes
+            VER MI PEDIDO
           </a>
         </div>
       `;

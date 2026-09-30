@@ -149,7 +149,7 @@ describe('Resolucion de URL Publica y Enlaces de Correo (CTA / Magic Links)', ()
 
       const expectedPortalUrl = 'http://localhost:4173/formulariomedios/mis-solicitudes';
       expect(rendered.html).toContain(`href="${expectedPortalUrl}"`);
-      expect(rendered.html).toContain('Ver Detalle en Mis Solicitudes');
+      expect(rendered.html).toContain('VER MI PEDIDO');
     });
 
     it('E: Email de Solicitud Cancelada apunta al portal con base path', () => {

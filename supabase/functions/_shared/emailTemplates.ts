@@ -345,7 +345,7 @@ export function renderEmail(
         ` : ''}
         <div style="text-align: center; margin: 24px 0; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
           <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
-            Ver Detalle en Mis Solicitudes
+            VER MI PEDIDO
           </a>
           <a href="${portalUrl}" style="display: inline-block; background-color: #F59E0B; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
             Solicitar Revisión

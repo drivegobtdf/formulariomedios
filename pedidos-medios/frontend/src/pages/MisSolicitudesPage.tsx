@@ -77,6 +77,19 @@ function parseUrlParams(): UrlParamsResult {
   };
 }
 
+function formatHistoryDate(rawDate?: string | null): string {
+  if (!rawDate) return 'Fecha no disponible';
+  const d = new Date(rawDate);
+  if (isNaN(d.getTime())) return 'Fecha no disponible';
+  return d.toLocaleString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 type ViewMode = 'INITIAL_EXCHANGE' | 'REQUEST_FORM' | 'AUTHENTICATED' | 'EXCHANGE_ERROR';
 type FilterTab = 'todos' | 'info_requerida' | 'en_curso' | 'finalizadas';
 
@@ -1471,22 +1484,49 @@ export const MisSolicitudesPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Public Timeline */}
-                {selectedPedido.timeline_publico && selectedPedido.timeline_publico.length > 0 && (
-                  <div>
-                    <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#334155', margin: '0 0 0.5rem 0' }}>
-                      Historial
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {selectedPedido.timeline_publico.map((item, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', backgroundColor: '#f8fafc', borderLeft: '3px solid #0284c7', borderRadius: '0 0.375rem 0.375rem 0', fontSize: '0.8125rem' }}>
-                          <span style={{ fontWeight: 600, color: '#1e293b' }}>{item.evento}</span>
-                          <span style={{ color: '#64748b' }}>{new Date(item.fecha).toLocaleString('es-AR')}</span>
-                        </div>
-                      ))}
+                {/* Public Timeline / Historial */}
+                {(() => {
+                  const timelineItems = selectedPedido.timeline_publico || selectedPedido.historial || [];
+                  if (timelineItems.length === 0) return null;
+                  return (
+                    <div>
+                      <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#334155', margin: '0 0 0.5rem 0' }}>
+                        Historial
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {timelineItems.map((item, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '0.5rem 0.75rem',
+                              backgroundColor: '#f8fafc',
+                              borderLeft: '3px solid #0284c7',
+                              borderRadius: '0 0.375rem 0.375rem 0',
+                              fontSize: '0.8125rem',
+                            }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                              <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                                {item.descripcion || item.detalle || item.evento || 'Actualización de seguimiento'}
+                              </span>
+                              {item.descripcion && item.evento && item.descripcion !== item.evento && (
+                                <span style={{ fontSize: '0.725rem', color: '#64748b' }}>
+                                  {item.evento}
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ color: '#64748b', whiteSpace: 'nowrap', marginLeft: '0.75rem' }}>
+                              {formatHistoryDate(item.occurred_at || item.created_at || item.fecha)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Original Attachments Metadata */}
                 {selectedPedido.archivos_adjuntos && selectedPedido.archivos_adjuntos.length > 0 && (

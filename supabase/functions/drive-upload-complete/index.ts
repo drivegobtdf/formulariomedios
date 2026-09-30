@@ -170,15 +170,22 @@ export default async function handler(req: Request): Promise<Response> {
 
     // 3. Verificar archivo en Google Drive API
     const adapter = getDriveAdapter();
+    const expectedAppProps: Record<string, string> = {};
+    if (targetSubmissionKey) {
+      expectedAppProps.submission_key = targetSubmissionKey;
+    }
+    if (client_file_ref) {
+      expectedAppProps.client_file_ref = client_file_ref;
+    }
+    if (reservation_id) {
+      expectedAppProps.reservation_id = reservation_id;
+    }
+
     const verification = await adapter.verifyUploadedFile(drive_file_id, {
       name: reservation.expected_name,
       size: Number(reservation.expected_size),
       mimeType: reservation.expected_mime,
-      appProperties: {
-        submission_key: targetSubmissionKey,
-        client_file_ref: client_file_ref,
-        reservation_id: reservation_id,
-      },
+      appProperties: Object.keys(expectedAppProps).length > 0 ? expectedAppProps : undefined,
     });
 
     if (!verification.verified || !verification.file) {

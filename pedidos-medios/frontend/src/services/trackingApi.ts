@@ -135,9 +135,20 @@ export interface SolicitantePedidoDetailDTO {
     size_bytes: number;
     contexto: string;
   }>;
-  timeline_publico: Array<{
-    evento: string;
-    fecha: string;
+  timeline_publico?: Array<{
+    evento?: string;
+    fecha?: string;
+    occurred_at?: string;
+    created_at?: string;
+    descripcion?: string;
+    detalle?: string;
+  }>;
+  historial?: Array<{
+    evento?: string;
+    fecha?: string;
+    occurred_at?: string;
+    created_at?: string;
+    descripcion?: string;
     detalle?: string;
   }>;
 }

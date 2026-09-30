@@ -87,7 +87,7 @@ export default async function handler(req: Request): Promise<Response> {
     if (req.method === 'PUT') {
       const url = new URL(req.url);
       const reservationId = url.searchParams.get('reservation_id') || req.headers.get('x-reservation-id');
-      const capabilityToken = req.headers.get('x-capability-token') || req.headers.get('x-info-token') || req.headers.get('x-session-token');
+      const capabilityToken = req.headers.get('x-capability-token') || req.headers.get('x-info-token') || req.headers.get('x-session-token') || req.headers.get('x-solicitante-session');
 
       if (!reservationId || !capabilityToken) {
         return new Response(
@@ -109,6 +109,13 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
 
+      if (resData.expires_at && new Date(resData.expires_at).getTime() <= Date.now()) {
+        return new Response(
+          JSON.stringify({ error: 'RESERVATION_EXPIRED', message: 'La reserva de subida ha expirado' }),
+          { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       if (resData.solicitud_id) {
         // Validación para reservas originadas en requerimientos de información
         const { data: solData } = await supabase
@@ -126,12 +133,25 @@ export default async function handler(req: Request): Promise<Response> {
 
         const infoTokenHash = await computeSha256Hex(capabilityToken.trim());
         if (solData.token_hash !== infoTokenHash) {
-          const { data: solSession } = await supabase
-            .from('solicitante_sessions')
+          let solSession: any = null;
+          const { data: sessEs } = await supabase
+            .from('solicitante_sesiones')
             .select('correo, expires_at')
             .eq('session_token_hash', infoTokenHash)
+            .is('revoked_at', null)
             .gt('expires_at', new Date().toISOString())
             .maybeSingle();
+
+          solSession = sessEs;
+          if (!solSession) {
+            const { data: sessEn } = await supabase
+              .from('solicitante_sessions')
+              .select('correo, expires_at')
+              .eq('session_token_hash', infoTokenHash)
+              .gt('expires_at', new Date().toISOString())
+              .maybeSingle();
+            solSession = sessEn;
+          }
 
           if (!solSession) {
             return new Response(
@@ -140,7 +160,7 @@ export default async function handler(req: Request): Promise<Response> {
             );
           }
         }
-      } else {
+      } else if (resData.session_id) {
         // Validación estándar para reservas de formulario público
         const session = resData.submission_sessions;
         if (!session || session.estado !== 'abierta' || new Date(session.expires_at).getTime() <= Date.now()) {
@@ -154,6 +174,36 @@ export default async function handler(req: Request): Promise<Response> {
           return new Response(
             JSON.stringify({ error: 'INVALID_CAPABILITY', message: 'capability_token inválido' }),
             { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        // Validación para reservas de solicitante autenticado (ej: revisiones / retrabajo)
+        const sessTokenHash = await computeSha256Hex(capabilityToken.trim());
+        let solSession: any = null;
+
+        const { data: sessEs } = await supabase
+          .from('solicitante_sesiones')
+          .select('correo, expires_at')
+          .eq('session_token_hash', sessTokenHash)
+          .is('revoked_at', null)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+
+        solSession = sessEs;
+        if (!solSession) {
+          const { data: sessEn } = await supabase
+            .from('solicitante_sessions')
+            .select('correo, expires_at')
+            .eq('session_token_hash', sessTokenHash)
+            .gt('expires_at', new Date().toISOString())
+            .maybeSingle();
+          solSession = sessEn;
+        }
+
+        if (!solSession) {
+          return new Response(
+            JSON.stringify({ error: 'SESSION_INVALID', message: 'Sesión de solicitante inválida o expirada' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
       }

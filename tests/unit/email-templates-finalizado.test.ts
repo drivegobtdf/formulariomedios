@@ -25,7 +25,7 @@ describe('Email Templates — Pedido Finalizado con Acceso Directo y Deep-Link',
     // HTML contiene el enlace con hash access_token y query pedido
     const expectedUrl = `${appUrl}/mis-solicitudes#access_token=tok-abc-123-xyz&pedido=PED-2026-D000155`;
     expect(rendered.html).toContain(expectedUrl);
-    expect(rendered.html).toContain('Ver Detalle en Mis Solicitudes');
+    expect(rendered.html).toContain('VER MI PEDIDO');
     expect(rendered.html).toContain('https://drive.google.com/drive/folders/test-entrega-155');
     expect(rendered.html).toContain('Pieza final finalizada y aprobada.');
 
