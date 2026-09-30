@@ -19,6 +19,7 @@ import {
 import { InfoResponseForm } from '../components/InfoResponseForm';
 import { SolicitarRevisionModal } from '../components/SolicitarRevisionModal';
 import { formatFileSize, formatHistoryDate } from '../utils/formatUtils';
+import { renderPedidoStatusBundle } from '../utils/statusBadges';
 
 interface UrlParamsResult {
   token: string | null;
@@ -501,53 +502,13 @@ export const MisSolicitudesPage: React.FC = () => {
     }
   };
 
-  const getEstadoBadge = (estado: string, retrabajoActivo?: boolean, revCount?: number) => {
-    if (retrabajoActivo) {
-      return (
-        <span
-          style={{
-            backgroundColor: '#fffbeb',
-            color: '#b45309',
-            border: '1px solid #fde68a',
-            padding: '0.25rem 0.75rem',
-            borderRadius: '9999px',
-            fontWeight: 700,
-            fontSize: '0.8125rem',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.3rem',
-          }}
-        >
-          🔄 DEVUELTO - RETRABAJAR {revCount ? `· Rev #${revCount}` : ''}
-        </span>
-      );
-    }
-
-    const map: Record<string, { label: string; bg: string; color: string; border: string }> = {
-      'Nuevo': { label: 'Nuevo', bg: '#e0f2fe', color: '#0369a1', border: '#bae6fd' },
-      'En revisión': { label: 'En Revisión', bg: '#fef3c7', color: '#b45309', border: '#fde68a' },
-      'En proceso': { label: 'En Proceso', bg: '#e0e7ff', color: '#4338ca', border: '#c7d2fe' },
-      'Esperando información': { label: 'Esperando Información (48h)', bg: '#fefce8', color: '#a16207', border: '#fef08a' },
-      'Finalizado': { label: 'Finalizado', bg: '#dcfce7', color: '#15803d', border: '#bbf7d0' },
-      'Cancelado': { label: 'Cancelado', bg: '#fee2e2', color: '#b91c1c', border: '#fecaca' },
-    };
-    const c = map[estado] || { label: estado, bg: '#f3f4f6', color: '#374151', border: '#e2e8f0' };
-    return (
-      <span
-        style={{
-          backgroundColor: c.bg,
-          color: c.color,
-          border: `1px solid ${c.border}`,
-          padding: '0.25rem 0.75rem',
-          borderRadius: '9999px',
-          fontWeight: 700,
-          fontSize: '0.8125rem',
-          display: 'inline-block',
-        }}
-      >
-        {c.label}
-      </span>
-    );
+  const getEstadoBadge = (
+    estado: string,
+    retrabajoActivo?: boolean,
+    revCount?: number,
+    options?: { direction?: 'row' | 'column'; gap?: string }
+  ) => {
+    return renderPedidoStatusBundle(estado, retrabajoActivo, revCount, options);
   };
 
   // KPIs
@@ -1246,7 +1207,7 @@ export const MisSolicitudesPage: React.FC = () => {
                     </p>
                   </div>
                   <div>
-                    {getEstadoBadge(selectedPedido.estado, selectedPedido.retrabajo_activo, selectedPedido.revision_count)}
+                    {getEstadoBadge(selectedPedido.estado, selectedPedido.retrabajo_activo, selectedPedido.revision_count, { direction: 'row', gap: '0.5rem' })}
                   </div>
                 </div>
 

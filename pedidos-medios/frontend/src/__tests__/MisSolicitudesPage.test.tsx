@@ -15,12 +15,14 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
     clearStoredSolicitanteSession();
     sessionStorage.clear();
     localStorage.clear();
+    window.history.pushState({}, '', '/formulariomedios/mis-solicitudes');
   });
 
   afterEach(() => {
     clearStoredSolicitanteSession();
     sessionStorage.clear();
     localStorage.clear();
+    window.history.pushState({}, '', '/formulariomedios/mis-solicitudes');
     vi.restoreAllMocks();
   });
 
@@ -733,5 +735,228 @@ describe('MisSolicitudesPage: Persistencia de Sesión F5, Canje y Aislamiento', 
 
     const requestBtn = screen.getByRole('button', { name: /Solicitar nuevo enlace/i });
     expect(requestBtn).toBeInTheDocument();
+  });
+
+  describe('Sección G: Presentación Simultánea de Estado Real y Condición de Retrabajo', () => {
+    it('17. estado=Nuevo, retrabajo_activo=true, revision_count=1 -> muestra Nuevo Y DEVUELTO - RETRABAJAR · Rev #1', async () => {
+      saveStoredSolicitanteSession({
+        session_token: 'test-session-token',
+        correo: 'solicitante@tdf.gob.ar',
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+      });
+
+      vi.spyOn(trackingApi, 'solicitanteGetPedidos').mockResolvedValue({
+        correo: 'solicitante@tdf.gob.ar',
+        total: 1,
+        pedidos: [
+          {
+            id: 'ped-nuevo-retrabajo',
+            pedido_visible: 'PED-2026-N000010',
+            categoria_nombre: 'Diseño Gráfico',
+            tipo_nombre: 'Flyer Digital',
+            estado: 'Nuevo',
+            retrabajo_activo: true,
+            revision_count: 1,
+            tiene_entrega: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+      });
+
+      render(<MisSolicitudesPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('PED-2026-N000010')[0]).toBeInTheDocument();
+      });
+
+      // Debe mostrar el estado operativo real
+      expect(screen.getAllByText('Nuevo').length).toBeGreaterThan(0);
+      // Y simultáneamente el badge de retrabajo activo
+      expect(screen.getAllByText(/DEVUELTO - RETRABAJAR · Rev #1/i).length).toBeGreaterThan(0);
+    });
+
+    it('18. estado=En proceso, retrabajo_activo=true, revision_count=1 -> muestra En Proceso Y DEVUELTO - RETRABAJAR · Rev #1', async () => {
+      saveStoredSolicitanteSession({
+        session_token: 'test-session-token',
+        correo: 'solicitante@tdf.gob.ar',
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+      });
+
+      vi.spyOn(trackingApi, 'solicitanteGetPedidos').mockResolvedValue({
+        correo: 'solicitante@tdf.gob.ar',
+        total: 1,
+        pedidos: [
+          {
+            id: 'ped-proceso-retrabajo',
+            pedido_visible: 'PED-2026-P000020',
+            categoria_nombre: 'Prensa',
+            tipo_nombre: 'Gacetilla',
+            estado: 'En proceso',
+            retrabajo_activo: true,
+            revision_count: 1,
+            tiene_entrega: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+      });
+
+      render(<MisSolicitudesPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('PED-2026-P000020')[0]).toBeInTheDocument();
+      });
+
+      expect(screen.getAllByText('En Proceso').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/DEVUELTO - RETRABAJAR · Rev #1/i).length).toBeGreaterThan(0);
+    });
+
+    it('19. estado=Esperando información, retrabajo_activo=true -> muestra Esperando Información Y DEVUELTO - RETRABAJAR', async () => {
+      saveStoredSolicitanteSession({
+        session_token: 'test-session-token',
+        correo: 'solicitante@tdf.gob.ar',
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+      });
+
+      vi.spyOn(trackingApi, 'solicitanteGetPedidos').mockResolvedValue({
+        correo: 'solicitante@tdf.gob.ar',
+        total: 1,
+        pedidos: [
+          {
+            id: 'ped-esperando-retrabajo',
+            pedido_visible: 'PED-2026-E000030',
+            categoria_nombre: 'Audiovisual',
+            tipo_nombre: 'Video Resumen',
+            estado: 'Esperando información',
+            retrabajo_activo: true,
+            revision_count: 2,
+            tiene_entrega: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+      });
+
+      render(<MisSolicitudesPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('PED-2026-E000030')[0]).toBeInTheDocument();
+      });
+
+      expect(screen.getAllByText('Esperando Información').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/DEVUELTO - RETRABAJAR · Rev #2/i).length).toBeGreaterThan(0);
+    });
+
+    it('20. estado=Finalizado, retrabajo_activo=false, revision_count=0 -> muestra solo Finalizado sin badge de retrabajo', async () => {
+      saveStoredSolicitanteSession({
+        session_token: 'test-session-token',
+        correo: 'solicitante@tdf.gob.ar',
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+      });
+
+      vi.spyOn(trackingApi, 'solicitanteGetPedidos').mockResolvedValue({
+        correo: 'solicitante@tdf.gob.ar',
+        total: 1,
+        pedidos: [
+          {
+            id: 'ped-final-norev',
+            pedido_visible: 'PED-2026-F000040',
+            categoria_nombre: 'Diseño Gráfico',
+            tipo_nombre: 'Flyer Digital',
+            estado: 'Finalizado',
+            retrabajo_activo: false,
+            revision_count: 0,
+            tiene_entrega: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+      });
+
+      render(<MisSolicitudesPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('PED-2026-F000040')[0]).toBeInTheDocument();
+      });
+
+      expect(screen.getAllByText('Finalizado').length).toBeGreaterThan(0);
+      expect(screen.queryByText(/RETRABAJ/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/DEVUELTO/i)).not.toBeInTheDocument();
+    });
+
+    it('21. estado=Finalizado, retrabajo_activo=false, revision_count=1 -> muestra Finalizado Y RETRABAJADO · 1 vez', async () => {
+      saveStoredSolicitanteSession({
+        session_token: 'test-session-token',
+        correo: 'solicitante@tdf.gob.ar',
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+      });
+
+      vi.spyOn(trackingApi, 'solicitanteGetPedidos').mockResolvedValue({
+        correo: 'solicitante@tdf.gob.ar',
+        total: 1,
+        pedidos: [
+          {
+            id: 'ped-final-rev1',
+            pedido_visible: 'PED-2026-F000050',
+            categoria_nombre: 'Diseño Gráfico',
+            tipo_nombre: 'Flyer Digital',
+            estado: 'Finalizado',
+            retrabajo_activo: false,
+            revision_count: 1,
+            tiene_entrega: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+      });
+
+      render(<MisSolicitudesPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('PED-2026-F000050')[0]).toBeInTheDocument();
+      });
+
+      expect(screen.getAllByText('Finalizado').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('RETRABAJADO · 1 vez').length).toBeGreaterThan(0);
+      expect(screen.queryByText(/DEVUELTO - RETRABAJAR/i)).not.toBeInTheDocument();
+    });
+
+    it('22. estado=Finalizado, retrabajo_activo=false, revision_count=3 -> muestra Finalizado Y RETRABAJADO · 3 veces', async () => {
+      saveStoredSolicitanteSession({
+        session_token: 'test-session-token',
+        correo: 'solicitante@tdf.gob.ar',
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+      });
+
+      vi.spyOn(trackingApi, 'solicitanteGetPedidos').mockResolvedValue({
+        correo: 'solicitante@tdf.gob.ar',
+        total: 1,
+        pedidos: [
+          {
+            id: 'ped-final-rev3',
+            pedido_visible: 'PED-2026-F000060',
+            categoria_nombre: 'Prensa',
+            tipo_nombre: 'Gacetilla',
+            estado: 'Finalizado',
+            retrabajo_activo: false,
+            revision_count: 3,
+            tiene_entrega: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+      });
+
+      render(<MisSolicitudesPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('PED-2026-F000060')[0]).toBeInTheDocument();
+      });
+
+      expect(screen.getAllByText('Finalizado').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('RETRABAJADO · 3 veces').length).toBeGreaterThan(0);
+      expect(screen.queryByText(/DEVUELTO - RETRABAJAR/i)).not.toBeInTheDocument();
+    });
   });
 });

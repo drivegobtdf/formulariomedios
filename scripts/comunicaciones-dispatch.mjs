@@ -248,7 +248,7 @@ function wrapHtmlLayout(title, contentHtml) {
 export function renderEmail(tipo, payload, customAppUrl) {
   const resolvedUrl = customAppUrl || (env.PUBLIC_APP_URL ? resolvePublicAppUrl(env.PUBLIC_APP_URL) : resolvePublicAppUrl(undefined, true));
   const cleanAppUrl = resolvedUrl.replace(/\/$/, '');
-  const rawNombre = (payload?.solicitante_nombre || payload?.nombre_solicitante || payload?.nombre || payload?.destinatario_nombre || 'Solicitante').trim();
+  const rawNombre = (payload?.nombre_apellido || payload?.nombre_destinatario || payload?.destinatario_nombre || payload?.solicitante_nombre || payload?.nombre_solicitante || payload?.nombre || payload?.solicitante || 'Solicitante').trim();
   const nombreSafe = escapeHtml(rawNombre);
 
   switch (tipo) {
@@ -461,6 +461,144 @@ export function renderEmail(tipo, payload, customAppUrl) {
         html: wrapHtmlLayout(`Pedido Finalizado — ${pedVisible}`, contentHtml),
         text,
         n8nTipo: 'finalizado'
+      };
+    }
+
+    case 'revision_solicitada':
+    case 'pedido_revision_solicitada': {
+      const pedidosList = Array.isArray(payload?.pedidos) && payload.pedidos.length > 0
+        ? payload.pedidos
+        : payload?.pedido_visible
+        ? [{ pedido_visible: payload.pedido_visible, servicio: `${payload.categoria || ''}${payload.tipo ? ' - ' + payload.tipo : ''}`.trim(), revision_number: payload.revision_number || 1 }]
+        : [];
+      const count = pedidosList.length || 1;
+      const codes = pedidosList.map(p => p.pedido_visible).filter(Boolean).join(', ');
+      const subject = `[PEDIDOS] Solicitud de Revisión Recibida: ${codes || payload?.pedido_visible || 'PED'}`;
+      const rawToken = (payload?.magic_token || payload?.raw_token || payload?.token || '').trim();
+      const firstPedVisible = (pedidosList[0]?.pedido_visible || payload?.pedido_visible || '').trim();
+      const portalUrl = rawToken
+        ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}${firstPedVisible ? `&pedido=${encodeURIComponent(firstPedVisible)}` : ''}`
+        : `${cleanAppUrl}/mis-solicitudes`;
+      const motivoRaw = payload?.motivo || payload?.extra?.motivo || '';
+      const motivoSafe = escapeHtml(motivoRaw);
+      const archivosCount = Number(payload?.archivos_count || 0);
+
+      const singlePed = pedidosList[0] || { pedido_visible: payload?.pedido_visible || 'PED', revision_number: payload?.revision_number || 1 };
+      const catSafe = escapeHtml(payload?.categoria || '');
+      const tipSafe = escapeHtml(payload?.tipo || '');
+
+      const contentHtml = `
+        <h2 style="margin: 0 0 16px 0; color: #D97706; font-size: 18px;">
+          Solicitud de Revisión Registrada
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
+          Estimado/a <strong>${nombreSafe}</strong>,
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+          Hemos recibido tu solicitud de revisión para el pedido <strong>${escapeHtml(singlePed.pedido_visible || 'PED')}</strong> (${catSafe}${tipSafe ? ' - ' + tipSafe : ''}). El pedido ha reingresado al circuito de trabajo con prioridad de atención.
+        </p>
+        <div style="background-color: #FFFBEB; border-left: 4px solid #D97706; padding: 14px; margin: 16px 0; border-radius: 4px;">
+          <p style="margin: 0 0 6px 0; font-weight: 700; color: #92400E; font-size: 13px;">
+            Motivo de revisión indicado:
+          </p>
+          <p style="margin: 0; font-size: 14px; color: #78350F; white-space: pre-wrap;">
+            "${motivoSafe}"
+          </p>
+          ${archivosCount > 0 ? `
+            <p style="margin: 8px 0 0 0; font-size: 12px; color: #92400E;">
+              <strong>Archivos de referencia:</strong> ${archivosCount} adjunto(s)
+            </p>
+          ` : ''}
+        </div>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Seguir en Mis Solicitudes
+          </a>
+        </div>
+      `;
+
+      const text = `SOLICITUD DE REVISIÓN REGISTRADA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nHemos recibido tu solicitud de revisión para el pedido ${singlePed.pedido_visible || 'PED'}.\n\nMotivo:\n"${motivoRaw}"\n${archivosCount > 0 ? `Archivos de referencia: ${archivosCount} adjunto(s)\n` : ''}\nPortal: ${portalUrl}\n`;
+
+      return {
+        subject,
+        html: wrapHtmlLayout('Solicitud de Revisión', contentHtml),
+        text,
+        n8nTipo: 'revision_solicitada'
+      };
+    }
+
+    case 'pedido_retrabajo_solicitado':
+    case 'pedido_revision_asignado': {
+      const pedVisible = escapeHtml(payload?.pedido_visible || 'PED');
+      const revNum = payload?.revision_number || 1;
+      const subject = `[PEDIDOS] Revisión solicitada · ${payload?.pedido_visible || 'PED'}`;
+      const pedidoId = payload?.pedido_id ? encodeURIComponent(String(payload.pedido_id)) : '';
+      const gestionUrl = pedidoId ? `${cleanAppUrl}/gestion/pedidos/${pedidoId}` : `${cleanAppUrl}/gestion`;
+      const catSafe = escapeHtml(payload?.categoria || 'Servicio');
+      const tipSafe = escapeHtml(payload?.tipo || 'General');
+      const areaSafe = escapeHtml(payload?.area_solicitante || 'Gobierno');
+      const solicitanteSafe = escapeHtml(payload?.solicitante_nombre || payload?.nombre_solicitante || payload?.nombre_apellido || 'Solicitante');
+      const motivoRaw = payload?.motivo || payload?.extra?.motivo || '';
+      const motivoSafe = escapeHtml(motivoRaw);
+      const archivosCount = Number(payload?.archivos_count || 0);
+
+      const contentHtml = `
+        <h2 style="margin: 0 0 16px 0; color: #D97706; font-size: 18px;">
+          Revisión Solicitada por el Solicitante
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
+          Hola <strong>${nombreSafe}</strong>,
+        </p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+          Se ha solicitado una revisión del pedido <strong>${pedVisible}</strong> que tenías asignado / finalizaste.
+        </p>
+        <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin: 16px 0; font-size: 13px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; overflow: hidden;">
+          <tbody>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569; width: 35%;">Código PED:</td>
+              <td style="padding: 10px 14px; font-weight: 700; color: ${BRAND_PRIMARY};">${pedVisible}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569;">Categoría / Tipo:</td>
+              <td style="padding: 10px 14px;">${catSafe} — ${tipSafe}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569;">Solicitante:</td>
+              <td style="padding: 10px 14px;">${solicitanteSafe} (${areaSafe})</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569;">Revisión:</td>
+              <td style="padding: 10px 14px; font-weight: 700; color: #D97706;">#${revNum}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="background-color: #FFFBEB; border-left: 4px solid #D97706; padding: 14px; margin: 16px 0; border-radius: 4px;">
+          <p style="margin: 0 0 6px 0; font-weight: 700; color: #92400E; font-size: 13px;">
+            Motivo indicado por el solicitante:
+          </p>
+          <p style="margin: 0; font-size: 14px; color: #78350F; white-space: pre-wrap;">
+            "${motivoSafe}"
+          </p>
+          ${archivosCount > 0 ? `
+            <p style="margin: 8px 0 0 0; font-size: 12px; color: #92400E;">
+              <strong>Archivos de referencia:</strong> ${archivosCount} adjunto(s)
+            </p>
+          ` : ''}
+        </div>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${gestionUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Ver Pedido en Gestión
+          </a>
+        </div>
+      `;
+
+      const text = `REVISIÓN SOLICITADA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nHola ${rawNombre},\nSe ha solicitado una revisión del pedido ${payload?.pedido_visible || 'PED'}.\n\n* Código: ${payload?.pedido_visible || 'PED'}\n* Categoría: ${payload?.categoria || ''} - ${payload?.tipo || ''}\n* Revisión: #${revNum}\n* Solicitante: ${payload?.solicitante_nombre || payload?.nombre_apellido || ''} (${payload?.area_solicitante || ''})\n\nMotivo:\n"${motivoRaw}"\n${archivosCount > 0 ? `Archivos de referencia: ${archivosCount} adjunto(s)\n` : ''}\nIngresá al pedido en:\n${gestionUrl}\n`;
+
+      return {
+        subject,
+        html: wrapHtmlLayout('Revisión Solicitada', contentHtml),
+        text,
+        n8nTipo: 'pedido_retrabajo_solicitado'
       };
     }
 

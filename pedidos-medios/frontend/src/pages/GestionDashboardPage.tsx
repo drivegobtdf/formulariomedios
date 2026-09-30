@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { fetchPedidos, fetchGestionStats, PedidoListItem, GestionStats } from '../services/gestionApi';
 import { getSupabaseClient } from '../services/supabaseClient';
 import { EliminarPedidosModal } from '../components/gestion/EliminarPedidosModal';
+import { formatReworkHistoricalText } from '../utils/statusBadges';
 
 export type GestionTabFilter =
   | 'todos'
@@ -148,6 +149,43 @@ export const GestionDashboardPage: React.FC = () => {
     };
   }, [isApproved, loadData]);
 
+  // Canonical states for Kanban board (4 active in a single horizontal row)
+  const estadosKanban = useMemo(() => ['Nuevo', 'En revisión', 'En proceso', 'Esperando información'], []);
+
+  const isTerminalOrArchivedTab =
+    tabFilter === 'finalizados' || tabFilter === 'cancelados' || tabFilter === 'archivados';
+
+  // Paginated table data
+  const totalPages = Math.ceil(pedidos.length / pageSize) || 1;
+  const paginatedPedidos = useMemo(() => {
+    return pedidos.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [pedidos, currentPage, pageSize]);
+
+  // Elements actually rendered in the current view (strictly visible)
+  const visibleSelectablePedidos = useMemo(() => {
+    if (viewMode === 'table') {
+      return paginatedPedidos;
+    }
+    if (isTerminalOrArchivedTab) {
+      return pedidos;
+    }
+    return pedidos.filter((p) => estadosKanban.includes(p.estado));
+  }, [viewMode, paginatedPedidos, isTerminalOrArchivedTab, pedidos, estadosKanban]);
+
+  // Reconcile selection with currently visible elements
+  useEffect(() => {
+    setSelectedPedidoIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visibleIds = new Set(visibleSelectablePedidos.map((p) => p.id));
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (visibleIds.has(id)) next.add(id);
+      }
+      if (next.size === prev.size) return prev;
+      return next;
+    });
+  }, [visibleSelectablePedidos]);
+
   const toggleSelectPedido = (id: string) => {
     setSelectedPedidoIds((prev) => {
       const next = new Set(prev);
@@ -158,8 +196,8 @@ export const GestionDashboardPage: React.FC = () => {
   };
 
   const selectAllVisible = () => {
-    const allIds = pedidos.map((p) => p.id);
-    setSelectedPedidoIds(new Set(allIds));
+    const allVisibleIds = visibleSelectablePedidos.map((p) => p.id);
+    setSelectedPedidoIds(new Set(allVisibleIds));
   };
 
   const clearSelection = () => {
@@ -180,8 +218,6 @@ export const GestionDashboardPage: React.FC = () => {
     loadData();
   };
 
-  // Canonical states for Kanban board (4 active in a single horizontal row)
-  const estadosKanban = ['Nuevo', 'En revisión', 'En proceso', 'Esperando información'];
   const estadoTitles: Record<string, { label: string; color: string; bg: string; border: string }> = {
     'Nuevo': { label: 'Nuevo', color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
     'En revisión': { label: 'En Revisión', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
@@ -331,13 +367,6 @@ export const GestionDashboardPage: React.FC = () => {
     );
   }
 
-  // Paginated table data
-  const totalPages = Math.ceil(pedidos.length / pageSize) || 1;
-  const paginatedPedidos = pedidos.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
-  const isTerminalOrArchivedTab =
-    tabFilter === 'finalizados' || tabFilter === 'cancelados' || tabFilter === 'archivados';
-
   return (
     <div style={{ width: '100%', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Header & Role Info */}
@@ -477,7 +506,7 @@ export const GestionDashboardPage: React.FC = () => {
             >
               {selectedPedidoIds.size} seleccionados
             </span>
-            {pedidos.length > 0 && (
+            {visibleSelectablePedidos.length > 0 && (
               <button
                 type="button"
                 onClick={selectAllVisible}
@@ -492,7 +521,7 @@ export const GestionDashboardPage: React.FC = () => {
                   textDecoration: 'underline',
                 }}
               >
-                Seleccionar todos los visibles ({pedidos.length})
+                Seleccionar todos los visibles ({visibleSelectablePedidos.length})
               </button>
             )}
             {selectedPedidoIds.size > 0 && (
@@ -798,7 +827,7 @@ export const GestionDashboardPage: React.FC = () => {
                           {styleInfo.label}
                         </span>
                       </div>
-                      {ped.retrabajo_activo && (
+                      {ped.retrabajo_activo ? (
                         <div
                           style={{
                             fontSize: '0.7rem',
@@ -816,7 +845,25 @@ export const GestionDashboardPage: React.FC = () => {
                         >
                           🔄 DEVUELTO - RETRABAJAR {ped.revision_count ? `· Rev #${ped.revision_count}` : ''}
                         </div>
-                      )}
+                      ) : !ped.retrabajo_activo && ped.estado === 'Finalizado' && (ped.revision_count || 0) > 0 ? (
+                        <div
+                          style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            color: '#475569',
+                            backgroundColor: '#f1f5f9',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '0.25rem',
+                            padding: '0.2rem 0.45rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            width: 'fit-content',
+                          }}
+                        >
+                          RETRABAJADO · {formatReworkHistoricalText(ped.revision_count || 0)}
+                        </div>
+                      ) : null}
                       <div style={{ fontSize: '0.825rem', color: '#334155', fontWeight: 500 }}>
                         {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                       </div>
@@ -1096,11 +1143,15 @@ export const GestionDashboardPage: React.FC = () => {
                           <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '9999px', backgroundColor: styleInfo.bg, color: styleInfo.color }}>
                             {styleInfo.label}
                           </span>
-                          {ped.retrabajo_activo && (
+                          {ped.retrabajo_activo ? (
                             <span style={{ fontSize: '0.675rem', fontWeight: 800, padding: '0.15rem 0.4rem', borderRadius: '0.25rem', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}>
                               🔄 DEVUELTO {ped.revision_count ? `(#${ped.revision_count})` : ''}
                             </span>
-                          )}
+                          ) : !ped.retrabajo_activo && ped.estado === 'Finalizado' && (ped.revision_count || 0) > 0 ? (
+                            <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '0.25rem', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1' }}>
+                              RETRABAJADO · {formatReworkHistoricalText(ped.revision_count || 0)}
+                            </span>
+                          ) : null}
                         </div>
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: ped.responsable_nombre ? '#334155' : '#b91c1c', fontWeight: 500 }}>

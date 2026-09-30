@@ -23,6 +23,7 @@ import {
 import { InformacionEspecificaViewer } from '../components/gestion/InformacionEspecificaViewer';
 import { formatFileSize, formatArchivoEstado, formatLocalDate, formatHistoryDate } from '../utils/formatUtils';
 import { WhatsAppPhoneLink } from '../components/WhatsAppPhoneLink';
+import { formatReworkHistoricalText } from '../utils/statusBadges';
 
 export function getHistorialEventInfo(evento: string, payload: any) {
   const norm = (evento || '').toLowerCase().replace(/[\.\_\s\-]+/g, '_');
@@ -812,11 +813,15 @@ export const PedidoDetallePage: React.FC = () => {
                 {pedido.pedido_visible}
               </h1>
               {getEstadoBadge(pedido.estado)}
-              {pedido.retrabajo_activo && (
+              {pedido.retrabajo_activo ? (
                 <span style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 800, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                   🔄 DEVUELTO - RETRABAJAR {pedido.revision_count ? `(Rev #${pedido.revision_count})` : ''}
                 </span>
-              )}
+              ) : !pedido.retrabajo_activo && pedido.estado === 'Finalizado' && (pedido.revision_count || 0) > 0 ? (
+                <span style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  RETRABAJADO · {formatReworkHistoricalText(pedido.revision_count || 0)}
+                </span>
+              ) : null}
               {pedido.archivado && (
                 <span style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.75rem' }}>
                   ARCHIVADO
