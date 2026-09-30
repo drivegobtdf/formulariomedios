@@ -150,16 +150,25 @@ export const MisSolicitudesPage: React.FC = () => {
   // Delivery File Download State
   const [downloadingArchivoId, setDownloadingArchivoId] = useState<string | null>(null);
 
-  // Multi-PED Revision Modal State
-  const [revisionModalOpen, setRevisionModalOpen] = useState(false);
-  const [revisionModalEnvioId, setRevisionModalEnvioId] = useState<string | null>(null);
-  const [revisionModalPedidoId, setRevisionModalPedidoId] = useState<string | null>(null);
+  // Single-PED Revision Modal State
+  interface RevisionModalTarget {
+    pedidoId: string;
+    pedidoVisible: string;
+    categoriaNombre?: string;
+    tipoNombre?: string;
+    envioId?: string;
+  }
+  const [revisionTarget, setRevisionTarget] = useState<RevisionModalTarget | null>(null);
   const [revisionSuccessBanner, setRevisionSuccessBanner] = useState<string | null>(null);
 
-  const handleOpenRevisionModal = (envioId: string, pedidoId?: string) => {
-    setRevisionModalEnvioId(envioId);
-    setRevisionModalPedidoId(pedidoId || null);
-    setRevisionModalOpen(true);
+  const handleOpenRevisionModal = (
+    pedidoId: string,
+    pedidoVisible: string,
+    categoriaNombre?: string,
+    tipoNombre?: string,
+    envioId?: string
+  ) => {
+    setRevisionTarget({ pedidoId, pedidoVisible, categoriaNombre, tipoNombre, envioId });
   };
 
   const handleDownloadDeliveryFile = async (archivoId: string, nombreOriginal?: string) => {
@@ -1049,7 +1058,7 @@ export const MisSolicitudesPage: React.FC = () => {
                                 {p.estado === 'Finalizado' && p.envio_id && !p.tiene_revision_abierta && !p.retrabajo_activo && (
                                   <button
                                     type="button"
-                                    onClick={() => handleOpenRevisionModal(p.envio_id!, p.id)}
+                                    onClick={() => handleOpenRevisionModal(p.id, p.pedido_visible, p.categoria_nombre, p.tipo_nombre, p.envio_id)}
                                     style={{
                                       backgroundColor: '#fffbeb',
                                       color: '#b45309',
@@ -1145,7 +1154,7 @@ export const MisSolicitudesPage: React.FC = () => {
                           {p.estado === 'Finalizado' && p.envio_id && !p.tiene_revision_abierta && !p.retrabajo_activo && (
                             <button
                               type="button"
-                              onClick={() => handleOpenRevisionModal(p.envio_id!, p.id)}
+                              onClick={() => handleOpenRevisionModal(p.id, p.pedido_visible, p.categoria_nombre, p.tipo_nombre, p.envio_id)}
                               style={{
                                 flex: 1,
                                 minWidth: '130px',
@@ -1279,7 +1288,7 @@ export const MisSolicitudesPage: React.FC = () => {
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.25rem' }}>
                     <button
                       type="button"
-                      onClick={() => handleOpenRevisionModal(selectedPedido.envio_id!, selectedPedido.id)}
+                      onClick={() => handleOpenRevisionModal(selectedPedido.id, selectedPedido.pedido_visible, selectedPedido.categoria_nombre, selectedPedido.tipo_nombre, selectedPedido.envio_id)}
                       style={{
                         backgroundColor: '#fffbeb',
                         color: '#b45309',
@@ -1292,9 +1301,11 @@ export const MisSolicitudesPage: React.FC = () => {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '0.5rem',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                       }}
                     >
-                      🔄 Solicitar revisión de este envío / pedido
+                      <span>🔄</span>
+                      <span>Solicitar revisión de este pedido</span>
                     </button>
                   </div>
                 )}
@@ -1500,27 +1511,25 @@ export const MisSolicitudesPage: React.FC = () => {
       )}
 
       {/* Solicitar Revisión Modal */}
-      {revisionModalOpen && revisionModalEnvioId && sessionToken && (
+      {revisionTarget && sessionToken && (
         <SolicitarRevisionModal
-          isOpen={revisionModalOpen}
-          envioId={revisionModalEnvioId}
-          initialPedidoId={revisionModalPedidoId || undefined}
+          isOpen={Boolean(revisionTarget)}
+          pedidoId={revisionTarget.pedidoId}
+          pedidoVisible={revisionTarget.pedidoVisible}
+          categoriaNombre={revisionTarget.categoriaNombre}
+          tipoNombre={revisionTarget.tipoNombre}
+          envioId={revisionTarget.envioId}
           sessionToken={sessionToken}
-          onClose={() => {
-            setRevisionModalOpen(false);
-            setRevisionModalEnvioId(null);
-            setRevisionModalPedidoId(null);
-          }}
-          onSuccess={(_revisionSolId, updatedCount) => {
-            setRevisionModalOpen(false);
-            setRevisionModalEnvioId(null);
-            setRevisionModalPedidoId(null);
+          onClose={() => setRevisionTarget(null)}
+          onSuccess={(_revisionSolId, pedId) => {
+            const pedCode = revisionTarget?.pedidoVisible || 'seleccionado';
+            setRevisionTarget(null);
             setRevisionSuccessBanner(
-              `Se ha enviado la solicitud de revisión para ${updatedCount} pedido(s). Los pedidos seleccionados volvieron a estado Nuevo para su correspondiente retrabajo.`
+              `Se ha enviado la solicitud de revisión para el pedido ${pedCode}. El pedido volvió a estado Nuevo para su correspondiente retrabajo.`
             );
             loadPedidos(sessionToken);
-            if (selectedPedido) {
-              handleSelectPedido(selectedPedido.pedido_visible);
+            if (selectedPedido && (selectedPedido.id === pedId || selectedPedido.pedido_visible === pedCode)) {
+              handleSelectPedido(selectedPedido.pedido_visible || selectedPedido.id);
             }
           }}
         />

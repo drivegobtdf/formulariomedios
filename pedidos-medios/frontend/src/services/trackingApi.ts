@@ -592,19 +592,22 @@ export async function solicitanteGetEnvioRevisablePedidos(
 }
 
 /**
- * 8. Envía una solicitud de revisión atómica Multi-PED
+ * 8. Envía una solicitud de revisión individual por PED
  */
 export async function solicitanteSubmitRevisionRequest(
   sessionToken: string,
   payload: {
-    envio_id: string;
-    pedido_ids: string[];
+    pedido_id: string;
     motivo: string;
     archivos_ids?: string[];
+    envio_id?: string;
+    pedido_ids?: string[];
   }
-): Promise<{ success: boolean; revision_solicitud_id: string; pedidos_revisados: any[] }> {
+): Promise<{ success: boolean; revision_solicitud_id: string; pedido_id?: string; pedido_visible?: string; pedidos_revisados?: any[] }> {
   const config = getPublicConfig();
   const endpoint = `${config.supabaseUrl}/functions/v1/solicitante-revision-request`;
+
+  const pedId = payload.pedido_id || (payload.pedido_ids && payload.pedido_ids[0]) || '';
 
   const res = await fetch(endpoint, {
     method: 'POST',
@@ -616,8 +619,7 @@ export async function solicitanteSubmitRevisionRequest(
     },
     body: JSON.stringify({
       session_token: sessionToken.trim(),
-      envio_id: payload.envio_id.trim(),
-      pedido_ids: payload.pedido_ids,
+      pedido_id: pedId,
       motivo: payload.motivo.trim(),
       archivos_ids: payload.archivos_ids || [],
     }),

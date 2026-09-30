@@ -630,13 +630,15 @@ export async function finalizePedido(pedidoId: string, expectedVersion: number, 
 export async function uploadDeliveryFile(
   pedidoId: string,
   file: File,
-  _onProgress?: (percentage: number) => void
+  onProgress?: (percentage: number) => void
 ): Promise<{ archivo_id: string; nombre_original: string; size_bytes: number }> {
   const supabase = getSupabaseClient();
   const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
   if (sessionErr || !sessionData.session?.access_token) {
     throw new Error('Sesión no válida o expirada. Por favor inicie sesión nuevamente.');
   }
+
+  if (onProgress) onProgress(15);
 
   const token = sessionData.session.access_token;
   const supabaseUrl = (supabase as any).supabaseUrl || import.meta.env.VITE_SUPABASE_URL;
@@ -671,6 +673,8 @@ export async function uploadDeliveryFile(
   const reservationId = prepData.reservation_id;
   const targetUploadUrl = prepData.relay_upload_url || prepData.drive_session_ref;
 
+  if (onProgress) onProgress(40);
+
   // 2. Subir contenido binario
   const uploadRes = await fetch(targetUploadUrl, {
     method: 'PUT',
@@ -692,6 +696,8 @@ export async function uploadDeliveryFile(
 
   const uploadResult = await uploadRes.json().catch(() => ({}));
   const driveFileId = uploadResult.drive_file_id || prepData.drive_file_id;
+
+  if (onProgress) onProgress(85);
 
   // 3. Completar y verificar subida
   const completeRes = await fetch(`${supabaseUrl}/functions/v1/delivery-upload-complete`, {
@@ -718,6 +724,8 @@ export async function uploadDeliveryFile(
   }
 
   const completeData = await completeRes.json();
+  if (onProgress) onProgress(100);
+
   return {
     archivo_id: completeData.archivo_id,
     nombre_original: file.name,

@@ -37,21 +37,20 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const envioId = (body.envio_id || body.envioId || '').trim();
-    const pedidoIds = Array.isArray(body.pedido_ids) ? body.pedido_ids : [];
+    const rawPedidoId = body.pedido_id || body.pedidoId;
+    let pedidoId = '';
+    if (typeof rawPedidoId === 'string' && rawPedidoId.trim()) {
+      pedidoId = rawPedidoId.trim();
+    } else if (Array.isArray(body.pedido_ids) && body.pedido_ids.length > 0) {
+      pedidoId = String(body.pedido_ids[0]).trim();
+    }
+
     const motivo = (body.motivo || '').trim();
     const archivosIds = Array.isArray(body.archivos_ids) ? body.archivos_ids : (Array.isArray(body.archivos) ? body.archivos : []);
 
-    if (!envioId) {
+    if (!pedidoId) {
       return new Response(
-        JSON.stringify({ error: 'VALIDATION_ERROR', message: 'ID de envío requerido' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (pedidoIds.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'VALIDATION_ERROR', message: 'Debe seleccionar al menos un pedido para solicitar revisión' }),
+        JSON.stringify({ error: 'VALIDATION_ERROR', message: 'ID del pedido requerido para solicitar revisión' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -77,8 +76,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     const { data, error } = await supabase.rpc('pedido_request_revision', {
       p_session_token: sessionToken,
-      p_envio_id: envioId,
-      p_pedido_ids: pedidoIds,
+      p_pedido_id: pedidoId,
       p_motivo: motivo,
       p_archivos_ids: archivosIds,
     });
@@ -93,10 +91,10 @@ export default async function handler(req: Request): Promise<Response> {
       } else if (error.code === '40001' || error.message.includes('REVISION_ALREADY_OPEN')) {
         statusCode = 409;
         errorCode = 'REVISION_ALREADY_OPEN';
-      } else if (error.code === 'P0002' || error.message.includes('PEDIDO_NOT_FOUND') || error.message.includes('ENVIO_NOT_FOUND')) {
+      } else if (error.code === 'P0002' || error.message.includes('PEDIDO_NOT_FOUND')) {
         statusCode = 404;
         errorCode = 'NOT_FOUND';
-      } else if (error.code === '42200' || error.message.includes('VALIDATION_ERROR') || error.message.includes('INVALID_STATE') || error.message.includes('LIMIT_EXCEEDED') || error.message.includes('PEDIDO_ENVIO_MISMATCH') || error.message.includes('DELIVERY_NOT_FOUND')) {
+      } else if (error.code === '42200' || error.message.includes('VALIDATION_ERROR') || error.message.includes('INVALID_STATE') || error.message.includes('LIMIT_EXCEEDED') || error.message.includes('DELIVERY_NOT_FOUND')) {
         statusCode = 400;
         errorCode = 'VALIDATION_ERROR';
       }

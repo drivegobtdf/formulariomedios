@@ -159,26 +159,70 @@ export const PedidoDetallePage: React.FC = () => {
     file: File;
     name: string;
     size: number;
-    status: 'pending' | 'uploading' | 'completed' | 'error';
+    status: 'uploading' | 'completed' | 'error';
+    progress?: number;
     archivoId?: string;
     error?: string;
   }>>([]);
 
+  const handleDeliveryFileUpload = useCallback(
+    async (fileItem: { id: string; file: File; name: string }) => {
+      if (!pedido) return;
+      try {
+        const res = await uploadDeliveryFile(pedido.id, fileItem.file, (pct) => {
+          setDeliveryFiles((prev) =>
+            prev.map((f) => (f.id === fileItem.id ? { ...f, progress: pct } : f))
+          );
+        });
+        setDeliveryFiles((prev) =>
+          prev.map((f) =>
+            f.id === fileItem.id
+              ? { ...f, status: 'completed', archivoId: res.archivo_id, progress: 100 }
+              : f
+          )
+        );
+      } catch (err: any) {
+        setDeliveryFiles((prev) =>
+          prev.map((f) =>
+            f.id === fileItem.id
+              ? { ...f, status: 'error', error: err.message || 'Error al subir archivo' }
+              : f
+          )
+        );
+      }
+    },
+    [pedido]
+  );
+
   const handleDeliveryFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
+    if (!e.target.files || e.target.files.length === 0 || !pedido) return;
     const newFiles = Array.from(e.target.files).map((f) => ({
       id: Math.random().toString(36).substring(2, 9),
       file: f,
       name: f.name,
       size: f.size,
-      status: 'pending' as const,
+      status: 'uploading' as const,
+      progress: 10,
     }));
     setDeliveryFiles((prev) => [...prev, ...newFiles]);
     e.target.value = '';
+
+    for (const item of newFiles) {
+      handleDeliveryFileUpload(item);
+    }
   };
 
   const removeDeliveryFile = (fileId: string) => {
     setDeliveryFiles((prev) => prev.filter((f) => f.id !== fileId));
+  };
+
+  const handleRetryDeliveryFile = (item: { id: string; file: File; name: string }) => {
+    setDeliveryFiles((prev) =>
+      prev.map((f) =>
+        f.id === item.id ? { ...f, status: 'uploading', progress: 10, error: undefined } : f
+      )
+    );
+    handleDeliveryFileUpload(item);
   };
 
   // Cancel / Reopen modal
@@ -327,7 +371,11 @@ export const PedidoDetallePage: React.FC = () => {
     if (!pedido) return;
 
     const cleanUrl = entregaUrl.trim();
-    if (deliveryFiles.length === 0 && !cleanUrl) {
+    const completedArchivoIds = deliveryFiles
+      .filter((f) => f.status === 'completed' && f.archivoId)
+      .map((f) => f.archivoId as string);
+
+    if (completedArchivoIds.length === 0 && !cleanUrl) {
       setModalError('Adjuntá al menos un archivo o ingresá un enlace de entrega.');
       return;
     }
@@ -337,47 +385,26 @@ export const PedidoDetallePage: React.FC = () => {
       return;
     }
 
+    const hasUploading = deliveryFiles.some((f) => f.status === 'uploading');
+    if (hasUploading) {
+      setModalError('Por favor esperá a que finalicen las subidas de archivos en curso antes de finalizar el pedido.');
+      return;
+    }
+
+    const hasErrors = deliveryFiles.some((f) => f.status === 'error');
+    if (hasErrors) {
+      setModalError('Uno o más archivos fallaron al subirse. Eliminá o reintentá los archivos con error.');
+      return;
+    }
+
     setActionLoading(true);
     setModalError(null);
     setError(null);
 
     try {
-      // 1. Subir cualquier archivo que esté en estado 'pending' o 'error'
-      const updatedFiles = [...deliveryFiles];
-      for (let i = 0; i < updatedFiles.length; i++) {
-        const item = updatedFiles[i];
-        if (item.status === 'completed' && item.archivoId) {
-          continue;
-        }
-
-        item.status = 'uploading';
-        setDeliveryFiles([...updatedFiles]);
-
-        try {
-          const res = await uploadDeliveryFile(pedido.id, item.file);
-          item.status = 'completed';
-          item.archivoId = res.archivo_id;
-          setDeliveryFiles([...updatedFiles]);
-        } catch (uploadErr: any) {
-          item.status = 'error';
-          item.error = uploadErr.message || 'Error al subir archivo';
-          setDeliveryFiles([...updatedFiles]);
-          throw new Error(`Error al subir ${item.name}: ${item.error}`);
-        }
-      }
-
-      // 2. Recolectar archivo_ids completados
-      const finalArchivoIds = updatedFiles
-        .filter((f) => f.status === 'completed' && f.archivoId)
-        .map((f) => f.archivoId as string);
-
-      if (finalArchivoIds.length === 0 && !cleanUrl) {
-        throw new Error('Adjuntá al menos un archivo o ingresá un enlace de entrega.');
-      }
-
-      // 3. Llamar RPC pedido_finalize
+      // Llamar RPC canónica pedido_finalize directamente con IDs de archivos ya verificados
       await finalizePedido(pedido.id, pedido.version, {
-        archivo_ids: finalArchivoIds.length > 0 ? finalArchivoIds : undefined,
+        archivo_ids: completedArchivoIds.length > 0 ? completedArchivoIds : undefined,
         enlace_externo: cleanUrl || undefined,
         nota: entregaNota.trim() || undefined,
       });
@@ -1955,8 +1982,23 @@ export const PedidoDetallePage: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           {df.status === 'completed' && <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.75rem' }}>✓ Listo</span>}
-                          {df.status === 'uploading' && <span style={{ color: '#0284c7', fontSize: '0.75rem' }}>Subiendo...</span>}
-                          {df.status === 'error' && <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>⚠️ Error</span>}
+                          {df.status === 'uploading' && (
+                            <span style={{ color: '#0284c7', fontSize: '0.75rem', fontWeight: 600 }}>
+                              {df.progress ? `Subiendo (${df.progress}%)...` : 'Subiendo...'}
+                            </span>
+                          )}
+                          {df.status === 'error' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>⚠️ Error</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRetryDeliveryFile(df)}
+                                style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+                              >
+                                Reintentar
+                              </button>
+                            </div>
+                          )}
                           {!actionLoading && (
                             <button
                               type="button"
@@ -2018,10 +2060,34 @@ export const PedidoDetallePage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={actionLoading}
-                  style={{ background: '#16a34a', color: '#ffffff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                  disabled={actionLoading || deliveryFiles.some((f) => f.status === 'uploading') || deliveryFiles.some((f) => f.status === 'error') || (!entregaUrl.trim() && !deliveryFiles.some((f) => f.status === 'completed'))}
+                  style={{
+                    background:
+                      !actionLoading &&
+                      !deliveryFiles.some((f) => f.status === 'uploading') &&
+                      !deliveryFiles.some((f) => f.status === 'error') &&
+                      (Boolean(entregaUrl.trim()) || deliveryFiles.some((f) => f.status === 'completed'))
+                        ? '#16a34a'
+                        : '#cbd5e1',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.375rem',
+                    fontWeight: 600,
+                    cursor:
+                      !actionLoading &&
+                      !deliveryFiles.some((f) => f.status === 'uploading') &&
+                      !deliveryFiles.some((f) => f.status === 'error') &&
+                      (Boolean(entregaUrl.trim()) || deliveryFiles.some((f) => f.status === 'completed'))
+                        ? 'pointer'
+                        : 'not-allowed',
+                  }}
                 >
-                  {actionLoading ? 'Finalizando...' : 'Finalizar pedido'}
+                  {actionLoading
+                    ? 'Finalizando...'
+                    : deliveryFiles.some((f) => f.status === 'uploading')
+                    ? 'Subiendo archivos...'
+                    : 'Finalizar pedido'}
                 </button>
               </div>
             </form>

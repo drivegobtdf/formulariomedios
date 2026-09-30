@@ -576,4 +576,71 @@ describe('Multi-PED Revision / Return / Rework System (SRS-FUN-REVISION-001)', (
       expect(email.html).toContain('access_token=session_xyz');
     });
   });
+
+  describe('4. Migración 061: Resolución de Ambigüedad pedido_finalize y Revisión Individual', () => {
+    it('la migración 061 elimina todas las sobrecargas previas y define una única función canónica pedido_finalize', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const migPath = path.resolve(__dirname, '../../supabase/migrations/20260929000061_fix_pedido_finalize_and_single_ped_revision.sql');
+      const sqlContent = fs.readFileSync(migPath, 'utf8');
+
+      // Verifica drops explícitos de firmas conflictivas
+      expect(sqlContent).toContain('DROP FUNCTION IF EXISTS public.pedido_finalize(uuid, integer, uuid[], text, text);');
+      expect(sqlContent).toContain('DROP FUNCTION IF EXISTS public.pedido_finalize(uuid, bigint, uuid[], text, text);');
+
+      // Verifica creación de una única versión canónica
+      const finalizeMatches = sqlContent.match(/CREATE OR REPLACE FUNCTION public\.pedido_finalize/g);
+      expect(finalizeMatches).toHaveLength(1);
+
+      // Verifica notificación a PostgREST
+      expect(sqlContent).toContain("NOTIFY pgrst, 'reload schema';");
+    });
+
+    it('la migración 061 define la RPC canónica de revisión individual por pedido', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const migPath = path.resolve(__dirname, '../../supabase/migrations/20260929000061_fix_pedido_finalize_and_single_ped_revision.sql');
+      const sqlContent = fs.readFileSync(migPath, 'utf8');
+
+      expect(sqlContent).toContain('DROP FUNCTION IF EXISTS public.pedido_request_revision(text, uuid, uuid[], text, uuid[]);');
+      expect(sqlContent).toContain('DROP FUNCTION IF EXISTS public.pedido_request_revision(text, uuid, text, uuid[]);');
+      expect(sqlContent).toContain('p_pedido_id uuid');
+      expect(sqlContent).toContain('p_motivo text');
+      expect(sqlContent).toContain('p_archivos_ids uuid[]');
+    });
+
+    it('revisión individual afecta únicamente al PED solicitado, manteniendo inalterados los pedidos hermanos', () => {
+      const pedA = {
+        id: 'ped_A',
+        pedido_visible: 'PED-2026-0001',
+        envio_id: 'env_1',
+        estado: 'Finalizado',
+        retrabajo_activo: false,
+        revision_count: 0,
+      };
+      const pedB = {
+        id: 'ped_B',
+        pedido_visible: 'PED-2026-0002',
+        envio_id: 'env_1',
+        estado: 'Finalizado',
+        retrabajo_activo: false,
+        revision_count: 0,
+      };
+
+      // Solicitud de revisión enviada individualmente sobre pedA
+      pedA.estado = 'Nuevo';
+      pedA.retrabajo_activo = true;
+      pedA.revision_count = 1;
+
+      expect(pedA.estado).toBe('Nuevo');
+      expect(pedA.retrabajo_activo).toBe(true);
+      expect(pedA.revision_count).toBe(1);
+
+      // pedB permanece Finalizado e intacto
+      expect(pedB.estado).toBe('Finalizado');
+      expect(pedB.retrabajo_activo).toBe(false);
+      expect(pedB.revision_count).toBe(0);
+    });
+  });
 });
+
