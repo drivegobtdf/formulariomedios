@@ -574,7 +574,10 @@ export default async function handler(req: Request): Promise<Response> {
     const stagingFolderId = await adapter.ensureStagingFolder(rootFolderId);
 
     const reservationId = crypto.randomUUID();
-    const clientFileRef = (body.client_file_ref && typeof body.client_file_ref === 'string') ? body.client_file_ref : crypto.randomUUID();
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const clientFileRef = (body.client_file_ref && typeof body.client_file_ref === 'string' && UUID_REGEX.test(body.client_file_ref.trim()))
+      ? body.client_file_ref.trim()
+      : crypto.randomUUID();
     const archivoId = crypto.randomUUID();
 
     const resumableSession = await adapter.createResumableUploadSession({

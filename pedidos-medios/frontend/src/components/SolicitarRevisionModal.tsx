@@ -30,6 +30,36 @@ const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.zip'];
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 const MAX_FILES = 5;
 
+function getHumanErrorMessage(rawError?: string): string {
+  if (!rawError) return 'Error al procesar el archivo.';
+  const lower = rawError.toLowerCase();
+  if (lower.includes('session_invalid') || lower.includes('session_expired') || lower.includes('unauthorized') || lower.includes('sesión') || lower.includes('token')) {
+    return 'Tu sesión venció. Volvé a abrir el pedido.';
+  }
+  if (lower.includes('forbidden') || lower.includes('pertenece') || lower.includes('no autorizado')) {
+    return 'El archivo no pertenece a este pedido.';
+  }
+  if (lower.includes('formato no admitido') || lower.includes('validation_error')) {
+    return 'Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.';
+  }
+  if (lower.includes('tamaño') || lower.includes('excede') || lower.includes('max_file')) {
+    return 'El archivo supera el tamaño máximo permitido (25 MB).';
+  }
+  if (lower.includes('google drive') || lower.includes('drive_') || lower.includes('almacenamiento') || lower.includes('storage') || lower.includes('500') || lower.includes('502') || lower.includes('503')) {
+    return 'El servicio de almacenamiento no está disponible temporalmente.';
+  }
+  if (lower.includes('red') || lower.includes('network') || lower.includes('conexión') || lower.includes('streaming')) {
+    return 'Fallo de conexión. Verificá tu red y reintentá.';
+  }
+  if (lower.includes('prepar') || lower.includes('prepare')) {
+    return 'No se pudo iniciar la subida.';
+  }
+  if (lower.includes('verific') || lower.includes('complete')) {
+    return 'No se pudo completar la carga del archivo.';
+  }
+  return 'No se pudo completar la subida.';
+}
+
 export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
   isOpen,
   onClose,
@@ -61,7 +91,7 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
         const res = await uploadFileForRevision(
           sessionToken,
           envioId || pedidoId,
-          `rev_${fileItem.id}`,
+          fileItem.id,
           fileItem.file,
           (pct) => {
             setFiles((prev) =>
@@ -115,8 +145,12 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
         setSubmitError(`El archivo "${f.name}" supera el tamaño máximo de 25 MB.`);
         return;
       }
+      const itemUuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : '00000000-0000-4000-8000-' + Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
       const item: RevisionFileItem = {
-        id: Math.random().toString(36).substring(2, 9),
+        id: itemUuid,
         file: f,
         name: f.name,
         size: f.size,
@@ -414,15 +448,22 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
                           <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.75rem' }}>✓ Listo</span>
                         )}
                         {item.status === 'error' && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>⚠️ Error</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRetryFile(item)}
-                              style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
-                            >
-                              Reintentar
-                            </button>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span style={{ color: '#dc2626', fontSize: '0.75rem', fontWeight: 600 }}>⚠️ Error</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRetryFile(item)}
+                                style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+                              >
+                                Reintentar
+                              </button>
+                            </div>
+                            {item.error && (
+                              <span style={{ color: '#b91c1c', fontSize: '0.7rem' }}>
+                                {getHumanErrorMessage(item.error)}
+                              </span>
+                            )}
                           </div>
                         )}
                         {!isSubmitting && (

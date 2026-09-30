@@ -42,6 +42,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     let targetSubmissionKey = '';
+    let solSession: any = null;
 
     if (info_token) {
       // 1A. Validación de token de solicitud de información
@@ -63,7 +64,6 @@ export default async function handler(req: Request): Promise<Response> {
     } else if (session_token) {
       // 1B. Validación de sesión de solicitante
       const tokenHash = await computeSha256Hex(String(session_token).trim());
-      let solSession: any = null;
       const { data: sessEs } = await supabase
         .from('solicitante_sesiones')
         .select('correo, expires_at')
