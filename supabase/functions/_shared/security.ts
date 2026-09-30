@@ -20,24 +20,88 @@ export const MAX_FILE_SIZE_ENTREGA_BYTES = 10 * 1024 * 1024; // 10 MB = 10,485,7
 
 export const SESSION_TTL_SECONDS = 7200; // 2 horas
 
+export const ALLOWED_EXTENSIONS = new Set<string>([
+  // Documentos / Texto
+  'pdf', 'txt', 'md', 'rtf', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp',
+  // Imágenes / Diseño
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tif', 'tiff', 'svg', 'heic', 'heif', 'psd', 'ai', 'eps',
+  // Audio / Video
+  'mp3', 'wav', 'm4a', 'aac', 'ogg', 'mp4', 'mov', 'avi', 'mkv', 'webm',
+  // Comprimidos
+  'zip', 'rar', '7z', 'tar', 'gz', 'tgz',
+]);
+
+export const DANGEROUS_EXTENSIONS = new Set<string>([
+  'exe', 'msi', 'dll', 'com', 'scr', 'bat', 'cmd', 'ps1', 'vbs', 'jar', 'apk', 'app', 'dmg', 'pkg', 'sh', 'bin', 'php', 'phtml', 'cgi', 'pl', 'py', 'js', 'mjs', 'cjs', 'ts', 'vbe', 'wsf', 'wsh', 'hta',
+]);
+
 export const ALLOWED_MIME_TYPES = new Set<string>([
+  // Generics / streams
+  'application/octet-stream',
+  // Documentos / Texto
   'application/pdf',
-  'image/png',
+  'text/plain',
+  'text/markdown',
+  'text/x-markdown',
+  'application/rtf',
+  'text/rtf',
+  'text/csv',
+  'application/csv',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.oasis.opendocument.presentation',
+  // Imágenes / Diseño
   'image/jpeg',
   'image/jpg',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/bmp',
+  'image/tiff',
+  'image/svg+xml',
+  'image/heic',
+  'image/heif',
+  'image/vnd.adobe.photoshop',
+  'image/x-photoshop',
+  'application/postscript',
+  'application/illustrator',
+  'application/x-photoshop',
+  // Audio / Video
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/wave',
+  'audio/mp4',
+  'audio/m4a',
+  'audio/x-m4a',
+  'audio/aac',
+  'audio/ogg',
+  'video/mp4',
+  'video/quicktime',
+  'video/x-msvideo',
+  'video/x-matroska',
+  'video/webm',
+  'video/ogg',
+  // Comprimidos
   'application/zip',
   'application/x-zip-compressed',
   'application/x-zip',
-]);
-
-export const ALLOWED_EXTENSIONS = new Set<string>([
-  'pdf',
-  'png',
-  'jpg',
-  'jpeg',
-  'docx',
-  'zip',
+  'application/x-rar-compressed',
+  'application/vnd.rar',
+  'application/x-rar',
+  'application/x-7z-compressed',
+  'application/x-tar',
+  'application/gzip',
+  'application/x-gzip',
+  'application/x-gtar',
+  'application/x-tgz',
 ]);
 
 /**
@@ -142,15 +206,24 @@ export function validateFileMetadata(
     return { valid: false, error: `El archivo excede el tamaño máximo permitido de ${maxMb} MB (${maxSizeBytes} bytes)` };
   }
 
-  const normalizedMime = mimeType.trim().toLowerCase();
-  if (!ALLOWED_MIME_TYPES.has(normalizedMime)) {
-    return { valid: false, error: 'Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.' };
-  }
-
   const parts = name.trim().split('.');
   const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : '';
-  if (!ALLOWED_EXTENSIONS.has(ext)) {
-    return { valid: false, error: 'Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.' };
+
+  if (!ext || !ALLOWED_EXTENSIONS.has(ext) || DANGEROUS_EXTENSIONS.has(ext)) {
+    return { valid: false, error: 'Formato no admitido. Usá documentos, imágenes, multimedia o archivos comprimidos permitidos.' };
+  }
+
+  const normalizedMime = (mimeType || '').trim().toLowerCase();
+  if (
+    normalizedMime &&
+    !ALLOWED_MIME_TYPES.has(normalizedMime) &&
+    normalizedMime !== 'application/octet-stream' &&
+    !normalizedMime.startsWith('image/') &&
+    !normalizedMime.startsWith('video/') &&
+    !normalizedMime.startsWith('audio/') &&
+    !normalizedMime.startsWith('text/')
+  ) {
+    return { valid: false, error: 'Formato no admitido. Tipo MIME no compatible con la extensión.' };
   }
 
   return { valid: true };

@@ -1425,75 +1425,267 @@ export const PedidoDetallePage: React.FC = () => {
             COLUMNA DERECHA: Adjuntos, Enlaces y Entregas
            =================================================================== */}
         <div className="col-right">
-          {/* Archivos Adjuntos */}
+          {/* Archivos Adjuntos Clasificados por Origen */}
           <div className="pedidos-detalle-card">
             <div className="pedidos-detalle-card-header">
               <h2 className="pedidos-detalle-card-title">
-                Archivos ({(pedido.archivos || []).length})
+                Archivos del Pedido ({(pedido.archivos || []).length})
               </h2>
             </div>
 
-            {(pedido.archivos || []).length === 0 ? (
-              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
-                No hay archivos adjuntos.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {(pedido.archivos || []).map((a: any) => (
-                  <div key={a.id} className="pedidos-file-item">
-                    <div className="pedidos-file-info">
-                      <span className="pedidos-file-name" title={a.nombre_original}>
-                        {a.nombre_original}
-                      </span>
-                      <div className="pedidos-file-meta">
-                        <span>{formatFileSize(a.size_bytes)}</span>
-                        <span>•</span>
-                        <span style={{ color: a.estado === 'verified' ? '#15803d' : '#64748b', fontWeight: a.estado === 'verified' ? 600 : 400 }}>
-                          {formatArchivoEstado(a.estado)}
-                        </span>
-                        {a.mime_type && (
-                          <>
-                            <span>•</span>
-                            <span>{a.mime_type}</span>
-                          </>
-                        )}
-                        {a.contexto === 'informacion_respuesta' && (
-                          <span style={{
-                            background: '#fef3c7',
-                            color: '#92400e',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            padding: '0.1rem 0.4rem',
-                            borderRadius: '0.25rem',
-                            border: '1px solid #fde68a',
-                            marginLeft: '0.25rem',
-                          }}>
-                            Respuesta a Info
-                          </span>
-                        )}
+            {(() => {
+              const allFiles = pedido.archivos || [];
+              const originalFiles = allFiles.filter((a) => a.origen === 'original' || a.contexto === 'solicitud');
+              const revisionFiles = allFiles.filter((a) => a.origen === 'revision' || a.contexto === 'revision');
+              const infoFiles = allFiles.filter((a) => a.origen === 'informacion_respuesta' || a.contexto === 'informacion_respuesta');
+              const legacyFiles = allFiles.filter(
+                (a) =>
+                  !['original', 'revision', 'informacion_respuesta', 'entrega'].includes(a.origen) &&
+                  !['solicitud', 'revision', 'informacion_respuesta', 'entrega'].includes(a.contexto)
+              );
+
+              if (allFiles.length === 0) {
+                return (
+                  <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
+                    No hay archivos adjuntos.
+                  </p>
+                );
+              }
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* 1. Solicitud Original */}
+                  <div>
+                    <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
+                      Archivos de la Solicitud Original ({originalFiles.length})
+                    </h4>
+                    {originalFiles.length === 0 ? (
+                      <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: 0, fontStyle: 'italic' }}>
+                        No se adjuntaron archivos en la solicitud inicial.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        {originalFiles.map((a: any) => (
+                          <div key={a.id} className="pedidos-file-item">
+                            <div className="pedidos-file-info">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <span style={{
+                                  background: '#e0f2fe',
+                                  color: '#0369a1',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  padding: '0.1rem 0.35rem',
+                                  borderRadius: '0.25rem',
+                                }}>
+                                  ORIGINAL
+                                </span>
+                                <span className="pedidos-file-name" title={a.nombre_original}>
+                                  {a.nombre_original}
+                                </span>
+                              </div>
+                              <div className="pedidos-file-meta">
+                                <span>{formatFileSize(a.size_bytes)}</span>
+                                <span>•</span>
+                                <span style={{ color: a.estado === 'verified' ? '#15803d' : '#64748b', fontWeight: a.estado === 'verified' ? 600 : 400 }}>
+                                  {formatArchivoEstado(a.estado)}
+                                </span>
+                                {a.mime_type && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{a.mime_type}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDownload(a.id, a.nombre_original)}
+                              disabled={downloadingFileId === a.id}
+                              className="pedidos-btn-download"
+                              aria-label={`Descargar archivo ${a.nombre_original}`}
+                            >
+                              {downloadingFileId === a.id ? (
+                                <span>Descargando...</span>
+                              ) : (
+                                <>
+                                  <span>📥</span>
+                                  <span>Descargar</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. Revisiones / Retrabajo */}
+                  {revisionFiles.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#b45309', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
+                        Archivos de Revisión / Retrabajo ({revisionFiles.length})
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        {revisionFiles.map((a: any) => (
+                          <div key={a.id} className="pedidos-file-item" style={{ borderLeft: '3px solid #f59e0b' }}>
+                            <div className="pedidos-file-info">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <span style={{
+                                  background: '#fef3c7',
+                                  color: '#92400e',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  padding: '0.1rem 0.35rem',
+                                  borderRadius: '0.25rem',
+                                }}>
+                                  {a.revision_number ? `REVISIÓN #${a.revision_number}` : 'REVISIÓN'}
+                                </span>
+                                <span className="pedidos-file-name" title={a.nombre_original}>
+                                  {a.nombre_original}
+                                </span>
+                              </div>
+                              <div className="pedidos-file-meta">
+                                <span>{formatFileSize(a.size_bytes)}</span>
+                                {a.revision_motivo && (
+                                  <>
+                                    <span>•</span>
+                                    <span style={{ color: '#78350f', fontStyle: 'italic' }}>
+                                      Motivo: "{a.revision_motivo}"
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDownload(a.id, a.nombre_original)}
+                              disabled={downloadingFileId === a.id}
+                              className="pedidos-btn-download"
+                              aria-label={`Descargar archivo ${a.nombre_original}`}
+                            >
+                              {downloadingFileId === a.id ? (
+                                <span>Descargando...</span>
+                              ) : (
+                                <>
+                                  <span>📥</span>
+                                  <span>Descargar</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
+                  )}
 
-                    <button
-                      type="button"
-                      onClick={() => handleDownload(a.id, a.nombre_original)}
-                      disabled={downloadingFileId === a.id}
-                      className="pedidos-btn-download"
-                      aria-label={`Descargar archivo ${a.nombre_original}`}
-                    >
-                      {downloadingFileId === a.id ? (
-                        <span>Descargando...</span>
-                      ) : (
-                        <>
-                          <span>📥</span>
-                          <span>Descargar</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+                  {/* 3. Información Complementaria */}
+                  {infoFiles.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#15803d', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
+                        Información Complementaria ({infoFiles.length})
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        {infoFiles.map((a: any) => (
+                          <div key={a.id} className="pedidos-file-item" style={{ borderLeft: '3px solid #10b981' }}>
+                            <div className="pedidos-file-info">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <span style={{
+                                  background: '#dcfce7',
+                                  color: '#166534',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  padding: '0.1rem 0.35rem',
+                                  borderRadius: '0.25rem',
+                                }}>
+                                  INFO RESPUESTA
+                                </span>
+                                <span className="pedidos-file-name" title={a.nombre_original}>
+                                  {a.nombre_original}
+                                </span>
+                              </div>
+                              <div className="pedidos-file-meta">
+                                <span>{formatFileSize(a.size_bytes)}</span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDownload(a.id, a.nombre_original)}
+                              disabled={downloadingFileId === a.id}
+                              className="pedidos-btn-download"
+                              aria-label={`Descargar archivo ${a.nombre_original}`}
+                            >
+                              {downloadingFileId === a.id ? (
+                                <span>Descargando...</span>
+                              ) : (
+                                <>
+                                  <span>📥</span>
+                                  <span>Descargar</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. Archivos Históricos / Otros */}
+                  {legacyFiles.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
+                        Archivos Históricos ({legacyFiles.length})
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        {legacyFiles.map((a: any) => (
+                          <div key={a.id} className="pedidos-file-item">
+                            <div className="pedidos-file-info">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <span style={{
+                                  background: '#f1f5f9',
+                                  color: '#475569',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  padding: '0.1rem 0.35rem',
+                                  borderRadius: '0.25rem',
+                                }}>
+                                  ARCHIVO HISTÓRICO
+                                </span>
+                                <span className="pedidos-file-name" title={a.nombre_original}>
+                                  {a.nombre_original}
+                                </span>
+                              </div>
+                              <div className="pedidos-file-meta">
+                                <span>{formatFileSize(a.size_bytes)}</span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDownload(a.id, a.nombre_original)}
+                              disabled={downloadingFileId === a.id}
+                              className="pedidos-btn-download"
+                              aria-label={`Descargar archivo ${a.nombre_original}`}
+                            >
+                              {downloadingFileId === a.id ? (
+                                <span>Descargando...</span>
+                              ) : (
+                                <>
+                                  <span>📥</span>
+                                  <span>Descargar</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Enlaces al Material */}

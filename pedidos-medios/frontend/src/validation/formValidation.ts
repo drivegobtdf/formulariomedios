@@ -47,27 +47,107 @@ export function isValidHttpUrl(urlString: string): boolean {
 export const MAX_FILES_LIMIT = 5;
 export const MAX_FILE_SIZE_LIMIT = 25 * 1024 * 1024; // 25 MB = 26,214,400 bytes
 
-export const ALLOWED_MIME_TYPES: string[] = [
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/zip',
+export const ALLOWED_EXTENSIONS: string[] = [
+  // Documentos / Texto
+  '.pdf', '.txt', '.md', '.rtf', '.csv', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp',
+  // Imágenes / Diseño
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tif', '.tiff', '.svg', '.heic', '.heif', '.psd', '.ai', '.eps',
+  // Audio / Video
+  '.mp3', '.wav', '.m4a', '.aac', '.ogg', '.mp4', '.mov', '.avi', '.mkv', '.webm',
+  // Comprimidos
+  '.zip', '.rar', '.7z', '.tar', '.gz', '.tgz',
 ];
 
-export const ALLOWED_EXTENSIONS: string[] = ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.zip'];
+export const DANGEROUS_EXTENSIONS: string[] = [
+  '.exe', '.msi', '.dll', '.com', '.scr', '.bat', '.cmd', '.ps1', '.vbs', '.jar', '.apk', '.app', '.dmg', '.pkg', '.sh', '.bin', '.php', '.phtml', '.cgi', '.pl', '.py', '.js', '.mjs', '.cjs', '.ts', '.vbe', '.wsf', '.wsh', '.hta',
+];
+
+export const ALLOWED_MIME_TYPES: string[] = [
+  'application/octet-stream',
+  'application/pdf',
+  'text/plain',
+  'text/markdown',
+  'text/x-markdown',
+  'application/rtf',
+  'text/rtf',
+  'text/csv',
+  'application/csv',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.oasis.opendocument.presentation',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/bmp',
+  'image/tiff',
+  'image/svg+xml',
+  'image/heic',
+  'image/heif',
+  'image/vnd.adobe.photoshop',
+  'image/x-photoshop',
+  'application/postscript',
+  'application/illustrator',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/wave',
+  'audio/mp4',
+  'audio/m4a',
+  'audio/x-m4a',
+  'audio/aac',
+  'audio/ogg',
+  'video/mp4',
+  'video/quicktime',
+  'video/x-msvideo',
+  'video/x-matroska',
+  'video/webm',
+  'video/ogg',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/x-zip',
+  'application/x-rar-compressed',
+  'application/vnd.rar',
+  'application/x-rar',
+  'application/x-7z-compressed',
+  'application/x-tar',
+  'application/gzip',
+  'application/x-gzip',
+  'application/x-gtar',
+  'application/x-tgz',
+];
 
 export function validateFileMetadata(file: { name: string; size: number; type: string }): string | null {
   if (file.size > MAX_FILE_SIZE_LIMIT) {
     return `El archivo supera el tamaño máximo permitido de 25 MB (${(file.size / (1024 * 1024)).toFixed(2)} MB).`;
   }
 
-  const ext = '.' + file.name.split('.').pop()?.toLowerCase();
-  const isAllowedExt = ALLOWED_EXTENSIONS.includes(ext);
-  const isAllowedMime = ALLOWED_MIME_TYPES.includes(file.type.toLowerCase()) || isAllowedExt;
+  const lastDot = file.name.lastIndexOf('.');
+  const ext = lastDot >= 0 ? file.name.substring(lastDot).toLowerCase() : '';
 
-  if (!isAllowedMime && !isAllowedExt) {
-    return 'Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.';
+  if (!ext || !ALLOWED_EXTENSIONS.includes(ext) || DANGEROUS_EXTENSIONS.includes(ext)) {
+    return 'Formato no admitido. Usá documentos, imágenes, multimedia o archivos comprimidos permitidos.';
+  }
+
+  const normType = (file.type || '').toLowerCase().trim();
+  if (
+    normType &&
+    !ALLOWED_MIME_TYPES.includes(normType) &&
+    normType !== 'application/octet-stream' &&
+    !normType.startsWith('image/') &&
+    !normType.startsWith('video/') &&
+    !normType.startsWith('audio/') &&
+    !normType.startsWith('text/')
+  ) {
+    return 'Formato no admitido. Tipo MIME no compatible con la extensión.';
   }
 
   return null;

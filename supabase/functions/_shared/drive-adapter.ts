@@ -57,6 +57,7 @@ export interface DriveAdapter {
     }
   ): Promise<FileVerificationResult>;
   downloadFileStream(fileId: string): Promise<FileDownloadStreamResult>;
+  deleteItem(fileOrFolderId: string): Promise<boolean>;
 }
 
 /**
@@ -449,6 +450,26 @@ export class GoogleDriveAdapter implements DriveAdapter {
       name: meta.name || 'archivo',
     };
   }
+
+  /**
+   * Elimina un archivo o carpeta en Google Drive de forma idempotente
+   */
+  async deleteItem(fileOrFolderId: string): Promise<boolean> {
+    if (!fileOrFolderId || !fileOrFolderId.trim()) return false;
+    try {
+      const token = await this.getAccessToken();
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileOrFolderId.trim())}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 204 || res.status === 200 || res.status === 404) {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
 }
 
 /**
@@ -636,6 +657,11 @@ export class MockDriveAdapter implements DriveAdapter {
       size: entry.metadata.size,
       name: entry.metadata.name,
     };
+  }
+
+  async deleteItem(fileOrFolderId: string): Promise<boolean> {
+    this.inMemoryFiles.delete(fileOrFolderId);
+    return true;
   }
 }
 

@@ -1,0 +1,309 @@
+import React, { useState, useEffect } from 'react';
+import { adminPreviewPurgePedidos, adminExecutePurgePedidos, PurgePreviewResult } from '../../services/gestionApi';
+
+interface EliminarPedidosModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  pedidoIds: string[];
+  onSuccess: (deletedCount: number) => void;
+}
+
+export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
+  isOpen,
+  onClose,
+  pedidoIds,
+  onSuccess,
+}) => {
+  const [loadingPreview, setLoadingPreview] = useState(true);
+  const [preview, setPreview] = useState<PurgePreviewResult | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const [confirmInput, setConfirmInput] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && pedidoIds.length > 0) {
+      setLoadingPreview(true);
+      setPreview(null);
+      setPreviewError(null);
+      setConfirmInput('');
+      setDeleteError(null);
+      setIsDeleting(false);
+
+      adminPreviewPurgePedidos(pedidoIds)
+        .then((data) => {
+          setPreview(data);
+        })
+        .catch((err) => {
+          setPreviewError(err.message || 'No se pudo obtener el preview de eliminación');
+        })
+        .finally(() => {
+          setLoadingPreview(false);
+        });
+    }
+  }, [isOpen, pedidoIds]);
+
+  if (!isOpen) return null;
+
+  const count = preview?.pedidos_count || pedidoIds.length;
+  const requiresConfirmWord = count > 1;
+  const isConfirmValid = !requiresConfirmWord || confirmInput.trim() === 'ELIMINAR';
+
+  const handleDelete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isConfirmValid || isDeleting) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const res = await adminExecutePurgePedidos(pedidoIds);
+      onSuccess(res.deleted_count);
+      onClose();
+    } catch (err: any) {
+      setDeleteError(err.message || 'Ocurrió un error al eliminar los pedidos.');
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.7)',
+        backdropFilter: 'blur(3px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: '1rem',
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-purge-title"
+    >
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '0.75rem',
+          maxWidth: '540px',
+          width: '100%',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          border: '1px solid #e2e8f0',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: '1.25rem 1.5rem',
+            borderBottom: '1px solid #fee2e2',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#fef2f2',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '1.35rem' }}>⚠️</span>
+            <h3
+              id="modal-purge-title"
+              style={{ margin: 0, fontSize: '1.15rem', color: '#991b1b', fontWeight: 800 }}
+            >
+              ELIMINAR PEDIDOS PERMANENTEMENTE
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isDeleting}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              fontSize: '1.25rem',
+              color: '#94a3b8',
+              cursor: isDeleting ? 'not-allowed' : 'pointer',
+              padding: '0.25rem',
+              lineHeight: 1,
+            }}
+            aria-label="Cerrar modal"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
+          {loadingPreview ? (
+            <div style={{ textAlign: 'center', padding: '2rem 0', color: '#64748b' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
+              <p style={{ margin: 0, fontWeight: 500 }}>Calculando impacto de la eliminación...</p>
+            </div>
+          ) : previewError ? (
+            <div
+              style={{
+                padding: '1rem',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '0.5rem',
+                color: '#991b1b',
+                fontSize: '0.875rem',
+              }}
+            >
+              <strong>Error:</strong> {previewError}
+            </div>
+          ) : (
+            <form onSubmit={handleDelete} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {deleteError && (
+                <div
+                  style={{
+                    padding: '0.85rem 1rem',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '0.5rem',
+                    color: '#991b1b',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  <strong>Atención:</strong> {deleteError}
+                </div>
+              )}
+
+              <p style={{ margin: 0, fontSize: '0.95rem', color: '#1e293b', lineHeight: 1.5 }}>
+                Estás por eliminar permanentemente <strong>{count} pedido{count > 1 ? 's' : ''}</strong>.
+              </p>
+
+              {/* Impact Breakdown */}
+              <div
+                style={{
+                  backgroundColor: '#fff1f2',
+                  border: '1px solid #ffe4e6',
+                  borderRadius: '0.5rem',
+                  padding: '1rem',
+                  fontSize: '0.85rem',
+                  color: '#881337',
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Esta operación también eliminará o desvinculará:
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <li><strong>{preview?.entregas_count || 0}</strong> entregas realizadas</li>
+                  <li><strong>{preview?.revisiones_count || 0}</strong> solicitudes de revisión</li>
+                  <li><strong>{preview?.archivos_count || 0}</strong> archivos registrados</li>
+                  <li><strong>{preview?.comunicaciones_count || 0}</strong> comunicaciones asociadas</li>
+                  <li>
+                    <strong>{(preview?.drive_file_ids?.length || 0) + (preview?.drive_folder_ids?.length || 0)}</strong> recursos de Google Drive
+                  </li>
+                </ul>
+              </div>
+
+              {/* Visible PED Codes */}
+              {preview?.pedidos_visibles && preview.pedidos_visibles.length > 0 && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', marginBottom: '0.35rem' }}>
+                    Pedidos afectados:
+                  </label>
+                  <div
+                    style={{
+                      maxHeight: '80px',
+                      overflowY: 'auto',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '0.375rem',
+                      padding: '0.5rem 0.75rem',
+                      fontSize: '0.8rem',
+                      color: '#334155',
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {preview.pedidos_visibles.join(', ')}
+                  </div>
+                </div>
+              )}
+
+              {/* Require typing ELIMINAR */}
+              {requiresConfirmWord && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#991b1b', marginBottom: '0.4rem' }}>
+                    Para confirmar la eliminación masiva, escribí <span style={{ textDecoration: 'underline' }}>ELIMINAR</span> a continuación:
+                  </label>
+                  <input
+                    type="text"
+                    value={confirmInput}
+                    onChange={(e) => setConfirmInput(e.target.value)}
+                    placeholder="ELIMINAR"
+                    disabled={isDeleting}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      padding: '0.65rem 0.75rem',
+                      borderRadius: '0.375rem',
+                      border: confirmInput.trim() === 'ELIMINAR' ? '2px solid #dc2626' : '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      color: '#991b1b',
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Actions */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '0.75rem',
+                  paddingTop: '0.75rem',
+                  borderTop: '1px solid #e2e8f0',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={isDeleting}
+                  style={{
+                    padding: '0.6rem 1.25rem',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '0.375rem',
+                    color: '#475569',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!isConfirmValid || isDeleting}
+                  style={{
+                    padding: '0.6rem 1.5rem',
+                    backgroundColor: isConfirmValid && !isDeleting ? '#dc2626' : '#fca5a5',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    color: '#ffffff',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    cursor: isConfirmValid && !isDeleting ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  {isDeleting ? 'Eliminando...' : `Eliminar ${count} pedido${count > 1 ? 's' : ''}`}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

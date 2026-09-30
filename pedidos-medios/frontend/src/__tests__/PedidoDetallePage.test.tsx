@@ -85,6 +85,7 @@ describe('PedidoDetallePage Unit Tests', () => {
         mime_type: 'image/png',
         size_bytes: 70,
         contexto: 'solicitud',
+        origen: 'original',
         estado: 'verified',
         created_at: '2026-09-16T04:49:05.522Z',
       },
@@ -132,6 +133,7 @@ describe('PedidoDetallePage Unit Tests', () => {
         mime_type: 'image/png',
         size_bytes: 70,
         contexto: 'solicitud',
+        origen: 'original',
         estado: 'verified',
         created_at: '2026-09-16T04:49:05.522Z',
       },
@@ -593,6 +595,7 @@ describe('PedidoDetallePage Unit Tests', () => {
           mime_type: 'image/png',
           size_bytes: 2048576,
           contexto: 'informacion_respuesta',
+          origen: 'informacion_respuesta',
           estado: 'verified',
           created_at: '2026-09-16T12:00:00.000Z',
         },
@@ -614,7 +617,7 @@ describe('PedidoDetallePage Unit Tests', () => {
     });
 
     // Badge en lista de adjuntos
-    expect(screen.getByText('Respuesta a Info')).toBeInTheDocument();
+    expect(screen.getByText('INFO RESPUESTA')).toBeInTheDocument();
 
     // Sección de solicitudes de información
     expect(screen.getByText(/Por favor adjuntar el logo en vector SVG/i)).toBeInTheDocument();
@@ -676,6 +679,7 @@ describe('PedidoDetallePage Unit Tests', () => {
           mime_type: 'image/jpeg',
           size_bytes: 159069,
           contexto: 'informacion_respuesta',
+          origen: 'informacion_respuesta',
           estado: 'verified',
           created_at: '2026-09-16T19:55:53.912Z',
         },
@@ -829,6 +833,7 @@ describe('PedidoDetallePage Unit Tests', () => {
           size_bytes: 1024,
           mime_type: 'image/svg+xml',
           contexto: 'informacion_respuesta',
+          origen: 'informacion_respuesta',
           estado: 'verified',
           created_at: '2026-09-16T11:00:00.000Z',
         },
@@ -838,6 +843,7 @@ describe('PedidoDetallePage Unit Tests', () => {
           size_bytes: 2048,
           mime_type: 'application/pdf',
           contexto: 'informacion_respuesta',
+          origen: 'informacion_respuesta',
           estado: 'verified',
           created_at: '2026-09-16T13:00:00.000Z',
         },
@@ -879,7 +885,7 @@ describe('PedidoDetallePage Unit Tests', () => {
     });
 
     // 1. Resumen global consolidado
-    expect(screen.getByText('Archivos (2)')).toBeInTheDocument();
+    expect(screen.getByText('Archivos del Pedido (2)')).toBeInTheDocument();
     expect(screen.getByText('Enlaces (3)')).toBeInTheDocument();
 
     // 2. Cada archivo aparece exactamente 2 veces (1 en la lista global lateral + 1 en su tarjeta contextual correspondiente)

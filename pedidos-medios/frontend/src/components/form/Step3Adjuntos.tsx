@@ -8,6 +8,7 @@ import {
   ValidationErrors,
   validateFileMetadata,
   MAX_FILES_LIMIT,
+  ALLOWED_EXTENSIONS,
 } from '../../validation/formValidation';
 
 interface Step3AdjuntosProps {
@@ -104,7 +105,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
       <div className="pedidos-card">
         <h3 className="pedidos-card-title">Archivos</h3>
         <p className="pedidos-hint-text" style={{ marginBottom: '1rem' }}>
-          Formatos: PDF, PNG, JPG, DOCX, ZIP · Máx. 5 archivos · Hasta 25 MB por archivo
+          Documentos, imágenes, multimedia o archivos comprimidos permitidos · Máx. 5 archivos · Hasta 25 MB por archivo
         </p>
 
         <div
@@ -130,7 +131,7 @@ export const Step3Adjuntos: React.FC<Step3AdjuntosProps> = ({
             ref={fileInputRef}
             onChange={handleFileChange}
             multiple
-            accept=".pdf,.png,.jpg,.jpeg,.docx,.zip,application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/zip"
+            accept={ALLOWED_EXTENSIONS.join(',')}
             style={{ display: 'none' }}
           />
           <div className="pedidos-dropzone-icon">📁</div>

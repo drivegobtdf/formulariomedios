@@ -232,18 +232,19 @@ describe('Forensic Bugfixes — Solicitante Portal, Revisiones y Descargas', () 
       }
     });
 
-    it('rechaza archivos markdown (.md), ejecutables (.exe), scripts (.js, .sh) con mensaje uniforme', () => {
+    it('rechaza ejecutables (.exe), scripts (.bat, .sh, .ps1) y binarios peligrosos con mensaje uniforme', () => {
       const invalidFiles = [
-        { name: 'notas.md', mime: 'text/markdown', size: 1024 },
-        { name: 'script.js', mime: 'application/javascript', size: 1024 },
         { name: 'programa.exe', mime: 'application/x-msdownload', size: 1024 },
-        { name: 'hoja.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: 1024 },
+        { name: 'script.bat', mime: 'application/x-bat', size: 1024 },
+        { name: 'installer.msi', mime: 'application/x-msi', size: 1024 },
+        { name: 'script.sh', mime: 'application/x-sh', size: 1024 },
+        { name: 'payload.ps1', mime: 'text/plain', size: 1024 },
       ];
 
       for (const f of invalidFiles) {
         const res = validateFileMetadata(f.name, f.mime, f.size);
         expect(res.valid).toBe(false);
-        expect(res.error).toBe('Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.');
+        expect(res.error).toBe('Formato no admitido. Usá documentos, imágenes, multimedia o archivos comprimidos permitidos.');
       }
     });
   });

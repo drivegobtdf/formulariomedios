@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { uploadFileForInfoResponse } from '../services/formApi';
 import { formatFileSize } from '../utils/formatUtils';
+import { ALLOWED_EXTENSIONS, validateFileMetadata } from '../validation/formValidation';
 
 export interface InfoResponseFormProps {
   auth: {
@@ -28,7 +29,6 @@ interface UploadedFileItem {
   error?: string;
 }
 
-const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.zip'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MiB
 const MAX_TOTAL_FILES = 10;
 
@@ -65,14 +65,10 @@ export const InfoResponseForm: React.FC<InfoResponseFormProps> = ({
   };
 
   const validateFile = (file: File): string | null => {
-    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      return 'Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.';
-    }
     if (file.size > MAX_FILE_SIZE) {
       return `El archivo "${file.name}" supera el tamaño máximo de 10 MB.`;
     }
-    return null;
+    return validateFileMetadata({ name: file.name, size: file.size, type: file.type });
   };
 
   const handleFileSelection = async (selectedFileList: FileList | null) => {
@@ -291,7 +287,7 @@ export const InfoResponseForm: React.FC<InfoResponseFormProps> = ({
             type="file"
             multiple
             data-testid="info-file-input"
-            accept=".pdf,.png,.jpg,.jpeg,.docx,.zip"
+            accept={ALLOWED_EXTENSIONS.join(',')}
             onChange={(e) => handleFileSelection(e.target.files)}
             style={{ display: 'none' }}
           />
@@ -300,7 +296,7 @@ export const InfoResponseForm: React.FC<InfoResponseFormProps> = ({
             Seleccioná o arrastrá archivos
           </span>
           <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-            PDF, PNG, JPG, DOCX, ZIP hasta 10 MB (máx. 10 archivos)
+            Documentos, imágenes, multimedia o comprimidos permitidos hasta 10 MB (máx. 10 archivos)
           </span>
         </div>
 

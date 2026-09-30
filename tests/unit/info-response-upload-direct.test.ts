@@ -56,7 +56,7 @@ describe('Flujo Directo de Adjuntos en Respuesta a Requerimiento de Información
       const invalidFiles = [
         { name: 'script.exe', mime: 'application/x-msdownload', size: 1024 },
         { name: 'script.sh', mime: 'application/x-sh', size: 1024 },
-        { name: 'video.mp4', mime: 'video/mp4', size: 1024 * 1024 },
+        { name: 'script.bat', mime: 'application/x-bat', size: 1024 },
       ];
 
       for (const f of invalidFiles) {

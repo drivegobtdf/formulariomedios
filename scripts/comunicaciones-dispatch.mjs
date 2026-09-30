@@ -70,15 +70,16 @@ function getCloudServiceKey() {
 const env = loadEnv();
 const supabaseUrl = env.SUPABASE_URL || `https://${PROJECT_REF}.supabase.co`;
 const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || getCloudServiceKey();
+const isCliExecution = process.argv[1]?.endsWith('comunicaciones-dispatch.mjs') || process.argv[1]?.endsWith('comunicaciones-scheduler-daemon.mjs');
 
-if (!serviceRoleKey) {
+if (!serviceRoleKey && isCliExecution) {
   console.error('ERROR: SUPABASE_SERVICE_ROLE_KEY is required to dispatch communications');
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
+const supabase = serviceRoleKey ? createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false }
-});
+}) : null;
 
 const n8nUrl = (env.N8N_BASE_URL || env.N8N_URL || 'http://127.0.0.1:5678').replace(/\/$/, '');
 const n8nApiKey = env.N8N_API_KEY || '';

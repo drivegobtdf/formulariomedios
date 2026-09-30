@@ -51,6 +51,20 @@ export interface PedidoListItem {
   solicitudes_pendientes_count?: number;
 }
 
+export interface EnrichedArchivoItem {
+  id: string;
+  nombre_original: string;
+  mime_type: string;
+  size_bytes: number;
+  contexto: 'solicitud' | 'revision' | 'informacion_respuesta' | 'entrega' | 'interno' | string;
+  origen: 'original' | 'revision' | 'informacion_respuesta' | 'entrega' | 'historico';
+  revision_number?: number;
+  revision_motivo?: string;
+  estado: string;
+  drive_file_id?: string;
+  created_at: string;
+}
+
 export interface PedidoDetailItem extends PedidoListItem {
   envio: {
     id: string;
@@ -102,16 +116,7 @@ export interface PedidoDetailItem extends PedidoListItem {
       created_at?: string;
     }>;
   }>;
-  archivos: Array<{
-    id: string;
-    nombre_original: string;
-    mime_type: string;
-    size_bytes: number;
-    contexto: string;
-    estado: string;
-    drive_file_id?: string;
-    created_at: string;
-  }>;
+  archivos: EnrichedArchivoItem[];
   enlaces: Array<{
     id: string;
     url: string;
@@ -549,7 +554,77 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
         .map((esi: any) => esi.enlaces_material)
         .filter(Boolean),
     })),
-    archivos: (archivosData || []).map((ap: any) => ap.archivos).filter(Boolean),
+    archivos: (() => {
+      const archivoMap = new Map<string, EnrichedArchivoItem>();
+
+      // 1. Archivos directos del pedido
+      (archivosData || [])
+        .map((ap: any) => ap.archivos)
+        .filter(Boolean)
+        .forEach((a: any) => {
+          let origen: EnrichedArchivoItem['origen'] = 'original';
+          if (a.contexto === 'revision') origen = 'revision';
+          else if (a.contexto === 'informacion_respuesta') origen = 'informacion_respuesta';
+          else if (a.contexto === 'entrega') origen = 'entrega';
+          else if (a.contexto !== 'solicitud') origen = 'historico';
+
+          archivoMap.set(a.id, {
+            id: a.id,
+            nombre_original: a.nombre_original,
+            mime_type: a.mime_type,
+            size_bytes: a.size_bytes || 0,
+            contexto: a.contexto || 'solicitud',
+            origen,
+            estado: a.estado,
+            drive_file_id: a.drive_file_id,
+            created_at: a.created_at || p.created_at,
+          });
+        });
+
+      // 2. Archivos de revisiones
+      (revisionesData || []).forEach((rp: any) => {
+        (rp.revision_archivos || []).forEach((ra: any) => {
+          if (ra.archivos) {
+            archivoMap.set(ra.archivos.id, {
+              id: ra.archivos.id,
+              nombre_original: ra.archivos.nombre_original,
+              mime_type: ra.archivos.mime_type,
+              size_bytes: ra.archivos.size_bytes || 0,
+              contexto: 'revision',
+              origen: 'revision',
+              revision_number: rp.revision_number,
+              revision_motivo: rp.motivo,
+              estado: 'verified',
+              drive_file_id: ra.archivos.drive_file_id,
+              created_at: ra.archivos.created_at || rp.requested_at,
+            });
+          }
+        });
+      });
+
+      // 3. Archivos de solicitudes de información
+      (solicitudes || []).forEach((s: any) => {
+        (s.archivo_solicitud_informacion || []).forEach((asi: any) => {
+          if (asi.archivos && !archivoMap.has(asi.archivos.id)) {
+            archivoMap.set(asi.archivos.id, {
+              id: asi.archivos.id,
+              nombre_original: asi.archivos.nombre_original,
+              mime_type: asi.archivos.mime_type,
+              size_bytes: asi.archivos.size_bytes || 0,
+              contexto: 'informacion_respuesta',
+              origen: 'informacion_respuesta',
+              estado: asi.archivos.estado || 'verified',
+              drive_file_id: asi.archivos.drive_file_id,
+              created_at: asi.archivos.created_at || s.responded_at || s.created_at,
+            });
+          }
+        });
+      });
+
+      return Array.from(archivoMap.values()).sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    })(),
     enlaces: (enlacesData || []).map((ep: any) => ep.enlaces_material).filter(Boolean),
     entregas: (entregas || []).map((e: any) => ({
       id: e.id,
@@ -906,6 +981,84 @@ export async function adminDeleteUser(userId: string): Promise<{ success: boolea
 
   if (!data?.success) {
     throw new Error(data?.message || 'No se pudo eliminar el usuario');
+  }
+
+  return data;
+}
+
+export interface PurgePreviewResult {
+  pedidos_count: number;
+  pedidos_visibles: string[];
+  envios_afectados: number;
+  entregas_count: number;
+  revisiones_count: number;
+  archivos_count: number;
+  comunicaciones_count: number;
+  drive_file_ids: string[];
+  drive_folder_ids: string[];
+}
+
+export interface PurgeExecutionResult {
+  success: boolean;
+  deleted_count: number;
+  pedidos_visibles: string[];
+  drive_cleanup?: {
+    files_attempted: number;
+    files_deleted: number;
+    folders_attempted: number;
+    folders_deleted: number;
+  };
+}
+
+export async function adminPreviewPurgePedidos(pedidoIds: string[]): Promise<PurgePreviewResult> {
+  const supabase = getSupabaseClient();
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr || !sessionData.session?.access_token) {
+    throw new Error('Sesión no válida o expirada. Por favor inicie sesión nuevamente.');
+  }
+
+  const { data, error } = await supabase.functions.invoke('admin-pedidos-purge', {
+    body: { action: 'preview', pedido_ids: pedidoIds },
+  });
+
+  if (error) {
+    let errorMsg = error.message || 'Error al obtener preview de eliminación';
+    try {
+      if ((error as any).context?.json) {
+        const errJson = await (error as any).context.json();
+        if (errJson.message) errorMsg = errJson.message;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMsg);
+  }
+
+  return data;
+}
+
+export async function adminExecutePurgePedidos(pedidoIds: string[]): Promise<PurgeExecutionResult> {
+  const supabase = getSupabaseClient();
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr || !sessionData.session?.access_token) {
+    throw new Error('Sesión no válida o expirada. Por favor inicie sesión nuevamente.');
+  }
+
+  const { data, error } = await supabase.functions.invoke('admin-pedidos-purge', {
+    body: { action: 'purge', pedido_ids: pedidoIds },
+  });
+
+  if (error) {
+    let errorMsg = error.message || 'Error al ejecutar eliminación de pedidos';
+    try {
+      if ((error as any).context?.json) {
+        const errJson = await (error as any).context.json();
+        if (errJson.message) errorMsg = errJson.message;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMsg);
   }
 
   return data;

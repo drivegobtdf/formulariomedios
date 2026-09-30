@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { fetchPedidos, fetchGestionStats, PedidoListItem, GestionStats } from '../services/gestionApi';
+import { getSupabaseClient } from '../services/supabaseClient';
+import { EliminarPedidosModal } from '../components/gestion/EliminarPedidosModal';
 
 export type GestionTabFilter =
   | 'todos'
@@ -30,6 +32,15 @@ export const GestionDashboardPage: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Bulk Selection & Delete Modal State
+  const [selectedPedidoIds, setSelectedPedidoIds] = useState<Set<string>>(new Set());
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
+
+  // Realtime Connection State
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [lastRealtimeUpdate, setLastRealtimeUpdate] = useState<Date | null>(null);
 
   // Filters & Views
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
@@ -86,6 +97,83 @@ export const GestionDashboardPage: React.FC = () => {
       loadData();
     }
   }, [loadData, isApproved]);
+
+  // Realtime subscription on public.pedidos
+  useEffect(() => {
+    if (!isApproved) return;
+
+    const supabase = getSupabaseClient();
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const triggerRefresh = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        loadData();
+        setLastRealtimeUpdate(new Date());
+      }, 300);
+    };
+
+    const channel = supabase
+      .channel('gestion-dashboard-realtime-pedidos')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pedidos' },
+        () => {
+          triggerRefresh();
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setRealtimeConnected(true);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setRealtimeConnected(false);
+        }
+      });
+
+    const handleFocus = () => {
+      loadData();
+    };
+    const handleOnline = () => {
+      loadData();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [isApproved, loadData]);
+
+  const toggleSelectPedido = (id: string) => {
+    setSelectedPedidoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllVisible = () => {
+    const allIds = pedidos.map((p) => p.id);
+    setSelectedPedidoIds(new Set(allIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedPedidoIds(new Set());
+  };
+
+  const handleDeleteSuccess = (deletedCount: number) => {
+    clearSelection();
+    setDeleteSuccessMessage(`Se eliminaron permanentemente ${deletedCount} pedido${deletedCount > 1 ? 's' : ''} y sus recursos asociados.`);
+    loadData();
+    setTimeout(() => {
+      setDeleteSuccessMessage(null);
+    }, 6000);
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,7 +343,7 @@ export const GestionDashboardPage: React.FC = () => {
       {/* Header & Role Info */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
               Gestión de pedidos
             </h1>
@@ -270,6 +358,32 @@ export const GestionDashboardPage: React.FC = () => {
               letterSpacing: '0.05em'
             }}>
               {isObserver ? 'Observador' : isAdmin ? 'Administrador' : 'Equipo'}
+            </span>
+            <span
+              title={lastRealtimeUpdate ? `Última sincronización: ${lastRealtimeUpdate.toLocaleTimeString()}` : 'Suscrito a cambios en tiempo real'}
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                padding: '0.2rem 0.55rem',
+                borderRadius: '9999px',
+                backgroundColor: realtimeConnected ? '#f0fdf4' : '#f8fafc',
+                color: realtimeConnected ? '#166534' : '#64748b',
+                border: `1px solid ${realtimeConnected ? '#bbf7d0' : '#cbd5e1'}`,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <span
+                style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  backgroundColor: realtimeConnected ? '#22c55e' : '#94a3b8',
+                  display: 'inline-block',
+                }}
+              />
+              {realtimeConnected ? 'En vivo' : 'Desconectado'}
             </span>
           </div>
         </div>
@@ -309,6 +423,123 @@ export const GestionDashboardPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Delete Success Alert */}
+      {deleteSuccessMessage && (
+        <div
+          style={{
+            padding: '0.85rem 1.25rem',
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #86efac',
+            borderRadius: '0.5rem',
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            color: '#166534',
+            fontSize: '0.9rem',
+            fontWeight: 600,
+          }}
+        >
+          <span>✓</span>
+          <span>{deleteSuccessMessage}</span>
+        </div>
+      )}
+
+      {/* Bulk Selection Action Bar for Admins */}
+      {isAdmin && (
+        <div
+          style={{
+            backgroundColor: selectedPedidoIds.size > 0 ? '#eff6ff' : '#f8fafc',
+            border: selectedPedidoIds.size > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+            borderRadius: '0.5rem',
+            padding: '0.6rem 1rem',
+            marginBottom: '1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+            <span style={{ fontWeight: 600, color: '#1e293b' }}>
+              Selección masiva:
+            </span>
+            <span
+              style={{
+                fontWeight: 700,
+                color: selectedPedidoIds.size > 0 ? '#1d4ed8' : '#64748b',
+                backgroundColor: selectedPedidoIds.size > 0 ? '#dbeafe' : '#f1f5f9',
+                padding: '0.15rem 0.55rem',
+                borderRadius: '9999px',
+              }}
+            >
+              {selectedPedidoIds.size} seleccionados
+            </span>
+            {pedidos.length > 0 && (
+              <button
+                type="button"
+                onClick={selectAllVisible}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#0284c7',
+                  fontSize: '0.825rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: 0,
+                  textDecoration: 'underline',
+                }}
+              >
+                Seleccionar todos los visibles ({pedidos.length})
+              </button>
+            )}
+            {selectedPedidoIds.size > 0 && (
+              <button
+                type="button"
+                onClick={clearSelection}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748b',
+                  fontSize: '0.825rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: 0,
+                  textDecoration: 'underline',
+                }}
+              >
+                Deseleccionar
+              </button>
+            )}
+          </div>
+
+          {selectedPedidoIds.size > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              style={{
+                padding: '0.45rem 1rem',
+                backgroundColor: '#dc2626',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '0.375rem',
+                fontSize: '0.825rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                boxShadow: '0 1px 2px rgba(220, 38, 38, 0.2)',
+              }}
+            >
+              <span>🗑️</span>
+              <span>Eliminar {selectedPedidoIds.size} seleccionado{selectedPedidoIds.size > 1 ? 's' : ''}</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Metric Cards Banner (only if no error) */}
       {!error && (
@@ -543,7 +774,18 @@ export const GestionDashboardPage: React.FC = () => {
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>{ped.pedido_visible}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {isAdmin && (
+                            <input
+                              type="checkbox"
+                              checked={selectedPedidoIds.has(ped.id)}
+                              onChange={() => toggleSelectPedido(ped.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                            />
+                          )}
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>{ped.pedido_visible}</span>
+                        </div>
                         <span style={{
                           fontSize: '0.725rem',
                           fontWeight: 600,
@@ -704,9 +946,20 @@ export const GestionDashboardPage: React.FC = () => {
                       >
                         {/* Top Bar: PED & Date */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
-                            {ped.pedido_visible}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                            {isAdmin && (
+                              <input
+                                type="checkbox"
+                                checked={selectedPedidoIds.has(ped.id)}
+                                onChange={() => toggleSelectPedido(ped.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                              />
+                            )}
+                            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
+                              {ped.pedido_visible}
+                            </span>
+                          </div>
                           <span style={{ fontSize: '0.725rem', color: '#64748b' }}>
                             {new Date(ped.created_at).toLocaleDateString()}
                           </span>
@@ -787,6 +1040,27 @@ export const GestionDashboardPage: React.FC = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 600 }}>
+                  {isAdmin && (
+                    <th style={{ padding: '0.75rem 0.5rem 0.75rem 1rem', width: '36px' }}>
+                      <input
+                        type="checkbox"
+                        checked={paginatedPedidos.length > 0 && paginatedPedidos.every(p => selectedPedidoIds.has(p.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const newSet = new Set(selectedPedidoIds);
+                            paginatedPedidos.forEach(p => newSet.add(p.id));
+                            setSelectedPedidoIds(newSet);
+                          } else {
+                            const newSet = new Set(selectedPedidoIds);
+                            paginatedPedidos.forEach(p => newSet.delete(p.id));
+                            setSelectedPedidoIds(newSet);
+                          }
+                        }}
+                        style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                        title="Seleccionar página visible"
+                      />
+                    </th>
+                  )}
                   <th style={{ padding: '0.75rem 1rem' }}>Código PED</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Categoría / Tipo</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Estado</th>
@@ -800,6 +1074,16 @@ export const GestionDashboardPage: React.FC = () => {
                   const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: '#334155', bg: '#f1f5f9' };
                   return (
                     <tr key={ped.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: ped.retrabajo_activo ? '#fffbeb' : undefined }}>
+                      {isAdmin && (
+                        <td style={{ padding: '0.75rem 0.5rem 0.75rem 1rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedPedidoIds.has(ped.id)}
+                            onChange={() => toggleSelectPedido(ped.id)}
+                            style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                          />
+                        </td>
+                      )}
                       <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f172a' }}>
                         {ped.pedido_visible}
                       </td>
@@ -838,7 +1122,7 @@ export const GestionDashboardPage: React.FC = () => {
                 })}
                 {paginatedPedidos.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <td colSpan={isAdmin ? 7 : 6} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
                       No se encontraron pedidos con los filtros seleccionados.
                     </td>
                   </tr>
@@ -874,6 +1158,16 @@ export const GestionDashboardPage: React.FC = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Bulk Delete Modal */}
+      {showDeleteModal && (
+        <EliminarPedidosModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          pedidoIds={Array.from(selectedPedidoIds)}
+          onSuccess={handleDeleteSuccess}
+        />
       )}
     </div>
   );

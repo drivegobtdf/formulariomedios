@@ -102,7 +102,7 @@ describe('InfoResponseForm Unit Tests', () => {
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(screen.getByText(/Formato no admitido\. Usá PDF, PNG, JPG\/JPEG, DOCX o ZIP\./i)).toBeInTheDocument();
+      expect(screen.getByText(/Formato no admitido/i)).toBeInTheDocument();
     });
   });
 });

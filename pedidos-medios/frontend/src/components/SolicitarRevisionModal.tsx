@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { solicitanteSubmitRevisionRequest } from '../services/trackingApi';
 import { uploadFileForRevision } from '../services/formApi';
 import { formatFileSize } from '../utils/formatUtils';
+import { ALLOWED_EXTENSIONS, validateFileMetadata } from '../validation/formValidation';
 
 interface SolicitarRevisionModalProps {
   isOpen: boolean;
@@ -26,8 +27,6 @@ interface RevisionFileItem {
   error?: string;
 }
 
-const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.zip'];
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 const MAX_FILES = 5;
 
 function getHumanErrorMessage(rawError?: string): string {
@@ -40,7 +39,7 @@ function getHumanErrorMessage(rawError?: string): string {
     return 'El archivo no pertenece a este pedido.';
   }
   if (lower.includes('formato no admitido') || lower.includes('validation_error')) {
-    return 'Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.';
+    return 'Formato no admitido. Usá documentos, imágenes, multimedia o archivos comprimidos permitidos.';
   }
   if (lower.includes('tamaño') || lower.includes('excede') || lower.includes('max_file')) {
     return 'El archivo supera el tamaño máximo permitido (25 MB).';
@@ -136,13 +135,9 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
 
     const newItems: RevisionFileItem[] = [];
     for (const f of chosenFiles) {
-      const ext = '.' + f.name.split('.').pop()?.toLowerCase();
-      if (!ALLOWED_EXTENSIONS.includes(ext)) {
-        setSubmitError('Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.');
-        return;
-      }
-      if (f.size > MAX_FILE_SIZE) {
-        setSubmitError(`El archivo "${f.name}" supera el tamaño máximo de 25 MB.`);
+      const valErr = validateFileMetadata({ name: f.name, size: f.size, type: f.type });
+      if (valErr) {
+        setSubmitError(valErr);
         return;
       }
       const itemUuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -376,7 +371,7 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
                   type="file"
                   id="revision-file-upload"
                   multiple
-                  accept=".pdf,.png,.jpg,.jpeg,.docx,.zip"
+                  accept={ALLOWED_EXTENSIONS.join(',')}
                   onChange={handleFileChange}
                   style={{ display: 'none' }}
                   disabled={files.length >= MAX_FILES || isSubmitting}
@@ -398,7 +393,7 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
                   📎 Seleccionar archivos de corrección
                 </label>
                 <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.725rem', color: '#64748b' }}>
-                  Hasta 5 archivos (máx. 25 MB c/u) · PDF, PNG, JPG/JPEG, DOCX, ZIP
+                  Hasta 5 archivos (máx. 25 MB c/u) · Documentos, imágenes, multimedia o comprimidos permitidos
                 </p>
               </div>
 
