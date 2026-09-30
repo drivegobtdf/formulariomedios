@@ -67,7 +67,7 @@ export function validateFileMetadata(file: { name: string; size: number; type: s
   const isAllowedMime = ALLOWED_MIME_TYPES.includes(file.type.toLowerCase()) || isAllowedExt;
 
   if (!isAllowedMime && !isAllowedExt) {
-    return `Tipo de archivo no permitido (.${ext.replace('.', '')}). Formatos permitidos: PDF, PNG, JPG, DOCX, ZIP.`;
+    return 'Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.';
   }
 
   return null;

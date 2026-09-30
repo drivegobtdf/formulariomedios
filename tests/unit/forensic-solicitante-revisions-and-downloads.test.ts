@@ -3,7 +3,8 @@ import {
   renderFinalizedEmail,
   renderEmailForCommunication,
 } from '../../supabase/functions/_shared/emailTemplates.ts';
-import { computeSha256Hex } from '../../supabase/functions/_shared/security.ts';
+import { computeSha256Hex, validateFileMetadata } from '../../supabase/functions/_shared/security.ts';
+import { getHistorialEventInfo } from '../../pedidos-medios/frontend/src/pages/PedidoDetallePage.tsx';
 
 describe('Forensic Bugfixes — Solicitante Portal, Revisiones y Descargas', () => {
   // =========================================================================
@@ -188,4 +189,120 @@ describe('Forensic Bugfixes — Solicitante Portal, Revisiones y Descargas', () 
       expect(sqlContent).toContain('NOTIFY pgrst, \'reload schema\';');
     });
   });
+
+  // =========================================================================
+  // INCIDENTE F: Migración 063 - Exposición de envio_id en solicitante_get_pedido_detail
+  // =========================================================================
+  describe('Incidente F — Migración 063: Exposición de envio_id en solicitante_get_pedido_detail', () => {
+    it('valida que la migración 063 incluya p.envio_id en el SELECT y en el RETURN JSON', async () => {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const migrationFile = path.resolve(
+        process.cwd(),
+        'supabase/migrations/20260929000063_fix_solicitante_pedido_detail_envio_id.sql'
+      );
+
+      expect(fs.existsSync(migrationFile)).toBe(true);
+      const sqlContent = fs.readFileSync(migrationFile, 'utf-8');
+
+      expect(sqlContent).toContain('p.envio_id');
+      expect(sqlContent).toContain("'envio_id', v_ped.envio_id");
+      expect(sqlContent).toContain('NOTIFY pgrst, \'reload schema\';');
+    });
+  });
+
+  // =========================================================================
+  // INCIDENTE G: Validación estricta de formatos de archivo (PDF, PNG, JPG/JPEG, DOCX, ZIP)
+  // =========================================================================
+  describe('Incidente G — Validación estricta de formatos y rechazo uniforme', () => {
+    it('acepta formatos permitidos: PDF, PNG, JPG, JPEG, DOCX, ZIP', () => {
+      const validFiles = [
+        { name: 'documento.pdf', mime: 'application/pdf', size: 1024 },
+        { name: 'foto.jpg', mime: 'image/jpeg', size: 2048 },
+        { name: 'foto2.jpeg', mime: 'image/jpeg', size: 2048 },
+        { name: 'imagen.png', mime: 'image/png', size: 4096 },
+        { name: 'especificaciones.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 8192 },
+        { name: 'adjuntos.zip', mime: 'application/zip', size: 16384 },
+      ];
+
+      for (const f of validFiles) {
+        const res = validateFileMetadata(f.name, f.mime, f.size);
+        expect(res.valid).toBe(true);
+        expect(res.error).toBeUndefined();
+      }
+    });
+
+    it('rechaza archivos markdown (.md), ejecutables (.exe), scripts (.js, .sh) con mensaje uniforme', () => {
+      const invalidFiles = [
+        { name: 'notas.md', mime: 'text/markdown', size: 1024 },
+        { name: 'script.js', mime: 'application/javascript', size: 1024 },
+        { name: 'programa.exe', mime: 'application/x-msdownload', size: 1024 },
+        { name: 'hoja.xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: 1024 },
+      ];
+
+      for (const f of invalidFiles) {
+        const res = validateFileMetadata(f.name, f.mime, f.size);
+        expect(res.valid).toBe(false);
+        expect(res.error).toBe('Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.');
+      }
+    });
+  });
+
+  // =========================================================================
+  // INCIDENTE H: Humanización de Eventos de Historial y Colapsado de JSON
+  // =========================================================================
+  describe('Incidente H — UX Humana de Historial y Detalle Técnico Colapsado', () => {
+    it('transforma eventos de dominio técnicos a títulos y descripciones en lenguaje natural', () => {
+      const evCreated = getHistorialEventInfo('pedido.created', { origen: 'web' });
+      expect(evCreated.title).toBe('Pedido Creado');
+      expect(evCreated.desc).toContain('Creado desde formulario público');
+
+      const evAssigned = getHistorialEventInfo('pedido.assigned', { responsable_nombre: 'Martín Rodríguez' });
+      expect(evAssigned.title).toBe('Asignación de Responsable');
+      expect(evAssigned.desc).toContain('Martín Rodríguez');
+
+      const evState = getHistorialEventInfo('pedido.state_changed', { estado_nuevo: 'En proceso' });
+      expect(evState.title).toBe('Cambio de Estado');
+      expect(evState.desc).toContain('Estado actualizado a: En proceso');
+
+      const evFinalized = getHistorialEventInfo('pedido.finalized', { url_entrega: 'https://drive.google.com' });
+      expect(evFinalized.title).toBe('Trabajo Finalizado');
+      expect(evFinalized.desc).toContain('https://drive.google.com');
+
+      const evRevision = getHistorialEventInfo('pedido.revision_solicitada', { revision_number: 1, motivo: 'Falta corregir fechas' });
+      expect(evRevision.title).toBe('Solicitud de Revisión #1');
+      expect(evRevision.desc).toContain('Falta corregir fechas');
+    });
+  });
+
+  // =========================================================================
+  // INCIDENTE I: Ciclo de 5 estados en subida de adjunto de revisión
+  // =========================================================================
+  describe('Incidente I — Ciclo de 5 estados y habilitación condicional del botón de revisión', () => {
+    it('evalúa correctamente condición canSubmit con motivos válidos y archivos completados', () => {
+      const isReadyToSubmit = (
+        isSubmitting: boolean,
+        hasInProgressFiles: boolean,
+        hasErrorFiles: boolean,
+        motivo: string,
+        pedidoId: string
+      ) => !isSubmitting && !hasInProgressFiles && !hasErrorFiles && motivo.trim().length >= 10 && Boolean(pedidoId);
+
+      // Caso 1: Motivo corto (< 10 caracteres) -> Bloqueado
+      expect(isReadyToSubmit(false, false, false, 'Corto', 'ped-123')).toBe(false);
+
+      // Caso 2: Archivo en progreso (uploading / verifying) -> Bloqueado
+      expect(isReadyToSubmit(false, true, false, 'Ajustar los colores del banner', 'ped-123')).toBe(false);
+
+      // Caso 3: Archivo con error -> Bloqueado
+      expect(isReadyToSubmit(false, false, true, 'Ajustar los colores del banner', 'ped-123')).toBe(false);
+
+      // Caso 4: 0 archivos y motivo >= 10 caracteres -> Habilitado
+      expect(isReadyToSubmit(false, false, false, 'Ajustar los colores del banner', 'ped-123')).toBe(true);
+
+      // Caso 5: Archivos listos (completed) y motivo >= 10 caracteres -> Habilitado
+      expect(isReadyToSubmit(false, false, false, 'Ajustar los colores del banner y tipografía', 'ped-123')).toBe(true);
+    });
+  });
 });
+

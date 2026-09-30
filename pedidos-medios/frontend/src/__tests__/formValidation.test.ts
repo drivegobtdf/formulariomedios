@@ -294,7 +294,7 @@ describe('Módulo de Validación del Formulario (Revision 3.0)', () => {
         type: 'application/x-msdownload',
       });
 
-      expect(err).toContain('Tipo de archivo no permitido');
+      expect(err).toContain('Formato no admitido');
     });
 
     it('debe aceptar formatos contractuales permitidos (PDF, PNG, JPG, DOCX, ZIP)', () => {

@@ -144,13 +144,13 @@ export function validateFileMetadata(
 
   const normalizedMime = mimeType.trim().toLowerCase();
   if (!ALLOWED_MIME_TYPES.has(normalizedMime)) {
-    return { valid: false, error: `Tipo MIME no permitido: ${mimeType}. Formatos válidos: PDF, PNG, JPG, DOCX, ZIP` };
+    return { valid: false, error: 'Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.' };
   }
 
   const parts = name.trim().split('.');
   const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : '';
   if (!ALLOWED_EXTENSIONS.has(ext)) {
-    return { valid: false, error: `Extensión de archivo .${ext} no permitida. Formatos válidos: PDF, PNG, JPG, DOCX, ZIP` };
+    return { valid: false, error: 'Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.' };
   }
 
   return { valid: true };

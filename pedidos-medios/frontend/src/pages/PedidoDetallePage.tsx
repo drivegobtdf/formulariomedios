@@ -21,31 +21,31 @@ import {
   fetchInternalUsers,
 } from '../services/gestionApi';
 import { InformacionEspecificaViewer } from '../components/gestion/InformacionEspecificaViewer';
-import { formatFileSize, formatArchivoEstado, formatLocalDate } from '../utils/formatUtils';
+import { formatFileSize, formatArchivoEstado, formatLocalDate, formatHistoryDate } from '../utils/formatUtils';
 import { WhatsAppPhoneLink } from '../components/WhatsAppPhoneLink';
 
-function getHistorialEventInfo(evento: string, payload: any) {
-  const norm = (evento || '').toLowerCase();
+export function getHistorialEventInfo(evento: string, payload: any) {
+  const norm = (evento || '').toLowerCase().replace(/[\.\_\s\-]+/g, '_');
 
-  if (norm.includes('revision') || norm === 'revision_solicitada') {
+  if (norm.includes('revision') || norm.includes('retrabajo')) {
     const revNum = payload?.revision_number ? ` #${payload.revision_number}` : '';
     const motivo = payload?.motivo ? ` · Motivo: "${payload.motivo}"` : '';
     return {
-      title: `Solicitud de Revisión / Retrabajo${revNum}`,
+      title: `Solicitud de Revisión${revNum}`,
       icon: '🔄',
       color: '#d97706',
       desc: `El solicitante devolvió el pedido para revisión${motivo}`,
     };
   }
-  if (norm.includes('cread') || norm === 'pedido_creado') {
+  if (norm.includes('created') || norm.includes('cread') || norm === 'pedido_creado' || norm === 'pedido_created') {
     return {
       title: 'Pedido Creado',
       icon: '📝',
       color: '#0284c7',
-      desc: payload?.origen ? `Creado desde formulario público (${payload.origen})` : 'Pedido registrado en el sistema',
+      desc: payload?.origen ? `Creado desde formulario público (${payload.origen})` : 'Pedido ingresado y registrado en el sistema',
     };
   }
-  if (norm.includes('estado') || norm === 'estado_cambiado') {
+  if (norm.includes('state_changed') || norm.includes('estado_cambiado') || norm.includes('state') || norm.includes('estado')) {
     const prev = payload?.estado_anterior || payload?.estado_previo || payload?.from;
     const next = payload?.estado_nuevo || payload?.estado_siguiente || payload?.to || payload?.estado;
     const motivo = payload?.motivo ? ` · Motivo: "${payload.motivo}"` : '';
@@ -53,52 +53,61 @@ function getHistorialEventInfo(evento: string, payload: any) {
       title: 'Cambio de Estado',
       icon: '🔄',
       color: '#d97706',
-      desc: prev && next ? `${prev} → ${next}${motivo}` : next ? `Estado actualizado a ${next}${motivo}` : `Estado actualizado${motivo}`,
+      desc: prev && next ? `${prev} → ${next}${motivo}` : next ? `Estado actualizado a: ${next}${motivo}` : `Estado actualizado${motivo}`,
     };
   }
-  if (norm.includes('responsable') || norm.includes('asign') || norm === 'responsable_asignado') {
+  if (norm.includes('assigned') || norm.includes('asign') || norm.includes('responsable')) {
     const resp = payload?.responsable_nombre || payload?.nuevo_responsable_nombre || payload?.responsable_user_id || 'Responsable asignado';
     return {
       title: 'Asignación de Responsable',
       icon: '👤',
       color: '#2563eb',
-      desc: `Asignado a: ${resp}`,
+      desc: `Pedido asignado al equipo técnico (${resp})`,
     };
   }
-  if (norm.includes('solicitud_informacion_creada') || (norm.includes('solicitud') && norm.includes('cread'))) {
+  if (norm.includes('info_request_responded') || (norm.includes('info') && norm.includes('respond')) || norm.includes('solicitud_informacion_respondida')) {
     return {
-      title: 'Solicitud de Información Emitida (48h)',
-      icon: '⚠️',
-      color: '#d97706',
-      desc: payload?.mensaje ? `Requerimiento: "${payload.mensaje}"` : 'Se solicitó información complementaria al solicitante',
-    };
-  }
-  if (norm.includes('solicitud_informacion_respondida') || (norm.includes('solicitud') && norm.includes('respond'))) {
-    return {
-      title: 'Solicitud de Información Respondida',
+      title: 'Información Complementaria Recibida',
       icon: '📬',
       color: '#16a34a',
       desc: payload?.respuesta_texto ? `Respuesta: "${payload.respuesta_texto}"` : 'El solicitante respondió al requerimiento de información',
     };
   }
-  if (norm.includes('finaliz') || norm === 'pedido_finalizado') {
+  if (norm.includes('info_request_created') || (norm.includes('info') && norm.includes('creat')) || norm.includes('solicitud_informacion_creada') || (norm.includes('solicitud') && norm.includes('info'))) {
     return {
-      title: 'Pedido Finalizado y Entregado',
-      icon: '✓',
-      color: '#15803d',
-      desc: payload?.url_entrega ? `Entrega registrada: ${payload.url_entrega}` : 'Pedido marcado como finalizado',
+      title: 'Solicitud de Información Emitida (48h)',
+      icon: '⚠️',
+      color: '#d97706',
+      desc: payload?.mensaje ? `Requerimiento: "${payload.mensaje}"` : 'Se emitió una solicitud de información complementaria al solicitante',
     };
   }
-  if (norm.includes('reabiert') || norm === 'pedido_reabierto' || norm === 'reapertura') {
+  if (norm.includes('finaliz') || norm.includes('entrega')) {
+    return {
+      title: 'Trabajo Finalizado',
+      icon: '✓',
+      color: '#15803d',
+      desc: payload?.url_entrega ? `Entrega registrada: ${payload.url_entrega}` : 'Trabajo finalizado y entrega de materiales disponible',
+    };
+  }
+  if (norm.includes('cancel')) {
+    const motivo = payload?.motivo ? ` · Motivo: "${payload.motivo}"` : '';
+    return {
+      title: 'Pedido Cancelado',
+      icon: '🛑',
+      color: '#dc2626',
+      desc: `El pedido fue cancelado${motivo}`,
+    };
+  }
+  if (norm.includes('reopen') || norm.includes('reabiert') || norm.includes('reapertura')) {
     const motivo = payload?.motivo ? ` · Motivo: "${payload.motivo}"` : '';
     return {
       title: 'Pedido Reabierto',
       icon: '↩️',
       color: '#ea580c',
-      desc: `El pedido fue reabierto para tareas adicionales${motivo}`,
+      desc: `Pedido reabierto para revisión${motivo}`,
     };
   }
-  if (norm.includes('nota') || norm === 'nota_creada') {
+  if (norm.includes('nota')) {
     return {
       title: 'Nota Interna Registrada',
       icon: '💬',
@@ -106,7 +115,7 @@ function getHistorialEventInfo(evento: string, payload: any) {
       desc: payload?.texto ? `"${payload.texto}"` : 'Nota agregada al expediente',
     };
   }
-  if (norm.includes('archivo') || norm === 'archivo_subido') {
+  if (norm.includes('archivo')) {
     return {
       title: 'Archivo Adjunto Registrado',
       icon: '📎',
@@ -115,11 +124,12 @@ function getHistorialEventInfo(evento: string, payload: any) {
     };
   }
 
+  // Fallback humanizado
   return {
-    title: evento.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+    title: (evento || '').replace(/[\._]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) || 'Evento Registrado',
     icon: '📌',
     color: '#0284c7',
-    desc: payload?.motivo || payload?.descripcion || payload?.mensaje || '',
+    desc: payload?.motivo || payload?.descripcion || payload?.mensaje || 'Actualización de seguimiento',
   };
 }
 
@@ -1825,7 +1835,7 @@ export const PedidoDetallePage: React.FC = () => {
                         <span>{eventInfo.title}</span>
                       </span>
                       <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        {new Date(h.created_at).toLocaleString('es-AR')}
+                        {formatHistoryDate(h.created_at)}
                       </span>
                     </div>
 

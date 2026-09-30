@@ -20,7 +20,7 @@ interface RevisionFileItem {
   file: File;
   name: string;
   size: number;
-  status: 'uploading' | 'completed' | 'error';
+  status: 'preparing' | 'uploading' | 'verifying' | 'completed' | 'error';
   progress: number;
   archivoId?: string;
   error?: string;
@@ -67,6 +67,11 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
             setFiles((prev) =>
               prev.map((f) => (f.id === fileItem.id ? { ...f, progress: pct } : f))
             );
+          },
+          (state) => {
+            setFiles((prev) =>
+              prev.map((f) => (f.id === fileItem.id ? { ...f, status: state } : f))
+            );
           }
         );
 
@@ -103,7 +108,7 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
     for (const f of chosenFiles) {
       const ext = '.' + f.name.split('.').pop()?.toLowerCase();
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
-        setSubmitError(`El archivo "${f.name}" tiene un formato no permitido. Formatos aceptados: PDF, PNG, JPG, DOCX, ZIP.`);
+        setSubmitError('Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.');
         return;
       }
       if (f.size > MAX_FILE_SIZE) {
@@ -115,8 +120,8 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
         file: f,
         name: f.name,
         size: f.size,
-        status: 'uploading',
-        progress: 10,
+        status: 'preparing',
+        progress: 5,
       };
       newItems.push(item);
     }
@@ -138,17 +143,19 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
   const handleRetryFile = (item: RevisionFileItem) => {
     setFiles((prev) =>
       prev.map((f) =>
-        f.id === item.id ? { ...f, status: 'uploading', progress: 10, error: undefined } : f
+        f.id === item.id ? { ...f, status: 'preparing', progress: 5, error: undefined } : f
       )
     );
     handleFileUpload(item);
   };
 
-  const hasUploadingFiles = files.some((f) => f.status === 'uploading');
+  const hasInProgressFiles = files.some(
+    (f) => f.status === 'preparing' || f.status === 'uploading' || f.status === 'verifying'
+  );
   const hasErrorFiles = files.some((f) => f.status === 'error');
   const canSubmit =
     !isSubmitting &&
-    !hasUploadingFiles &&
+    !hasInProgressFiles &&
     !hasErrorFiles &&
     motivo.trim().length >= 10 &&
     pedidoId;
@@ -388,13 +395,23 @@ export const SolicitarRevisionModal: React.FC<SolicitarRevisionModalProps> = ({
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {item.status === 'completed' && (
-                          <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.75rem' }}>✓ Listo</span>
+                        {item.status === 'preparing' && (
+                          <span style={{ color: '#0284c7', fontSize: '0.75rem', fontWeight: 600 }}>
+                            Preparando...
+                          </span>
                         )}
                         {item.status === 'uploading' && (
                           <span style={{ color: '#0284c7', fontSize: '0.75rem', fontWeight: 600 }}>
                             {item.progress > 0 ? `Subiendo (${item.progress}%)...` : 'Subiendo...'}
                           </span>
+                        )}
+                        {item.status === 'verifying' && (
+                          <span style={{ color: '#d97706', fontSize: '0.75rem', fontWeight: 600 }}>
+                            Verificando...
+                          </span>
+                        )}
+                        {item.status === 'completed' && (
+                          <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.75rem' }}>✓ Listo</span>
                         )}
                         {item.status === 'error' && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

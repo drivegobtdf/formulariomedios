@@ -67,7 +67,7 @@ export const InfoResponseForm: React.FC<InfoResponseFormProps> = ({
   const validateFile = (file: File): string | null => {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      return `Tipo de archivo no permitido: ${file.name}. Formatos admitidos: PDF, PNG, JPG, JPEG, DOCX, ZIP.`;
+      return 'Formato no admitido. Usá PDF, PNG, JPG/JPEG, DOCX o ZIP.';
     }
     if (file.size > MAX_FILE_SIZE) {
       return `El archivo "${file.name}" supera el tamaño máximo de 10 MB.`;

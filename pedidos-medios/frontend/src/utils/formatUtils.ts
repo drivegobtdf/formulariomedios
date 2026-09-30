@@ -75,3 +75,27 @@ export function formatArchivoEstado(estado: string | null | undefined): string {
       return estado;
   }
 }
+
+/**
+ * Formatea una fecha/hora de historial a representación local argentina (DD/MM/YYYY HH:mm)
+ * con fallback resiliente 'Fecha no disponible' en lugar de 'Invalid Date'.
+ */
+export function formatHistoryDate(rawDate?: string | null): string {
+  if (!rawDate) return 'Fecha no disponible';
+  const trimmed = typeof rawDate === 'string' ? rawDate.trim() : '';
+  if (!trimmed) return 'Fecha no disponible';
+  try {
+    const d = new Date(trimmed);
+    if (isNaN(d.getTime())) return 'Fecha no disponible';
+    return d.toLocaleString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return 'Fecha no disponible';
+  }
+}
+

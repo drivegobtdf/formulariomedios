@@ -147,6 +147,22 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
+    if (session_token && reservation.pedido_id) {
+      const { data: pedCheck } = await supabase
+        .from('pedidos')
+        .select('id, envios_formulario:envio_id(correo)')
+        .eq('id', reservation.pedido_id)
+        .maybeSingle();
+
+      const pedOwner = (pedCheck?.envios_formulario as any)?.correo;
+      if (!pedOwner || pedOwner.toLowerCase() !== solSession.correo.toLowerCase()) {
+        return new Response(
+          JSON.stringify({ error: 'FORBIDDEN', message: 'La reserva de carga no pertenece al solicitante autenticado' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     if (!targetSubmissionKey && reservation.solicitud_id) {
       targetSubmissionKey = `info_${reservation.solicitud_id}`;
     }

@@ -206,6 +206,30 @@ export default async function handler(req: Request): Promise<Response> {
             { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+
+        // Validación estricta de propiedad del PED o Envío asociado a la reserva
+        if (resData.pedido_id) {
+          const { data: pedCheck } = await supabase
+            .from('pedidos')
+            .select('id, envios_formulario:envio_id(correo)')
+            .eq('id', resData.pedido_id)
+            .maybeSingle();
+
+          const pedOwner = (pedCheck?.envios_formulario as any)?.correo;
+          if (!pedOwner || pedOwner.toLowerCase() !== solSession.correo.toLowerCase()) {
+            return new Response(
+              JSON.stringify({ error: 'FORBIDDEN', message: 'La reserva de carga no pertenece al solicitante autenticado' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+      }
+
+      if (resData.state === 'completed' || resData.state === 'verified') {
+        return new Response(
+          JSON.stringify({ error: 'RESERVATION_ALREADY_USED', message: 'La reserva de subida ya ha sido completada' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       if (!resData.drive_session_ref) {
@@ -313,7 +337,7 @@ export default async function handler(req: Request): Promise<Response> {
       targetExpiresAt = sol.expires_at;
       targetContexto = 'informacion_respuesta';
       targetSubmissionKey = `info_${sol.id}`;
-    } else if (session_token && (targets === 'revision_adjunto' || body.envio_id || body.contexto === 'revision' || body.solicitud_id)) {
+    } else if (session_token && (targets === 'revision_adjunto' || body.envio_id || body.pedido_id || body.pedido_ref || body.pedido_visible || body.contexto === 'revision' || body.solicitud_id)) {
       // 1B. Validación de sesión autenticada de solicitante
       const tokenHash = await computeSha256Hex(String(session_token).trim());
       let solSession: any = null;
@@ -371,23 +395,88 @@ export default async function handler(req: Request): Promise<Response> {
         targetContexto = 'informacion_respuesta';
         targetSubmissionKey = `info_${sol.id}`;
       } else {
+        // Flujo de revisión / adjuntos de solicitante
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const pedidoRef = (body.pedido_id || body.pedido_ref || body.pedido_visible || '').trim();
         const envioId = (body.envio_id || body.envioId || '').trim();
-        if (envioId) {
-          const { data: envData } = await supabase
-            .from('envios_formulario')
-            .select('id, correo')
-            .eq('id', envioId)
-            .maybeSingle();
-          if (!envData || envData.correo.toLowerCase() !== solSession.correo.toLowerCase()) {
+
+        let resolvedPedido: any = null;
+        let resolvedEnvioId: string | null = null;
+
+        if (pedidoRef) {
+          let pedQuery = supabase
+            .from('pedidos')
+            .select('id, envio_id, pedido_visible, envios_formulario:envio_id(correo)');
+          if (UUID_REGEX.test(pedidoRef)) {
+            pedQuery = pedQuery.eq('id', pedidoRef);
+          } else {
+            pedQuery = pedQuery.eq('pedido_visible', pedidoRef);
+          }
+          const { data: pedData } = await pedQuery.maybeSingle();
+          if (pedData) {
+            resolvedPedido = pedData;
+            resolvedEnvioId = pedData.envio_id;
+          }
+        }
+
+        if (!resolvedPedido && envioId) {
+          // Probar si envioId es el id de envios_formulario
+          if (UUID_REGEX.test(envioId)) {
+            const { data: envData } = await supabase
+              .from('envios_formulario')
+              .select('id, correo')
+              .eq('id', envioId)
+              .maybeSingle();
+            if (envData) {
+              resolvedEnvioId = envData.id;
+              if (envData.correo.toLowerCase() !== solSession.correo.toLowerCase()) {
+                return new Response(
+                  JSON.stringify({ error: 'FORBIDDEN', message: 'El envío no corresponde a la sesión del solicitante' }),
+                  { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+              }
+            }
+          }
+
+          // Si no coincidió con envios_formulario, probar si envioId era en realidad un pedido_id o pedido_visible
+          if (!resolvedEnvioId) {
+            let pedQuery = supabase
+              .from('pedidos')
+              .select('id, envio_id, pedido_visible, envios_formulario:envio_id(correo)');
+            if (UUID_REGEX.test(envioId)) {
+              pedQuery = pedQuery.eq('id', envioId);
+            } else {
+              pedQuery = pedQuery.eq('pedido_visible', envioId);
+            }
+            const { data: pedData } = await pedQuery.maybeSingle();
+            if (pedData) {
+              resolvedPedido = pedData;
+              resolvedEnvioId = pedData.envio_id;
+            }
+          }
+        }
+
+        if (resolvedPedido) {
+          const ownerEmail = (resolvedPedido.envios_formulario as any)?.correo;
+          if (!ownerEmail || ownerEmail.toLowerCase() !== solSession.correo.toLowerCase()) {
             return new Response(
-              JSON.stringify({ error: 'FORBIDDEN', message: 'El envío no corresponde a la sesión del solicitante' }),
+              JSON.stringify({ error: 'FORBIDDEN', message: 'El pedido no corresponde a la sesión del solicitante' }),
               { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
+          targetPedidoId = resolvedPedido.id;
         }
+
+        if (!targetPedidoId && !resolvedEnvioId) {
+          return new Response(
+            JSON.stringify({ error: 'FORBIDDEN', message: 'No se pudo verificar la pertenencia del pedido o envío al solicitante autenticado' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         targetExpiresAt = solSession.expires_at;
         targetContexto = 'revision';
-        targetSubmissionKey = envioId ? `rev_${envioId}` : `rev_${crypto.randomUUID()}`;
+        targetSubmissionKey = targetPedidoId ? `rev_ped_${targetPedidoId}` : `rev_env_${resolvedEnvioId}`;
       }
     } else {
       // 1C. Validación de sesión pública estándar

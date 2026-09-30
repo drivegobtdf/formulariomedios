@@ -401,12 +401,14 @@ export async function uploadFileForInfoResponse(
 
 export async function uploadFileForRevision(
   sessionToken: string,
-  envioId: string,
+  pedidoOrEnvioId: string,
   clientFileRef: string,
   file: File,
-  onProgress?: (percent: number) => void
+  onProgress?: (percent: number) => void,
+  onStateChange?: (state: 'preparing' | 'uploading' | 'verifying' | 'completed' | 'error') => void
 ): Promise<UploadResult> {
   const config = getPublicConfig();
+  onStateChange?.('preparing');
   if (onProgress) onProgress(5);
 
   const prepareUrl = `${config.supabaseUrl}/functions/v1/drive-upload-prepare`;
@@ -423,7 +425,9 @@ export async function uploadFileForRevision(
     headers: prepHeaders,
     body: JSON.stringify({
       session_token: sessionToken.trim(),
-      envio_id: envioId.trim(),
+      pedido_id: pedidoOrEnvioId.trim(),
+      envio_id: pedidoOrEnvioId.trim(),
+      contexto: 'revision',
       client_file_ref: clientFileRef,
       expected_name: file.name,
       expected_size: file.size,
@@ -433,11 +437,13 @@ export async function uploadFileForRevision(
   });
 
   if (!prepRes.ok) {
+    onStateChange?.('error');
     const prepErr = await prepRes.json().catch(() => ({}));
     throw new Error(prepErr.message || prepErr.error || `Error preparando subida de adjunto (${prepRes.status})`);
   }
 
   const prepData = await prepRes.json();
+  onStateChange?.('uploading');
   if (onProgress) onProgress(20);
 
   let driveFileId = prepData.drive_file_id || '';
@@ -449,44 +455,51 @@ export async function uploadFileForRevision(
 
   const isAuthorized = isOriginAuthorized(targetUploadUrl, config.supabaseUrl);
   if (!isAuthorized) {
+    onStateChange?.('error');
     throw new Error('SECURITY_ERROR: Destino de almacenamiento no autorizado. Transferencia cancelada.');
   }
 
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', targetUploadUrl);
-    
-    xhr.setRequestHeader('apikey', config.supabaseAnonKey);
-    xhr.setRequestHeader('Authorization', `Bearer ${config.supabaseAnonKey}`);
-    xhr.setRequestHeader('x-session-token', sessionToken.trim());
-    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', targetUploadUrl);
+      
+      xhr.setRequestHeader('apikey', config.supabaseAnonKey);
+      xhr.setRequestHeader('Authorization', `Bearer ${config.supabaseAnonKey}`);
+      xhr.setRequestHeader('x-session-token', sessionToken.trim());
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
 
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
-        const pct = Math.round(20 + (event.loaded / event.total) * 60);
-        onProgress(pct);
-      }
-    };
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          const pct = Math.round(20 + (event.loaded / event.total) * 60);
+          onProgress(pct);
+        }
+      };
 
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const res = JSON.parse(xhr.responseText);
-          if (res.drive_file_id) driveFileId = res.drive_file_id;
-        } catch {}
-        resolve();
-      } else {
-        reject(new Error(`Fallo en la transferencia de archivo al almacenamiento (${xhr.status}): ${xhr.responseText}`));
-      }
-    };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const res = JSON.parse(xhr.responseText);
+            if (res.drive_file_id) driveFileId = res.drive_file_id;
+          } catch {}
+          resolve();
+        } else {
+          reject(new Error(`Fallo en la transferencia de archivo al almacenamiento (${xhr.status}): ${xhr.responseText}`));
+        }
+      };
 
-    xhr.onerror = () => {
-      reject(new Error('Fallo de conexión en streaming hacia el relay de almacenamiento'));
-    };
+      xhr.onerror = () => {
+        reject(new Error('Fallo de conexión en streaming hacia el relay de almacenamiento'));
+      };
 
-    xhr.send(file);
-  });
+      xhr.send(file);
+    });
+  } catch (putErr) {
+    onStateChange?.('error');
+    throw putErr;
+  }
 
+  onStateChange?.('verifying');
   if (onProgress) onProgress(85);
 
   const completeUrl = `${config.supabaseUrl}/functions/v1/drive-upload-complete`;
@@ -502,11 +515,13 @@ export async function uploadFileForRevision(
   });
 
   if (!compRes.ok) {
+    onStateChange?.('error');
     const compErr = await compRes.json().catch(() => ({}));
     throw new Error(compErr.message || compErr.error || `Error verificando archivo en backend (${compRes.status})`);
   }
 
   const compData: UploadCompleteResponse = await compRes.json();
+  onStateChange?.('completed');
   if (onProgress) onProgress(100);
 
   return {

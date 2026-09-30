@@ -18,7 +18,7 @@ import {
 } from '../services/sessionStorageService';
 import { InfoResponseForm } from '../components/InfoResponseForm';
 import { SolicitarRevisionModal } from '../components/SolicitarRevisionModal';
-import { formatFileSize } from '../utils/formatUtils';
+import { formatFileSize, formatHistoryDate } from '../utils/formatUtils';
 
 interface UrlParamsResult {
   token: string | null;
@@ -75,19 +75,6 @@ function parseUrlParams(): UrlParamsResult {
     isMalformedOrEmpty,
     targetPedido: targetPed ? targetPed.trim() : null,
   };
-}
-
-function formatHistoryDate(rawDate?: string | null): string {
-  if (!rawDate) return 'Fecha no disponible';
-  const d = new Date(rawDate);
-  if (isNaN(d.getTime())) return 'Fecha no disponible';
-  return d.toLocaleString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 type ViewMode = 'INITIAL_EXCHANGE' | 'REQUEST_FORM' | 'AUTHENTICATED' | 'EXCHANGE_ERROR';
