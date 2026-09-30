@@ -14,7 +14,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization') || '';
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
 
     if (!token) {
@@ -33,7 +33,7 @@ serve(async (req: Request) => {
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData?.user) {
       return new Response(
-        JSON.stringify({ error: 'AUTH_INVALID', message: 'Sesión de usuario inválida o expirada' }),
+        JSON.stringify({ error: 'AUTH_INVALID', message: 'Tu sesión venció. Iniciá sesión nuevamente.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -115,11 +115,12 @@ serve(async (req: Request) => {
 
       const { data: previewData, error: previewErr } = await supabase.rpc('admin_pedidos_purge_preview', {
         p_pedido_ids: pedidoIds,
+        p_actor: actorDisplay,
       });
 
       if (previewErr) {
         return new Response(
-          JSON.stringify({ error: 'DB_ERROR', message: previewErr.message }),
+          JSON.stringify({ error: 'PREVIEW_ERROR', message: previewErr.message || 'Error al calcular preview de purga' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -130,8 +131,8 @@ serve(async (req: Request) => {
       });
     }
 
-    // 6. Acción PURGE (Saga Durable e Idempotente)
-    if (action === 'purge' || action === 'init') {
+    // 6. Acción PURGE / EXECUTE (Saga Durable e Idempotente)
+    if (action === 'purge' || action === 'execute' || action === 'init') {
       const idempotencyKey = (body.idempotency_key || `purge_${pedidoIds.sort().join('_').slice(0, 40)}_${Date.now()}`).trim();
 
       if (pedidoIds.length === 0 && !body.operation_id) {

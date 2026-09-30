@@ -1011,11 +1011,14 @@ export async function adminPreviewPurgePedidos(pedidoIds: string[]): Promise<Pur
   const supabase = getSupabaseClient();
   const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
   if (sessionErr || !sessionData.session?.access_token) {
-    throw new Error('Sesión no válida o expirada. Por favor inicie sesión nuevamente.');
+    throw new Error('Tu sesión venció. Iniciá sesión nuevamente.');
   }
 
   const { data, error } = await supabase.functions.invoke('admin-pedidos-purge', {
     body: { action: 'preview', pedido_ids: pedidoIds },
+    headers: {
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
   });
 
   if (error) {
@@ -1041,14 +1044,17 @@ export async function adminExecutePurgePedidos(
   const supabase = getSupabaseClient();
   const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
   if (sessionErr || !sessionData.session?.access_token) {
-    throw new Error('Sesión no válida o expirada. Por favor inicie sesión nuevamente.');
+    throw new Error('Tu sesión venció. Iniciá sesión nuevamente.');
   }
 
   const { data, error } = await supabase.functions.invoke('admin-pedidos-purge', {
     body: {
-      action: 'purge',
+      action: 'execute',
       pedido_ids: pedidoIds,
       idempotency_key: idempotencyKey,
+    },
+    headers: {
+      Authorization: `Bearer ${sessionData.session.access_token}`,
     },
   });
 
