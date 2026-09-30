@@ -1000,14 +1000,11 @@ export interface PurgePreviewResult {
 
 export interface PurgeExecutionResult {
   success: boolean;
+  operation_id?: string;
+  status?: string;
   deleted_count: number;
   pedidos_visibles: string[];
-  drive_cleanup?: {
-    files_attempted: number;
-    files_deleted: number;
-    folders_attempted: number;
-    folders_deleted: number;
-  };
+  message?: string;
 }
 
 export async function adminPreviewPurgePedidos(pedidoIds: string[]): Promise<PurgePreviewResult> {
@@ -1037,7 +1034,10 @@ export async function adminPreviewPurgePedidos(pedidoIds: string[]): Promise<Pur
   return data;
 }
 
-export async function adminExecutePurgePedidos(pedidoIds: string[]): Promise<PurgeExecutionResult> {
+export async function adminExecutePurgePedidos(
+  pedidoIds: string[],
+  idempotencyKey?: string
+): Promise<PurgeExecutionResult> {
   const supabase = getSupabaseClient();
   const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
   if (sessionErr || !sessionData.session?.access_token) {
@@ -1045,7 +1045,11 @@ export async function adminExecutePurgePedidos(pedidoIds: string[]): Promise<Pur
   }
 
   const { data, error } = await supabase.functions.invoke('admin-pedidos-purge', {
-    body: { action: 'purge', pedido_ids: pedidoIds },
+    body: {
+      action: 'purge',
+      pedido_ids: pedidoIds,
+      idempotency_key: idempotencyKey,
+    },
   });
 
   if (error) {

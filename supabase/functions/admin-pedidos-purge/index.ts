@@ -65,21 +65,54 @@ serve(async (req: Request) => {
     // 3. Procesar cuerpo del request
     const body = await req.json().catch(() => ({}));
     const action = body.action || 'preview';
+
+    // 4. Acción STATUS (Consultar estado de una operación por ID o IdempotencyKey)
+    if (action === 'status') {
+      const opId = body.operation_id;
+      const idempotencyKey = body.idempotency_key;
+
+      let query = supabase.from('admin_purge_operations').select('*, admin_purge_items(*)');
+      if (opId && UUID_REGEX.test(opId)) {
+        query = query.eq('id', opId);
+      } else if (idempotencyKey) {
+        query = query.eq('idempotency_key', idempotencyKey);
+      } else {
+        return new Response(
+          JSON.stringify({ error: 'VALIDATION_ERROR', message: 'Debe proveer operation_id o idempotency_key' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: opData, error: opErr } = await query.single();
+      if (opErr || !opData) {
+        return new Response(
+          JSON.stringify({ error: 'NOT_FOUND', message: 'Operación no encontrada' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(JSON.stringify(opData), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validación de pedido_ids para el resto de acciones
     const rawIds = Array.isArray(body.pedido_ids) ? body.pedido_ids : [];
     const pedidoIds = rawIds.filter((id: any) => typeof id === 'string' && UUID_REGEX.test(id.trim())).map((id: string) => id.trim());
 
-    if (pedidoIds.length === 0) {
-      return new Response(
-        JSON.stringify({
-          error: 'VALIDATION_ERROR',
-          message: 'Debe especificar al menos un pedido_id válido en formato UUID',
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // 4. Acción PREVIEW
+    // 5. Acción PREVIEW
     if (action === 'preview') {
+      if (pedidoIds.length === 0) {
+        return new Response(
+          JSON.stringify({
+            error: 'VALIDATION_ERROR',
+            message: 'Debe especificar al menos un pedido_id válido en formato UUID',
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { data: previewData, error: previewErr } = await supabase.rpc('admin_pedidos_purge_preview', {
         p_pedido_ids: pedidoIds,
       });
@@ -97,59 +130,136 @@ serve(async (req: Request) => {
       });
     }
 
-    // 5. Acción PURGE (Eliminación con limpieza de Google Drive y base de datos)
-    if (action === 'purge') {
-      // 5a. Obtener preview previo para recolectar recursos de Drive
-      const { data: previewData, error: previewErr } = await supabase.rpc('admin_pedidos_purge_preview', {
+    // 6. Acción PURGE (Saga Durable e Idempotente)
+    if (action === 'purge' || action === 'init') {
+      const idempotencyKey = (body.idempotency_key || `purge_${pedidoIds.sort().join('_').slice(0, 40)}_${Date.now()}`).trim();
+
+      if (pedidoIds.length === 0 && !body.operation_id) {
+        return new Response(
+          JSON.stringify({
+            error: 'VALIDATION_ERROR',
+            message: 'Debe especificar al menos un pedido_id válido',
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // 6a. Inicializar o recuperar la operación de purga en DB
+      const { data: initData, error: initErr } = await supabase.rpc('admin_purge_operation_init', {
         p_pedido_ids: pedidoIds,
+        p_idempotency_key: idempotencyKey,
+        p_actor: actorDisplay,
       });
 
-      if (previewErr) {
+      if (initErr) {
         return new Response(
-          JSON.stringify({ error: 'DB_ERROR', message: previewErr.message }),
+          JSON.stringify({ error: 'INIT_ERROR', message: initErr.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const driveFileIds: string[] = Array.isArray(previewData?.drive_file_ids) ? previewData.drive_file_ids : [];
-      const driveFolderIds: string[] = Array.isArray(previewData?.drive_folder_ids) ? previewData.drive_folder_ids : [];
+      const operationId = initData.operation_id;
+      const currentStatus = initData.status;
 
-      // 5b. Limpieza en Google Drive
+      // Si la operación ya fue completada anteriormente
+      if (currentStatus === 'completed') {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            status: 'completed',
+            operation_id: operationId,
+            deleted_count: initData.pedidos_count,
+            pedidos_visibles: initData.pedidos_visibles,
+            message: 'Operación ya completada previamente (idempotente)',
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Si solo se solicitó inicialización
+      if (action === 'init') {
+        return new Response(JSON.stringify(initData), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // 6b. FASE DRIVE: Limpieza durable con persistencia individual
       const adapter = getDriveAdapter();
-      const driveCleanupResults = {
-        files_attempted: driveFileIds.length,
-        files_deleted: 0,
-        folders_attempted: driveFolderIds.length,
-        folders_deleted: 0,
-      };
 
-      for (const fileId of driveFileIds) {
-        try {
-          const ok = await adapter.deleteItem(fileId);
-          if (ok) driveCleanupResults.files_deleted++;
-        } catch (e) {
-          console.warn(`[PURGE] No se pudo eliminar archivo Drive ${fileId}:`, e);
-        }
+      // Consultar items de Drive pendientes o fallidos para esta operación
+      const { data: driveItems, error: itemsErr } = await supabase
+        .from('admin_purge_items')
+        .select('*')
+        .eq('operation_id', operationId)
+        .in('item_type', ['drive_file', 'drive_folder'])
+        .in('status', ['pending', 'failed']);
+
+      if (itemsErr) {
+        return new Response(
+          JSON.stringify({ error: 'DB_ERROR', message: itemsErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      for (const folderId of driveFolderIds) {
-        try {
-          const ok = await adapter.deleteItem(folderId);
-          if (ok) driveCleanupResults.folders_deleted++;
-        } catch (e) {
-          console.warn(`[PURGE] No se pudo eliminar carpeta Drive ${folderId}:`, e);
+      const pendingItems = driveItems || [];
+
+      for (const item of pendingItems) {
+        let cleanupRes = await adapter.trashItem(item.target_id);
+
+        // Retry con backoff breve ante fallo 5xx/network
+        if (!cleanupRes.success && (!cleanupRes.httpStatus || cleanupRes.httpStatus >= 500)) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          cleanupRes = await adapter.trashItem(item.target_id);
         }
+
+        // Persistir el resultado individual del item inmediatamente en Postgres
+        await supabase.rpc('admin_purge_item_update', {
+          p_operation_id: operationId,
+          p_item_type: item.item_type,
+          p_target_id: item.target_id,
+          p_status: cleanupRes.status,
+          p_error: cleanupRes.error || null,
+        });
       }
 
-      // 5c. Ejecutar purga atómica en base de datos
+      // 6c. Evaluar fase Drive y transición de estado
+      const { data: stepDriveData, error: stepDriveErr } = await supabase.rpc('admin_purge_operation_step_drive', {
+        p_operation_id: operationId,
+      });
+
+      if (stepDriveErr) {
+        return new Response(
+          JSON.stringify({ error: 'SAGA_ERROR', message: stepDriveErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (stepDriveData.status !== 'processing_db') {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            status: stepDriveData.status,
+            operation_id: operationId,
+            message: `Atención: ${stepDriveData.pending_or_failed_drive_items} recursos de Google Drive no pudieron limpiarse. La purga de base de datos fue pausada para garantizar consistencia. Puede reintentar la operación.`,
+          }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // 6d. FASE POSTGRESQL: Purga atómica final vinculada a la operación autorizada
       const { data: purgeResult, error: purgeErr } = await supabase.rpc('admin_pedidos_purge', {
-        p_pedido_ids: pedidoIds,
+        p_operation_id: operationId,
         p_actor: actorDisplay,
       });
 
       if (purgeErr) {
         return new Response(
-          JSON.stringify({ error: 'DB_ERROR', message: purgeErr.message }),
+          JSON.stringify({
+            error: 'DB_PURGE_ERROR',
+            operation_id: operationId,
+            message: purgeErr.message,
+          }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -157,9 +267,10 @@ serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: true,
-          deleted_count: purgeResult?.deleted_count || 0,
-          pedidos_visibles: purgeResult?.pedidos_visibles || [],
-          drive_cleanup: driveCleanupResults,
+          status: 'completed',
+          operation_id: operationId,
+          deleted_count: purgeResult.deleted_count,
+          pedidos_visibles: purgeResult.pedidos_visibles,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -171,7 +282,7 @@ serve(async (req: Request) => {
     );
   } catch (err: any) {
     return new Response(
-      JSON.stringify({ error: 'INTERNAL_ERROR', message: err.message || 'Error interno del servidor' }),
+      JSON.stringify({ error: 'INTERNAL_ERROR', message: err.message || 'Error inesperado del servidor' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

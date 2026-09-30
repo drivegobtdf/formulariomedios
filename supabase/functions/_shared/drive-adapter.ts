@@ -33,6 +33,13 @@ export interface FileDownloadStreamResult {
   name: string;
 }
 
+export interface DriveItemCleanupResult {
+  success: boolean;
+  status: 'deleted' | 'already_missing' | 'failed';
+  httpStatus?: number;
+  error?: string;
+}
+
 export interface DriveAdapter {
   getAccessToken(): Promise<string>;
   ensureRootFolder(folderName?: string): Promise<string>;
@@ -58,6 +65,7 @@ export interface DriveAdapter {
   ): Promise<FileVerificationResult>;
   downloadFileStream(fileId: string): Promise<FileDownloadStreamResult>;
   deleteItem(fileOrFolderId: string): Promise<boolean>;
+  trashItem(fileOrFolderId: string): Promise<DriveItemCleanupResult>;
 }
 
 /**
@@ -452,23 +460,52 @@ export class GoogleDriveAdapter implements DriveAdapter {
   }
 
   /**
+   * Mueve un archivo o carpeta a la papelera de Google Drive de forma segura (recuperable)
+   */
+  async trashItem(fileOrFolderId: string): Promise<DriveItemCleanupResult> {
+    if (!fileOrFolderId || !fileOrFolderId.trim()) {
+      return { success: true, status: 'already_missing' };
+    }
+    const id = fileOrFolderId.trim();
+    try {
+      const token = await this.getAccessToken();
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?supportsAllDrives=true`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ trashed: true }),
+      });
+
+      if (res.status === 200) {
+        return { success: true, status: 'deleted', httpStatus: 200 };
+      }
+      if (res.status === 404) {
+        return { success: true, status: 'already_missing', httpStatus: 404 };
+      }
+      const errText = await res.text().catch(() => '');
+      return {
+        success: false,
+        status: 'failed',
+        httpStatus: res.status,
+        error: `Drive trash HTTP ${res.status}: ${errText.slice(0, 300)}`,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        status: 'failed',
+        error: err.message || 'Error de conexión con Google Drive',
+      };
+    }
+  }
+
+  /**
    * Elimina un archivo o carpeta en Google Drive de forma idempotente
    */
   async deleteItem(fileOrFolderId: string): Promise<boolean> {
-    if (!fileOrFolderId || !fileOrFolderId.trim()) return false;
-    try {
-      const token = await this.getAccessToken();
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileOrFolderId.trim())}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 204 || res.status === 200 || res.status === 404) {
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    }
+    const res = await this.trashItem(fileOrFolderId);
+    return res.success;
   }
 }
 
@@ -659,9 +696,21 @@ export class MockDriveAdapter implements DriveAdapter {
     };
   }
 
+  async trashItem(fileOrFolderId: string): Promise<DriveItemCleanupResult> {
+    if (!fileOrFolderId || !fileOrFolderId.trim()) {
+      return { success: true, status: 'already_missing' };
+    }
+    const id = fileOrFolderId.trim();
+    if (this.inMemoryFiles.has(id)) {
+      this.inMemoryFiles.delete(id);
+      return { success: true, status: 'deleted', httpStatus: 200 };
+    }
+    return { success: true, status: 'already_missing', httpStatus: 404 };
+  }
+
   async deleteItem(fileOrFolderId: string): Promise<boolean> {
-    this.inMemoryFiles.delete(fileOrFolderId);
-    return true;
+    const res = await this.trashItem(fileOrFolderId);
+    return res.success;
   }
 }
 
