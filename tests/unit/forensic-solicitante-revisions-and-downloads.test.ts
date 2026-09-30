@@ -304,5 +304,25 @@ describe('Forensic Bugfixes — Solicitante Portal, Revisiones y Descargas', () 
       expect(isReadyToSubmit(false, false, false, 'Ajustar los colores del banner y tipografía', 'ped-123')).toBe(true);
     });
   });
+
+  // =========================================================================
+  // INCIDENTE J: Migración 064 - Contexto 'revision' en archivos
+  // =========================================================================
+  describe('Incidente J — Migración 064: Soporte de contexto "revision" en tabla archivos', () => {
+    it('valida que la migración 064 contenga el contexto "revision" en el check constraint', async () => {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const migrationFile = path.resolve(
+        process.cwd(),
+        'supabase/migrations/20260930000064_allow_revision_context_in_archivos.sql'
+      );
+
+      expect(fs.existsSync(migrationFile)).toBe(true);
+      const sqlContent = fs.readFileSync(migrationFile, 'utf-8');
+
+      expect(sqlContent).toContain("CHECK (contexto IN ('solicitud', 'informacion_respuesta', 'interno', 'entrega', 'revision'))");
+      expect(sqlContent).toContain('NOTIFY pgrst, \'reload schema\';');
+    });
+  });
 });
 
