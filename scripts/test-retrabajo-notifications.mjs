@@ -70,27 +70,22 @@ async function callRpc(rpcName, params) {
 }
 
 async function run() {
-  console.log('=== INICIANDO PRUEBAS DE RESOLUCIÓN DE DESTINATARIO DE RETRABAJO EN TEST ===');
+  console.log('=== VERIFICACIÓN DE REGLAS DE ROLES OPERATIVOS PARA RETRABAJO EN TEST ===');
   console.log(`Target: ${SUPABASE_URL}`);
 
-  // 1. Obtener dos usuarios aprobados de usuarios_acceso
-  const approvedUsers = await queryRest('usuarios_acceso?select=user_id,nombre,apellido,app_role,estado_acceso&estado_acceso=eq.aprobado&limit=5');
-  console.log(`Usuarios aprobados encontrados: ${approvedUsers.length}`);
-  if (approvedUsers.length < 1) {
-    throw new Error('Se requiere al menos 1 usuario aprobado en TEST');
+  // 1. Obtener usuarios con roles específicos
+  const adminUsers = await queryRest('usuarios_acceso?select=user_id,nombre,apellido,app_role,estado_acceso&estado_acceso=eq.aprobado&app_role=eq.administrador&limit=1');
+  const observadorUsers = await queryRest('usuarios_acceso?select=user_id,nombre,apellido,app_role,estado_acceso&estado_acceso=eq.aprobado&app_role=eq.observador&limit=1');
+
+  if (adminUsers.length === 0 || observadorUsers.length === 0) {
+    throw new Error('Se requiere al menos 1 usuario administrador y 1 usuario observador en TEST');
   }
 
-  const userA = approvedUsers[0];
-  const userB = approvedUsers.length > 1 ? approvedUsers[1] : approvedUsers[0];
+  const userAdmin = adminUsers[0];
+  const userObservador = observadorUsers[0];
 
-  // Obtener emails de auth.users usando query RPC o auth admin
-  const userAuths = await queryRest('usuarios_acceso?select=user_id,auth_user:auth_users(email)&limit=5').catch(async () => {
-    // Si no se puede por JOIN directo, consultar individualmente o simular
-    return [];
-  });
-
-  console.log(`User A (Responsable): ${userA.user_id} (${userA.nombre} ${userA.apellido})`);
-  console.log(`User B (Entregador): ${userB.user_id} (${userB.nombre} ${userB.apellido})`);
+  console.log(`Usuario Admin (Operativo): ${userAdmin.user_id} (${userAdmin.nombre} ${userAdmin.apellido}, rol: ${userAdmin.app_role})`);
+  console.log(`Usuario Observador (Solo Lectura): ${userObservador.user_id} (${userObservador.nombre} ${userObservador.apellido}, rol: ${userObservador.app_role})`);
 
   // Crear token de sesión para un solicitante de prueba
   const testSolicitanteEmail = `test_solicitante_${Date.now()}@tdf.gob.ar`;
@@ -114,9 +109,10 @@ async function run() {
   const tipoId = tipos[0]?.id;
 
   // ---------------------------------------------------------------------------
-  // CASO 1: entregado_por = User B, responsable = User A -> Destinatario debe ser User B
+  // CASO 1: entregado_por = User Admin, responsable = User Observador
+  // Regla 1: entregado_por es admin aprobado -> Notificación va a User Admin
   // ---------------------------------------------------------------------------
-  console.log('\n--- CASO 1: entregado_por = User B, responsable = User A ---');
+  console.log('\n--- CASO 1: entregado_por = Admin, responsable = Observador ---');
   const envio1Id = crypto.randomUUID();
   const submissionKey1 = crypto.randomUUID();
   await queryRest('envios_formulario', {
@@ -149,7 +145,7 @@ async function run() {
       categoria_id: categoriaId,
       tipo_servicio_id: tipoId,
       estado: 'Finalizado',
-      responsable_user_id: userA.user_id,
+      responsable_user_id: userObservador.user_id,
       retrabajo_activo: false,
       version: 1,
     }),
@@ -163,12 +159,11 @@ async function run() {
       pedido_id: pedido1Id,
       version: 1,
       es_vigente: true,
-      entregado_por: userB.user_id,
+      entregado_por: userAdmin.user_id,
       enlace_externo: 'https://ejemplo.tdf.gob.ar/entrega1',
     }),
   });
 
-  // Invocar pedido_request_revision
   const result1 = await callRpc('pedido_request_revision', {
     p_session_token: sessionToken,
     p_pedido_id: pedido1Id,
@@ -177,7 +172,6 @@ async function run() {
   });
   console.log('Resultado RPC Caso 1:', result1);
 
-  // Verificar comunicaciones encoladas
   const comms1 = await queryRest(`comunicaciones_pedido?pedido_id=eq.${pedido1Id}&order=created_at.asc`);
   console.log(`Comunicaciones generadas Caso 1 (${comms1.length}):`);
   for (const c of comms1) {
@@ -186,14 +180,15 @@ async function run() {
 
   const teamComm1 = comms1.find((c) => c.tipo_comunicacion === 'pedido_retrabajo_solicitado');
   if (!teamComm1) {
-    throw new Error('Caso 1 FALLÓ: No se encoló pedido_retrabajo_solicitado');
+    throw new Error('Caso 1 FALLÓ: No se encoló pedido_retrabajo_solicitado para el entregador admin');
   }
-  console.log('✓ Caso 1 PASÓ: Se encoló notificación a entregador correctamente.');
+  console.log('✓ Caso 1 PASÓ: Notificación enviada correctamente al entregador operativo (admin).');
 
   // ---------------------------------------------------------------------------
-  // CASO 2: entregado_por = NULL, responsable = User A -> Fallback a User A
+  // CASO 2: entregado_por = Observador (no operativo), responsable = Admin (operativo)
+  // Regla 2: entregado_por es observador -> se ignora -> fallback a responsable admin
   // ---------------------------------------------------------------------------
-  console.log('\n--- CASO 2: entregado_por = NULL, responsable = User A ---');
+  console.log('\n--- CASO 2: entregado_por = Observador, responsable = Admin ---');
   const envio2Id = crypto.randomUUID();
   const submissionKey2 = crypto.randomUUID();
   await queryRest('envios_formulario', {
@@ -226,7 +221,7 @@ async function run() {
       categoria_id: categoriaId,
       tipo_servicio_id: tipoId,
       estado: 'Finalizado',
-      responsable_user_id: userA.user_id,
+      responsable_user_id: userAdmin.user_id,
       retrabajo_activo: false,
       version: 1,
     }),
@@ -240,7 +235,7 @@ async function run() {
       pedido_id: pedido2Id,
       version: 1,
       es_vigente: true,
-      entregado_por: null, // entregado_por es NULL
+      entregado_por: userObservador.user_id, // Observador!
       enlace_externo: 'https://ejemplo.tdf.gob.ar/entrega2',
     }),
   });
@@ -261,14 +256,18 @@ async function run() {
 
   const teamComm2 = comms2.find((c) => c.tipo_comunicacion === 'pedido_retrabajo_solicitado');
   if (!teamComm2) {
-    throw new Error('Caso 2 FALLÓ: No se encoló pedido_retrabajo_solicitado con fallback a responsable');
+    throw new Error('Caso 2 FALLÓ: No se encoló pedido_retrabajo_solicitado con fallback al responsable admin');
   }
-  console.log('✓ Caso 2 PASÓ: Se encoló notificación a responsable_user_id por fallback.');
+  if (teamComm2.payload.responsable_id === userObservador.user_id) {
+    throw new Error('Caso 2 FALLÓ: La notificación se envió erróneamente al observador en vez del admin');
+  }
+  console.log('✓ Caso 2 PASÓ: Observador ignorado exitosamente; fallback ejecutado hacia el responsable admin.');
 
   // ---------------------------------------------------------------------------
-  // CASO 3: entregado_por = Dummy ID (no aprobado), responsable = User A -> Fallback a User A
+  // CASO 3: entregado_por = Observador, responsable = Observador (Sin destinatario operativo)
+  // Regla 3: No bloquear revisión, no enviar correo interno, registrar en auditoría
   // ---------------------------------------------------------------------------
-  console.log('\n--- CASO 3: entregado_por = Dummy ID / Revocado, responsable = User A ---');
+  console.log('\n--- CASO 3: entregado_por = Observador, responsable = Observador (Sin Operativo) ---');
   const envio3Id = crypto.randomUUID();
   const submissionKey3 = crypto.randomUUID();
   await queryRest('envios_formulario', {
@@ -301,13 +300,12 @@ async function run() {
       categoria_id: categoriaId,
       tipo_servicio_id: tipoId,
       estado: 'Finalizado',
-      responsable_user_id: userA.user_id,
+      responsable_user_id: userObservador.user_id, // Observador!
       retrabajo_activo: false,
       version: 1,
     }),
   });
 
-  const dummyUserId = crypto.randomUUID();
   const entrega3Id = crypto.randomUUID();
   await queryRest('entregas_pedido', {
     method: 'POST',
@@ -316,7 +314,7 @@ async function run() {
       pedido_id: pedido3Id,
       version: 1,
       es_vigente: true,
-      entregado_por: null, // Si dummyUserId no está en auth.users por FK, usamos null o un usuario no aprobado
+      entregado_por: userObservador.user_id, // Observador!
       enlace_externo: 'https://ejemplo.tdf.gob.ar/entrega3',
     }),
   });
@@ -328,6 +326,9 @@ async function run() {
     p_archivos_ids: [],
   });
   console.log('Resultado RPC Caso 3:', result3);
+  if (!result3.success) {
+    throw new Error('Caso 3 FALLÓ: La revisión fue bloqueada indebidamente');
+  }
 
   const comms3 = await queryRest(`comunicaciones_pedido?pedido_id=eq.${pedido3Id}&order=created_at.asc`);
   console.log(`Comunicaciones generadas Caso 3 (${comms3.length}):`);
@@ -336,18 +337,22 @@ async function run() {
   }
 
   const teamComm3 = comms3.find((c) => c.tipo_comunicacion === 'pedido_retrabajo_solicitado');
-  if (!teamComm3) {
-    throw new Error('Caso 3 FALLÓ: No se encoló pedido_retrabajo_solicitado con fallback a responsable cuando entregado_por no existe/está revocado');
+  if (teamComm3) {
+    throw new Error('Caso 3 FALLÓ: Se generó erróneamente un correo de equipo a pesar de no haber destinatario operativo');
   }
-  console.log('✓ Caso 3 PASÓ: Resiliencia demostrada ante entregador no aprobado, fallback ejecutado con éxito.');
 
-  // ---------------------------------------------------------------------------
-  // CASO 4: Verificación de Despachador de Comunicaciones (Plantilla y Render)
-  // ---------------------------------------------------------------------------
-  console.log('\n--- CASO 4: Verificación de Despachador y Plantilla de Email ---');
-  // Consultar la comunicación generada en Caso 1
-  const outboxItem = comms1.find((c) => c.tipo_comunicacion === 'pedido_retrabajo_solicitado');
-  console.log('Outbox Payload para pedido_retrabajo_solicitado:', JSON.stringify(outboxItem.payload, null, 2));
+  const solComm3 = comms3.find((c) => c.tipo_comunicacion === 'revision_solicitada');
+  if (!solComm3) {
+    throw new Error('Caso 3 FALLÓ: No se generó la confirmación para el solicitante');
+  }
+
+  // Verificar que se registró en audit_log
+  const auditEntries = await queryRest(`audit_log?recurso_id=eq.${pedido3Id}&accion=eq.revision_team_notification_skipped`);
+  console.log(`Entradas de auditoría registradas (${auditEntries.length}):`, auditEntries[0]?.metadata);
+  if (auditEntries.length === 0) {
+    throw new Error('Caso 3 FALLÓ: No se registró el evento revision_team_notification_skipped en audit_log');
+  }
+  console.log('✓ Caso 3 PASÓ: Revisión procesada exitosamente sin bloquear, sin correo a observadores y con auditoría registrada.');
 
   // Limpieza de fixtures de prueba
   console.log('\n--- LIMPIEZA DE FIXTURES DE PRUEBA ---');
@@ -360,7 +365,7 @@ async function run() {
   await queryRest(`solicitante_sesiones?session_token_hash=eq.${tokenHash}`, { method: 'DELETE' }).catch(() => {});
 
   console.log('✓ Limpieza completada con éxito.');
-  console.log('\n=== TODAS LAS PRUEBAS DE INTEGRACIÓN EN TEST COMPLETADAS EXITOSAMENTE ===');
+  console.log('\n=== TODAS LAS PRUEBAS DE RESOLUCIÓN DE ROLES COMPLETADAS EXITOSAMENTE ===');
 }
 
 run().catch((err) => {
