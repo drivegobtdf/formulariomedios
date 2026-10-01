@@ -12,6 +12,7 @@ import { GestionDashboardPage } from '../pages/GestionDashboardPage';
 import { PedidoDetallePage } from '../pages/PedidoDetallePage';
 import { UsuariosAdminPage } from '../pages/UsuariosAdminPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { PrivacyPage } from '../pages/PrivacyPage';
 import { ConfirmarEmailPage, readAuthReturn } from '../pages/ConfirmarEmailPage';
 import { getPublicConfig } from '../services/config';
 
@@ -35,6 +36,7 @@ const RouterContent: React.FC = () => {
         <Route path="seguimiento" element={<MisSolicitudesPage />} />
         <Route path="seguimiento-legacy" element={<SeguimientoPage />} />
         <Route path="solicitud-informacion" element={<SolicitudInformacionPage />} />
+        <Route path="privacidad" element={<PrivacyPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="solicitar-acceso" element={<SolicitarAccesoPage />} />
         <Route path="confirmar-email" element={<ConfirmarEmailPage />} />

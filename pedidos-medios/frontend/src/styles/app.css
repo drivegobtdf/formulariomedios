@@ -1825,4 +1825,180 @@
   background-color: #fffdf5;
 }
 
+/* ==========================================================================
+   Footer Institucional Discreto
+   ========================================================================== */
+.pedidos-app .pedidos-footer {
+  margin-top: 3rem;
+  padding: 1.25rem 0.5rem 0.75rem;
+  border-top: 1px solid var(--pedidos-brand-border, #E5E7EB);
+  font-size: 0.85rem;
+  color: var(--pedidos-brand-text-muted, #6B7280);
+}
+
+.pedidos-app .pedidos-footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.pedidos-app .pedidos-footer-brand {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  font-weight: 500;
+}
+
+.pedidos-app .pedidos-footer-sep {
+  color: #9CA3AF;
+}
+
+.pedidos-app .pedidos-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pedidos-app .pedidos-footer-link {
+  color: var(--pedidos-brand-secondary, #0B4F8A);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+
+.pedidos-app .pedidos-footer-link:hover,
+.pedidos-app .pedidos-footer-link.active {
+  color: var(--pedidos-brand-primary, #003366);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Página de Política de Privacidad
+   ========================================================================== */
+.pedidos-app .pedidos-privacy-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0.5rem 0 2rem;
+}
+
+.pedidos-app .pedidos-privacy-card {
+  background-color: var(--pedidos-brand-card, #FFFFFF);
+  border: 1px solid var(--pedidos-brand-border, #E5E7EB);
+  border-radius: var(--pedidos-radius-lg, 0.75rem);
+  box-shadow: var(--pedidos-shadow-md);
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+}
+
+.pedidos-app .pedidos-privacy-header {
+  border-bottom: 2px solid var(--pedidos-brand-border, #E5E7EB);
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.pedidos-app .pedidos-privacy-back-nav {
+  margin-bottom: 1rem;
+}
+
+.pedidos-app .pedidos-privacy-back-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--pedidos-brand-secondary, #0B4F8A);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.pedidos-app .pedidos-privacy-back-link:hover {
+  color: var(--pedidos-brand-primary, #003366);
+  text-decoration: underline;
+}
+
+.pedidos-app .pedidos-privacy-title {
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 800;
+  color: var(--pedidos-brand-primary, #003366);
+  margin: 0.25rem 0 0.5rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.pedidos-app .pedidos-privacy-subtitle {
+  font-size: 1.05rem;
+  color: var(--pedidos-brand-text-muted, #6B7280);
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+.pedidos-app .pedidos-privacy-date {
+  font-size: 0.875rem;
+  color: #64748B;
+  margin: 0;
+}
+
+.pedidos-app .pedidos-privacy-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.pedidos-app .pedidos-privacy-section h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--pedidos-brand-primary, #003366);
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.pedidos-app .pedidos-privacy-section p {
+  font-size: 0.975rem;
+  color: var(--pedidos-brand-text, #1F2937);
+  line-height: 1.65;
+  margin: 0 0 0.75rem;
+}
+
+.pedidos-app .pedidos-privacy-section ul {
+  margin: 0.5rem 0 0.75rem 1.25rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pedidos-app .pedidos-privacy-section li {
+  font-size: 0.95rem;
+  color: var(--pedidos-brand-text, #1F2937);
+  line-height: 1.55;
+}
+
+.pedidos-app .pedidos-privacy-section code {
+  background-color: #F1F5F9;
+  color: #0F172A;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.pedidos-app .pedidos-privacy-footer-nav {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--pedidos-brand-border, #E5E7EB);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .pedidos-app .pedidos-footer-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+
 

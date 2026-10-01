@@ -180,6 +180,21 @@ export const Layout: React.FC = () => {
       <main className="pedidos-content">
         <Outlet />
       </main>
+
+      <footer className="pedidos-footer">
+        <div className="pedidos-footer-content">
+          <div className="pedidos-footer-brand">
+            <span>Sistema PEDIDOS — Secretaría de Medios</span>
+            <span className="pedidos-footer-sep">•</span>
+            <span>Gobierno de Tierra del Fuego AIAS</span>
+          </div>
+          <div className="pedidos-footer-links">
+            <NavLink to="/privacidad" className="pedidos-footer-link">
+              Política de Privacidad
+            </NavLink>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
