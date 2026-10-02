@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { getPublicConfig } from '../services/config';
 import { useAuth } from '../auth/AuthContext';
@@ -11,21 +11,42 @@ export const Layout: React.FC = () => {
   const { user, isAdmin, signOut } = useAuth();
   const isProductionPreview = config.uiMode === 'production-preview' || config.environment === 'production';
 
-  const isInternalPath =
-    location.pathname.includes('/gestion') ||
-    location.pathname.includes('/usuarios') ||
-    location.pathname.includes('/login') ||
-    location.pathname.includes('/solicitar-acceso') ||
-    location.pathname.includes('/pedido/');
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('pedidos:theme');
+    return saved === 'dark' ? 'dark' : 'light';
+  });
+
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      localStorage.setItem('pedidos:theme', next);
+      return next;
+    });
+  };
+
+  const isInternalManagementPath =
+    location.pathname.startsWith('/gestion') ||
+    location.pathname.startsWith('/usuarios') ||
+    location.pathname.startsWith('/pedido/');
+
+  const isAuthPath =
+    location.pathname.startsWith('/login') ||
+    location.pathname.startsWith('/solicitar-acceso') ||
+    location.pathname.startsWith('/confirmar-email');
+
+  const isInternalPath = isInternalManagementPath || isAuthPath;
 
   const isMisSolicitudes =
-    location.pathname.includes('/mis-solicitudes') ||
-    location.pathname.includes('/seguimiento') ||
-    location.pathname.includes('/solicitud-informacion');
+    location.pathname.startsWith('/mis-solicitudes') ||
+    location.pathname.startsWith('/seguimiento') ||
+    location.pathname.startsWith('/solicitud-informacion');
 
   const isPublicFormPage =
     location.pathname === '/' ||
-    location.pathname === '';
+    location.pathname === '' ||
+    location.pathname.startsWith('/nueva-solicitud') ||
+    location.pathname.startsWith('/solicitud-recibida') ||
+    location.pathname.startsWith('/privacidad');
 
   const containerClass = isInternalPath
     ? 'pedidos-app pedidos-app-wide'
@@ -39,7 +60,7 @@ export const Layout: React.FC = () => {
   };
 
   return (
-    <div className={containerClass}>
+    <div className={containerClass} data-theme={isInternalManagementPath ? theme : undefined}>
       <header className="pedidos-header">
         {isProductionPreview ? (
           /* Cabecera Institucional Limpia (Modo Production Preview) */
@@ -54,6 +75,17 @@ export const Layout: React.FC = () => {
               </NavLink>
 
               <div className="pedidos-header-actions">
+                {isInternalManagementPath && (
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="pedidos-btn-theme-toggle"
+                    aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                    title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                  >
+                    {theme === 'dark' ? '☀ Modo Claro' : '🌙 Modo Oscuro'}
+                  </button>
+                )}
                 {isInternalPath && user ? (
                   <div className="pedidos-user-badge-group">
                     <span className="pedidos-user-name">
@@ -118,42 +150,55 @@ export const Layout: React.FC = () => {
                 />
               </NavLink>
 
-              {user && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
-                  <span style={{ color: '#334155', fontWeight: 500 }}>
-                    👤 {user.nombre} {user.apellido}
-                  </span>
-                  <span
-                    style={{
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      backgroundColor: isAdmin ? '#fef3c7' : user.appRole === 'equipo' ? '#e0e7ff' : '#f1f5f9',
-                      color: isAdmin ? '#b45309' : user.appRole === 'equipo' ? '#4338ca' : '#475569',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {user.appRole}
-                  </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {isInternalManagementPath && (
                   <button
                     type="button"
-                    onClick={handleLogout}
-                    style={{
-                      padding: '0.3rem 0.6rem',
-                      fontSize: '0.8rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid #cbd5e1',
-                      backgroundColor: '#ffffff',
-                      color: '#64748b',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                    }}
+                    onClick={toggleTheme}
+                    className="pedidos-btn-theme-toggle"
+                    aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                    title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                   >
-                    Cerrar Sesión
+                    {theme === 'dark' ? '☀ Modo Claro' : '🌙 Modo Oscuro'}
                   </button>
-                </div>
-              )}
+                )}
+                {user && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
+                    <span style={{ color: '#334155', fontWeight: 500 }}>
+                      👤 {user.nombre} {user.apellido}
+                    </span>
+                    <span
+                      style={{
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        backgroundColor: isAdmin ? '#fef3c7' : user.appRole === 'equipo' ? '#e0e7ff' : '#f1f5f9',
+                        color: isAdmin ? '#b45309' : user.appRole === 'equipo' ? '#4338ca' : '#475569',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {user.appRole}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      style={{
+                        padding: '0.3rem 0.6rem',
+                        fontSize: '0.8rem',
+                        borderRadius: '0.375rem',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Cerrar Sesión
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <nav className="pedidos-nav" aria-label="Navegación principal de desarrollo y QA">

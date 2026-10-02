@@ -531,6 +531,91 @@ describe('GestionDashboardPage Unit Tests', () => {
         expect(screen.queryByRole('button', { name: /Eliminar/i })).not.toBeInTheDocument();
       });
     });
+
+    it('Filtro de prioridad llama a fetchPedidos con el parámetro correcto', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockApprovedProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        signOut: vi.fn(),
+        refreshUser: vi.fn(),
+      });
+
+      const fetchSpy = vi.spyOn(gestionApi, 'fetchPedidos').mockResolvedValue(mockPedidos);
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
+      });
+
+      const prioridadSelect = screen.getByLabelText(/Filtrar por prioridad/i);
+      fireEvent.change(prioridadSelect, { target: { value: 'alta' } });
+
+      await waitFor(() => {
+        expect(fetchSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            prioridad: 'alta',
+          })
+        );
+      });
+    });
+
+    it('Cambiar prioridad en tarjeta invoca updatePedidoMetadata', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockApprovedProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        signOut: vi.fn(),
+        refreshUser: vi.fn(),
+      });
+
+      vi.spyOn(gestionApi, 'fetchPedidos').mockResolvedValue([
+        {
+          ...mockPedidos[0],
+          prioridad: 'media',
+        },
+      ]);
+
+      const updateSpy = vi.spyOn(gestionApi, 'updatePedidoMetadata').mockResolvedValue({
+        success: true,
+        pedido_id: 'ped-1',
+        prioridad: 'alta',
+        etiqueta_interna: null,
+        version: 2,
+        updated: true,
+      });
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
+      });
+
+      const cardPrioSelect = screen.getByLabelText(/Cambiar prioridad/i);
+      fireEvent.change(cardPrioSelect, { target: { value: 'alta' } });
+
+      await waitFor(() => {
+        expect(updateSpy).toHaveBeenCalledWith('ped-1', 1, {
+          prioridad: 'alta',
+          update_prioridad: true,
+        });
+      });
+    });
   });
 });
 

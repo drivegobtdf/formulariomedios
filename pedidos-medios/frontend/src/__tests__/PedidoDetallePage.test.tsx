@@ -1137,6 +1137,98 @@ describe('PedidoDetallePage Unit Tests', () => {
       expect(screen.getByText('Pedido no encontrado')).toBeInTheDocument();
     });
   });
+
+  it('19. Cambio de prioridad en Detalle invoca updatePedidoMetadata con expected_version', async () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: mockAdminProfile,
+      isLoading: false,
+      isApproved: true,
+      isAdmin: true,
+      isTeamOrAdmin: true,
+      isObserver: false,
+      refreshUser: vi.fn(),
+      signOut: vi.fn(),
+    });
+
+    vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue({
+      ...mockPedidoFlyer,
+      prioridad: 'baja',
+      version: 3,
+    });
+    vi.spyOn(gestionApi, 'fetchInternalUsers').mockResolvedValue([]);
+    vi.spyOn(gestionApi, 'fetchPedidoHistorialOperativo').mockResolvedValue([]);
+
+    const updateSpy = vi.spyOn(gestionApi, 'updatePedidoMetadata').mockResolvedValue({
+      success: true,
+      pedido_id: mockPedidoFlyer.id,
+      prioridad: 'alta',
+      etiqueta_interna: null,
+      version: 4,
+      updated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/gestion/pedidos/${mockPedidoFlyer.id}`]}>
+        <Routes>
+          <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(mockPedidoFlyer.pedido_visible)).toBeInTheDocument();
+    });
+
+    const prioSelect = screen.getByLabelText(/Cambiar prioridad/i);
+    fireEvent.change(prioSelect, { target: { value: 'alta' } });
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(mockPedidoFlyer.id, 3, {
+        prioridad: 'alta',
+        update_prioridad: true,
+      });
+    });
+  });
+
+  it('20. Observador o estado terminal muestra prioridad y etiqueta como solo lectura (sin selectores editables)', async () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: mockObserverProfile,
+      isLoading: false,
+      isApproved: true,
+      isAdmin: false,
+      isTeamOrAdmin: false,
+      isObserver: true,
+      refreshUser: vi.fn(),
+      signOut: vi.fn(),
+    });
+
+    vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue({
+      ...mockPedidoFlyer,
+      prioridad: 'alta',
+      etiqueta_interna: 'URGENTE',
+      estado: 'Finalizado',
+    });
+    vi.spyOn(gestionApi, 'fetchInternalUsers').mockResolvedValue([]);
+    vi.spyOn(gestionApi, 'fetchPedidoHistorialOperativo').mockResolvedValue([]);
+
+    render(
+      <MemoryRouter initialEntries={[`/gestion/pedidos/${mockPedidoFlyer.id}`]}>
+        <Routes>
+          <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(mockPedidoFlyer.pedido_visible)).toBeInTheDocument();
+    });
+
+    // En modo observador / finalizado no debe existir el select de cambio de prioridad
+    expect(screen.queryByLabelText(/Cambiar prioridad/i)).not.toBeInTheDocument();
+    // Debe mostrar el badge estático
+    expect(screen.getByText('🔴 Alta')).toBeInTheDocument();
+    expect(screen.getByText(/URGENTE/i)).toBeInTheDocument();
+  });
 });
 
 

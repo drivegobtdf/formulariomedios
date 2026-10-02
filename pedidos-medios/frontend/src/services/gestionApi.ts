@@ -33,6 +33,8 @@ export interface PedidoListItem {
   numero: number;
   codigo_categoria: string;
   estado: string;
+  prioridad?: 'alta' | 'media' | 'baja' | null;
+  etiqueta_interna?: string | null;
   retrabajo_activo?: boolean;
   revision_requested_at?: string | null;
   revision_count?: number;
@@ -49,6 +51,56 @@ export interface PedidoListItem {
   created_at: string;
   updated_at: string;
   solicitudes_pendientes_count?: number;
+}
+
+export function getPrioridadWeight(prioridad?: string | null): number {
+  switch (prioridad?.toLowerCase()) {
+    case 'alta':
+      return 3;
+    case 'media':
+      return 2;
+    case 'baja':
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+export function comparePedidos(a: PedidoListItem, b: PedidoListItem): number {
+  // 1. retrabajo_activo = true has absolute precedence
+  const aRetrabajo = Boolean(a.retrabajo_activo);
+  const bRetrabajo = Boolean(b.retrabajo_activo);
+  if (aRetrabajo !== bRetrabajo) {
+    return aRetrabajo ? -1 : 1;
+  }
+
+  // 2. Prioridad weight ('alta' > 'media' > 'baja' > null)
+  const aWeight = getPrioridadWeight(a.prioridad);
+  const bWeight = getPrioridadWeight(b.prioridad);
+  if (aWeight !== bWeight) {
+    return bWeight - aWeight;
+  }
+
+  // 3. Tie-breakers
+  if (aRetrabajo && bRetrabajo) {
+    // Retrabajos: revision_requested_at DESC -> created_at DESC -> numero DESC
+    const aRev = a.revision_requested_at ? new Date(a.revision_requested_at).getTime() : 0;
+    const bRev = b.revision_requested_at ? new Date(b.revision_requested_at).getTime() : 0;
+    if (aRev !== bRev) {
+      return bRev - aRev;
+    }
+  }
+
+  // Normales (and retrabajo tie-break fallback): created_at DESC -> numero DESC
+  const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
+  const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
+  if (aCreated !== bCreated) {
+    return bCreated - aCreated;
+  }
+
+  const aNum = a.numero || 0;
+  const bNum = b.numero || 0;
+  return bNum - aNum;
 }
 
 export interface EnrichedArchivoItem {
@@ -284,6 +336,7 @@ export async function fetchPedidos(filters?: {
   requiere_atencion?: boolean;
   archivado?: boolean;
   search?: string;
+  prioridad?: string;
 }): Promise<PedidoListItem[]> {
   const supabase = getSupabaseClient();
   let query = supabase
@@ -295,6 +348,8 @@ export async function fetchPedidos(filters?: {
       numero,
       codigo_categoria,
       estado,
+      prioridad,
+      etiqueta_interna,
       retrabajo_activo,
       revision_requested_at,
       revision_count,
@@ -329,6 +384,14 @@ export async function fetchPedidos(filters?: {
     query = query.is('responsable_user_id', null);
   }
 
+  if (filters?.prioridad && filters.prioridad !== 'todas') {
+    if (filters.prioridad === 'sin_prioridad') {
+      query = query.is('prioridad', null);
+    } else {
+      query = query.eq('prioridad', filters.prioridad);
+    }
+  }
+
   if (filters?.search && filters.search.trim().length > 0) {
     const s = filters.search.trim();
     query = query.or(`pedido_visible.ilike.%${s}%`);
@@ -348,13 +411,15 @@ export async function fetchPedidos(filters?: {
 
   const userMap = new Map((users || []).map((u) => [u.user_id, `${u.nombre} ${u.apellido}`.trim()]));
 
-  return (pedidosRes.data || []).map((p: any) => ({
+  const mapped: PedidoListItem[] = (pedidosRes.data || []).map((p: any) => ({
     id: p.id,
     pedido_visible: p.pedido_visible,
     anio: p.anio,
     numero: p.numero,
     codigo_categoria: p.codigo_categoria,
     estado: p.estado,
+    prioridad: p.prioridad || null,
+    etiqueta_interna: p.etiqueta_interna || null,
     retrabajo_activo: Boolean(p.retrabajo_activo),
     revision_requested_at: p.revision_requested_at,
     revision_count: p.revision_count || 0,
@@ -371,6 +436,8 @@ export async function fetchPedidos(filters?: {
     created_at: p.created_at,
     updated_at: p.updated_at,
   }));
+
+  return mapped.sort(comparePedidos);
 }
 
 export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetailItem> {
@@ -386,6 +453,8 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       numero,
       codigo_categoria,
       estado,
+      prioridad,
+      etiqueta_interna,
       retrabajo_activo,
       revision_requested_at,
       revision_count,
@@ -504,6 +573,8 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     numero: p.numero,
     codigo_categoria: p.codigo_categoria,
     estado: p.estado,
+    prioridad: p.prioridad || null,
+    etiqueta_interna: p.etiqueta_interna || null,
     retrabajo_activo: Boolean(p.retrabajo_activo),
     revision_requested_at: p.revision_requested_at,
     revision_count: p.revision_count || 0,
@@ -652,6 +723,38 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
         .filter(Boolean),
     })),
   };
+}
+
+export interface UpdatePedidoMetadataParams {
+  prioridad?: 'alta' | 'media' | 'baja' | null;
+  etiqueta_interna?: string | null;
+  update_prioridad?: boolean;
+  update_etiqueta?: boolean;
+}
+
+export async function updatePedidoMetadata(
+  pedidoId: string,
+  expectedVersion: number,
+  options: UpdatePedidoMetadataParams
+): Promise<{
+  success: boolean;
+  pedido_id: string;
+  prioridad: 'alta' | 'media' | 'baja' | null;
+  etiqueta_interna: string | null;
+  version: number;
+  updated: boolean;
+}> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_update_metadata', {
+    p_pedido_id: pedidoId,
+    p_expected_version: expectedVersion,
+    p_prioridad: options.prioridad !== undefined ? options.prioridad : null,
+    p_etiqueta_interna: options.etiqueta_interna !== undefined ? options.etiqueta_interna : null,
+    p_update_prioridad: Boolean(options.update_prioridad),
+    p_update_etiqueta: Boolean(options.update_etiqueta),
+  });
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function assignPedido(pedidoId: string, responsableUserId: string, expectedVersion: number) {

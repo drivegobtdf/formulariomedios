@@ -15,12 +15,14 @@ import {
   createNotaPedido,
   createInfoRequest,
   downloadArchivo,
+  updatePedidoMetadata,
   PedidoDetailItem,
   HistorialOperativoItem,
   InternalUser,
   fetchInternalUsers,
 } from '../services/gestionApi';
 import { InformacionEspecificaViewer } from '../components/gestion/InformacionEspecificaViewer';
+import { EditarEtiquetaModal } from '../components/gestion/EditarEtiquetaModal';
 import { formatFileSize, formatArchivoEstado, formatLocalDate, formatHistoryDate } from '../utils/formatUtils';
 import { WhatsAppPhoneLink } from '../components/WhatsAppPhoneLink';
 import { formatReworkHistoricalText } from '../utils/statusBadges';
@@ -242,12 +244,49 @@ export const PedidoDetallePage: React.FC = () => {
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [reopenMotivo, setReopenMotivo] = useState('');
 
+  // Etiqueta modal
+  const [showEtiquetaModal, setShowEtiquetaModal] = useState(false);
+
   // Notes state (Internal only)
   const [notaTexto, setNotaTexto] = useState('');
 
   // Info request state (48h)
   const [showInfoReqModal, setShowInfoReqModal] = useState(false);
   const [infoReqMensaje, setInfoReqMensaje] = useState('');
+
+  const handlePrioridadChange = async (newPrioridad: string) => {
+    if (!pedido || isObserver || pedido.archivado || pedido.estado === 'Finalizado' || pedido.estado === 'Cancelado') return;
+    setActionLoading(true);
+    setError(null);
+    try {
+      const val = (newPrioridad === '' || newPrioridad === 'sin_prioridad') ? null : (newPrioridad as 'alta' | 'media' | 'baja');
+      const res = await updatePedidoMetadata(pedido.id, pedido.version, {
+        prioridad: val,
+        update_prioridad: true,
+      });
+      setPedido((prev) => prev ? { ...prev, prioridad: res.prioridad, version: res.version } : prev);
+      setSuccessMessage('Prioridad actualizada exitosamente.');
+    } catch (err: any) {
+      const msg = err.message || 'Error al actualizar prioridad.';
+      setError(msg);
+      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001')) {
+        setError('Conflicto de versión: El pedido fue modificado recientemente. Recargando datos...');
+        loadData();
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSaveEtiqueta = async (newEtiqueta: string | null) => {
+    if (!pedido) return;
+    const res = await updatePedidoMetadata(pedido.id, pedido.version, {
+      etiqueta_interna: newEtiqueta,
+      update_etiqueta: true,
+    });
+    setPedido((prev) => prev ? { ...prev, etiqueta_interna: res.etiqueta_interna, version: res.version } : prev);
+    setSuccessMessage('Etiqueta interna actualizada exitosamente.');
+  };
 
   const loadData = useCallback(async (isSilent = false) => {
     if (!id || !isApproved) return;
@@ -813,6 +852,54 @@ export const PedidoDetallePage: React.FC = () => {
                 {pedido.pedido_visible}
               </h1>
               {getEstadoBadge(pedido.estado)}
+
+              {/* Selector o Badge de Prioridad */}
+              {!isObserver && !pedido.archivado && pedido.estado !== 'Finalizado' && pedido.estado !== 'Cancelado' ? (
+                <select
+                  value={pedido.prioridad || ''}
+                  onChange={(e) => handlePrioridadChange(e.target.value)}
+                  disabled={actionLoading}
+                  className={`prioridad-badge-select prioridad-${pedido.prioridad || 'sin-prioridad'}`}
+                  aria-label="Cambiar prioridad"
+                >
+                  <option value="">Sin prioridad</option>
+                  <option value="alta">🔴 Alta</option>
+                  <option value="media">🟡 Media</option>
+                  <option value="baja">🟢 Baja</option>
+                </select>
+              ) : (
+                <span className={`prioridad-badge prioridad-${pedido.prioridad || 'sin-prioridad'}`}>
+                  {pedido.prioridad === 'alta' && '🔴 Alta'}
+                  {pedido.prioridad === 'media' && '🟡 Media'}
+                  {pedido.prioridad === 'baja' && '🟢 Baja'}
+                  {!pedido.prioridad && 'Sin prioridad'}
+                </span>
+              )}
+
+              {/* Píldora o Botón de Etiqueta Interna */}
+              {pedido.etiqueta_interna ? (
+                <span
+                  className="etiqueta-interna-pill"
+                  title={!isObserver && !pedido.archivado && pedido.estado !== 'Finalizado' && pedido.estado !== 'Cancelado' ? 'Clic para editar etiqueta' : undefined}
+                  onClick={() => {
+                    if (!isObserver && !pedido.archivado && pedido.estado !== 'Finalizado' && pedido.estado !== 'Cancelado') {
+                      setShowEtiquetaModal(true);
+                    }
+                  }}
+                >
+                  🏷️ {pedido.etiqueta_interna}
+                </span>
+              ) : !isObserver && !pedido.archivado && pedido.estado !== 'Finalizado' && pedido.estado !== 'Cancelado' ? (
+                <button
+                  type="button"
+                  className="btn-add-etiqueta"
+                  onClick={() => setShowEtiquetaModal(true)}
+                  title="Agregar etiqueta interna"
+                >
+                  + Etiqueta
+                </button>
+              ) : null}
+
               {pedido.retrabajo_activo ? (
                 <span style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 800, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                   🔄 DEVUELTO - RETRABAJAR {pedido.revision_count ? `(Rev #${pedido.revision_count})` : ''}
@@ -2447,6 +2534,17 @@ export const PedidoDetallePage: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modal Editar Etiqueta */}
+      {pedido && (
+        <EditarEtiquetaModal
+          isOpen={showEtiquetaModal}
+          onClose={() => setShowEtiquetaModal(false)}
+          pedidoVisible={pedido.pedido_visible}
+          initialEtiqueta={pedido.etiqueta_interna || null}
+          onSave={handleSaveEtiqueta}
+        />
       )}
     </div>
   );

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { fetchPedidos, fetchGestionStats, PedidoListItem, GestionStats } from '../services/gestionApi';
+import { fetchPedidos, fetchGestionStats, updatePedidoMetadata, PedidoListItem, GestionStats } from '../services/gestionApi';
 import { getSupabaseClient } from '../services/supabaseClient';
 import { EliminarPedidosModal } from '../components/gestion/EliminarPedidosModal';
+import { EditarEtiquetaModal } from '../components/gestion/EditarEtiquetaModal';
 import { formatReworkHistoricalText } from '../utils/statusBadges';
 
 export type GestionTabFilter =
@@ -39,6 +40,9 @@ export const GestionDashboardPage: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
 
+  // Etiqueta Modal State
+  const [selectedPedidoForEtiqueta, setSelectedPedidoForEtiqueta] = useState<PedidoListItem | null>(null);
+
   // Realtime Connection State
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [lastRealtimeUpdate, setLastRealtimeUpdate] = useState<Date | null>(null);
@@ -46,11 +50,14 @@ export const GestionDashboardPage: React.FC = () => {
   // Filters & Views
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [tabFilter, setTabFilter] = useState<GestionTabFilter>('todos');
+  const [prioridadFilter, setPrioridadFilter] = useState<string>('todas');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Pagination for table
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
+
+  const canEditMetadata = isApproved && (isAdmin || user?.appRole === 'equipo');
 
   const loadData = useCallback(async () => {
     if (!isApproved) return;
@@ -68,6 +75,7 @@ export const GestionDashboardPage: React.FC = () => {
           responsable_user_id: tabFilter === 'mis_pedidos' ? user?.userId : undefined,
           unassigned: tabFilter === 'sin_asignar' ? true : undefined,
           estado: estadoFilter,
+          prioridad: prioridadFilter !== 'todas' ? prioridadFilter : undefined,
           search: searchTerm || undefined,
         }),
         fetchGestionStats().catch(() => ({
@@ -91,7 +99,45 @@ export const GestionDashboardPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [tabFilter, searchTerm, user?.userId, isApproved]);
+  }, [tabFilter, prioridadFilter, searchTerm, user?.userId, isApproved]);
+
+  const handlePrioridadChange = async (ped: PedidoListItem, newPrioridad: string) => {
+    if (!canEditMetadata || ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado') return;
+    try {
+      const val = (newPrioridad === '' || newPrioridad === 'sin_prioridad') ? null : (newPrioridad as 'alta' | 'media' | 'baja');
+      const res = await updatePedidoMetadata(ped.id, ped.version, {
+        prioridad: val,
+        update_prioridad: true,
+      });
+      setPedidos((prev) =>
+        prev.map((p) =>
+          p.id === ped.id
+            ? { ...p, prioridad: res.prioridad, version: res.version }
+            : p
+        )
+      );
+    } catch (err: any) {
+      alert(err.message || 'Error al actualizar la prioridad');
+      loadData();
+    }
+  };
+
+  const handleSaveEtiqueta = async (newEtiqueta: string | null) => {
+    if (!selectedPedidoForEtiqueta) return;
+    const ped = selectedPedidoForEtiqueta;
+    const res = await updatePedidoMetadata(ped.id, ped.version, {
+      etiqueta_interna: newEtiqueta,
+      update_etiqueta: true,
+    });
+    setPedidos((prev) =>
+      prev.map((p) =>
+        p.id === ped.id
+          ? { ...p, etiqueta_interna: res.etiqueta_interna, version: res.version }
+          : p
+      )
+    );
+    setSelectedPedidoForEtiqueta(null);
+  };
 
   useEffect(() => {
     if (isApproved) {
@@ -647,36 +693,60 @@ export const GestionDashboardPage: React.FC = () => {
           ))}
         </div>
 
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
-          <input
-            type="text"
-            placeholder="Buscar por código PED..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Selector de Prioridad */}
+          <select
+            value={prioridadFilter}
+            onChange={(e) => setPrioridadFilter(e.target.value)}
             style={{
               padding: '0.35rem 0.65rem',
               borderRadius: '0.375rem',
               border: '1px solid #cbd5e1',
               fontSize: '0.825rem',
-              minWidth: '220px',
-            }}
-          />
-          <button
-            type="submit"
-            style={{
-              padding: '0.35rem 0.75rem',
-              backgroundColor: '#0284c7',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '0.375rem',
-              fontWeight: 600,
-              fontSize: '0.825rem',
+              backgroundColor: '#ffffff',
+              color: '#334155',
               cursor: 'pointer',
             }}
+            aria-label="Filtrar por prioridad"
           >
-            Buscar
-          </button>
-        </form>
+            <option value="todas">Todas las prioridades</option>
+            <option value="alta">🔴 Alta</option>
+            <option value="media">🟡 Media</option>
+            <option value="baja">🟢 Baja</option>
+            <option value="sin_prioridad">Sin prioridad</option>
+          </select>
+
+          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="text"
+              placeholder="Buscar por código PED..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                padding: '0.35rem 0.65rem',
+                borderRadius: '0.375rem',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.825rem',
+                minWidth: '200px',
+              }}
+            />
+            <button
+              type="submit"
+              style={{
+                padding: '0.35rem 0.75rem',
+                backgroundColor: '#0284c7',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '0.375rem',
+                fontWeight: 600,
+                fontSize: '0.825rem',
+                cursor: 'pointer',
+              }}
+            >
+              Buscar
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Error state with retry */}
@@ -776,6 +846,7 @@ export const GestionDashboardPage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                 {pedidos.map((ped) => {
                   const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: '#334155', bg: '#f1f5f9', border: '#cbd5e1' };
+                  const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
                   return (
                     <Link
                       key={ped.id}
@@ -867,6 +938,65 @@ export const GestionDashboardPage: React.FC = () => {
                       <div style={{ fontSize: '0.825rem', color: '#334155', fontWeight: 500 }}>
                         {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                       </div>
+
+                      {/* Metadatos: Prioridad y Etiqueta Interna */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
+                        {canEditMetadata && !isTerminal ? (
+                          <select
+                            value={ped.prioridad || ''}
+                            onChange={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handlePrioridadChange(ped, e.target.value);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`prioridad-badge-select prioridad-${ped.prioridad || 'sin-prioridad'}`}
+                            aria-label="Cambiar prioridad"
+                          >
+                            <option value="">Sin prioridad</option>
+                            <option value="alta">🔴 Alta</option>
+                            <option value="media">🟡 Media</option>
+                            <option value="baja">🟢 Baja</option>
+                          </select>
+                        ) : (
+                          <span className={`prioridad-badge prioridad-${ped.prioridad || 'sin-prioridad'}`}>
+                            {ped.prioridad === 'alta' && '🔴 Alta'}
+                            {ped.prioridad === 'media' && '🟡 Media'}
+                            {ped.prioridad === 'baja' && '🟢 Baja'}
+                            {!ped.prioridad && 'Sin prioridad'}
+                          </span>
+                        )}
+
+                        {ped.etiqueta_interna ? (
+                          <span
+                            className="etiqueta-interna-pill"
+                            title={canEditMetadata && !isTerminal ? 'Clic para editar etiqueta' : undefined}
+                            onClick={(e) => {
+                              if (canEditMetadata && !isTerminal) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedPedidoForEtiqueta(ped);
+                              }
+                            }}
+                          >
+                            🏷️ {ped.etiqueta_interna}
+                          </span>
+                        ) : canEditMetadata && !isTerminal ? (
+                          <button
+                            type="button"
+                            className="btn-add-etiqueta"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSelectedPedidoForEtiqueta(ped);
+                            }}
+                            title="Agregar etiqueta interna"
+                          >
+                            + Etiqueta
+                          </button>
+                        ) : null}
+                      </div>
+
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
                         <span style={{ color: ped.responsable_nombre ? '#334155' : '#b91c1c', fontWeight: 500 }}>
                           {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
@@ -965,109 +1095,170 @@ export const GestionDashboardPage: React.FC = () => {
                       minHeight: '160px',
                     }}
                   >
-                    {columnPedidos.map((ped) => (
-                      <Link
-                        key={ped.id}
-                        to={`/gestion/pedidos/${ped.id}`}
-                        style={{
-                          backgroundColor: ped.retrabajo_activo ? '#fffbeb' : '#ffffff',
-                          border: ped.retrabajo_activo ? '1px solid #fde68a' : '1px solid #cbd5e1',
-                          borderLeft: ped.retrabajo_activo ? '4px solid #d97706' : undefined,
-                          borderRadius: '0.5rem',
-                          padding: '0.85rem',
-                          textDecoration: 'none',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.45rem',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                          transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#d97706' : '#0284c7';
-                          e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.08)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#fde68a' : '#cbd5e1';
-                          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
-                        }}
-                      >
-                        {/* Top Bar: PED & Date */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                            {isAdmin && (
-                              <input
-                                type="checkbox"
-                                checked={selectedPedidoIds.has(ped.id)}
-                                onChange={() => toggleSelectPedido(ped.id)}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{ cursor: 'pointer', width: '15px', height: '15px' }}
-                              />
-                            )}
-                            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
-                              {ped.pedido_visible}
+                    {columnPedidos.map((ped) => {
+                      const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
+                      return (
+                        <Link
+                          key={ped.id}
+                          to={`/gestion/pedidos/${ped.id}`}
+                          style={{
+                            backgroundColor: ped.retrabajo_activo ? '#fffbeb' : '#ffffff',
+                            border: ped.retrabajo_activo ? '1px solid #fde68a' : '1px solid #cbd5e1',
+                            borderLeft: ped.retrabajo_activo ? '4px solid #d97706' : undefined,
+                            borderRadius: '0.5rem',
+                            padding: '0.85rem',
+                            textDecoration: 'none',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.45rem',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#d97706' : '#0284c7';
+                            e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.08)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#fde68a' : '#cbd5e1';
+                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
+                          }}
+                        >
+                          {/* Top Bar: PED & Date */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                              {isAdmin && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedPedidoIds.has(ped.id)}
+                                  onChange={() => toggleSelectPedido(ped.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                                />
+                              )}
+                              <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
+                                {ped.pedido_visible}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '0.725rem', color: '#64748b' }}>
+                              {new Date(ped.created_at).toLocaleDateString()}
                             </span>
                           </div>
-                          <span style={{ fontSize: '0.725rem', color: '#64748b' }}>
-                            {new Date(ped.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
 
-                        {/* DEVUELTO - RETRABAJAR Badge if applicable */}
-                        {ped.retrabajo_activo && (
-                          <div
-                            style={{
-                              fontSize: '0.7rem',
-                              fontWeight: 800,
-                              color: '#b45309',
-                              backgroundColor: '#fef3c7',
-                              border: '1px solid #fde68a',
-                              borderRadius: '0.25rem',
-                              padding: '0.2rem 0.45rem',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                              width: 'fit-content',
-                            }}
-                          >
-                            🔄 DEVUELTO - RETRABAJAR {ped.revision_count ? `· Rev #${ped.revision_count}` : ''}
+                          {/* DEVUELTO - RETRABAJAR Badge if applicable */}
+                          {ped.retrabajo_activo && (
+                            <div
+                              style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 800,
+                                color: '#b45309',
+                                backgroundColor: '#fef3c7',
+                                border: '1px solid #fde68a',
+                                borderRadius: '0.25rem',
+                                padding: '0.2rem 0.45rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                width: 'fit-content',
+                              }}
+                            >
+                              🔄 DEVUELTO - RETRABAJAR {ped.revision_count ? `· Rev #${ped.revision_count}` : ''}
+                            </div>
+                          )}
+
+                          {/* Service Category & Type */}
+                          <div style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 500 }}>
+                            {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                           </div>
-                        )}
 
-                        {/* Service Category & Type */}
-                        <div style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 500 }}>
-                          {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
-                        </div>
+                          {/* Metadatos: Prioridad y Etiqueta Interna */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
+                            {canEditMetadata && !isTerminal ? (
+                              <select
+                                value={ped.prioridad || ''}
+                                onChange={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handlePrioridadChange(ped, e.target.value);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className={`prioridad-badge-select prioridad-${ped.prioridad || 'sin-prioridad'}`}
+                                aria-label="Cambiar prioridad"
+                              >
+                                <option value="">Sin prioridad</option>
+                                <option value="alta">🔴 Alta</option>
+                                <option value="media">🟡 Media</option>
+                                <option value="baja">🟢 Baja</option>
+                              </select>
+                            ) : (
+                              <span className={`prioridad-badge prioridad-${ped.prioridad || 'sin-prioridad'}`}>
+                                {ped.prioridad === 'alta' && '🔴 Alta'}
+                                {ped.prioridad === 'media' && '🟡 Media'}
+                                {ped.prioridad === 'baja' && '🟢 Baja'}
+                                {!ped.prioridad && 'Sin prioridad'}
+                              </span>
+                            )}
 
-                        {/* 48h Info Request Badge if applicable */}
-                        {ped.estado === 'Esperando información' && (
-                          <div
-                            style={{
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              color: '#a16207',
-                              backgroundColor: '#fefce8',
-                              border: '1px solid #fef08a',
-                              borderRadius: '0.25rem',
-                              padding: '0.2rem 0.4rem',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                              width: 'fit-content',
-                            }}
-                          >
-                            ⏳ 48h Info Pendiente
+                            {ped.etiqueta_interna ? (
+                              <span
+                                className="etiqueta-interna-pill"
+                                title={canEditMetadata && !isTerminal ? 'Clic para editar etiqueta' : undefined}
+                                onClick={(e) => {
+                                  if (canEditMetadata && !isTerminal) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSelectedPedidoForEtiqueta(ped);
+                                  }
+                                }}
+                              >
+                                🏷️ {ped.etiqueta_interna}
+                              </span>
+                            ) : canEditMetadata && !isTerminal ? (
+                              <button
+                                type="button"
+                                className="btn-add-etiqueta"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setSelectedPedidoForEtiqueta(ped);
+                                }}
+                                title="Agregar etiqueta interna"
+                              >
+                                + Etiqueta
+                              </button>
+                            ) : null}
                           </div>
-                        )}
 
-                        {/* Footer: Responsable & Action */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.4rem', borderTop: '1px solid #f1f5f9' }}>
-                          <span style={{ color: ped.responsable_nombre ? '#334155' : '#b91c1c', fontWeight: 500 }}>
-                            {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
-                          </span>
-                          <span style={{ color: '#0284c7', fontWeight: 600 }}>Ver detalle &rarr;</span>
-                        </div>
-                      </Link>
-                    ))}
+                          {/* 48h Info Request Badge if applicable */}
+                          {ped.estado === 'Esperando información' && (
+                            <div
+                              style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                color: '#a16207',
+                                backgroundColor: '#fefce8',
+                                border: '1px solid #fef08a',
+                                borderRadius: '0.25rem',
+                                padding: '0.2rem 0.4rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                width: 'fit-content',
+                              }}
+                            >
+                              ⏳ 48h Info Pendiente
+                            </div>
+                          )}
+
+                          {/* Footer: Responsable & Action */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.4rem', borderTop: '1px solid #f1f5f9' }}>
+                            <span style={{ color: ped.responsable_nombre ? '#334155' : '#b91c1c', fontWeight: 500 }}>
+                              {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
+                            </span>
+                            <span style={{ color: '#0284c7', fontWeight: 600 }}>Ver detalle &rarr;</span>
+                          </div>
+                        </Link>
+                      );
+                    })}
 
                     {columnPedidos.length === 0 && (
                       <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem', border: '1px dashed #e2e8f0', borderRadius: '0.375rem', margin: 'auto 0' }}>
@@ -1110,6 +1301,8 @@ export const GestionDashboardPage: React.FC = () => {
                   )}
                   <th style={{ padding: '0.75rem 1rem' }}>Código PED</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Categoría / Tipo</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Prioridad</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Etiqueta</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Estado</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Responsable</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Fecha Ingreso</th>
@@ -1119,6 +1312,7 @@ export const GestionDashboardPage: React.FC = () => {
               <tbody>
                 {paginatedPedidos.map((ped) => {
                   const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: '#334155', bg: '#f1f5f9' };
+                  const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
                   return (
                     <tr key={ped.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: ped.retrabajo_activo ? '#fffbeb' : undefined }}>
                       {isAdmin && (
@@ -1137,6 +1331,54 @@ export const GestionDashboardPage: React.FC = () => {
                       <td style={{ padding: '0.75rem 1rem', color: '#334155' }}>
                         <div style={{ fontWeight: 500 }}>{ped.categoria_nombre || 'General'}</div>
                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{ped.tipo_nombre || 'Pieza'}</div>
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        {canEditMetadata && !isTerminal ? (
+                          <select
+                            value={ped.prioridad || ''}
+                            onChange={(e) => handlePrioridadChange(ped, e.target.value)}
+                            className={`prioridad-badge-select prioridad-${ped.prioridad || 'sin-prioridad'}`}
+                            aria-label="Cambiar prioridad"
+                          >
+                            <option value="">Sin prioridad</option>
+                            <option value="alta">🔴 Alta</option>
+                            <option value="media">🟡 Media</option>
+                            <option value="baja">🟢 Baja</option>
+                          </select>
+                        ) : (
+                          <span className={`prioridad-badge prioridad-${ped.prioridad || 'sin-prioridad'}`}>
+                            {ped.prioridad === 'alta' && '🔴 Alta'}
+                            {ped.prioridad === 'media' && '🟡 Media'}
+                            {ped.prioridad === 'baja' && '🟢 Baja'}
+                            {!ped.prioridad && 'Sin prioridad'}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        {ped.etiqueta_interna ? (
+                          <span
+                            className="etiqueta-interna-pill"
+                            title={canEditMetadata && !isTerminal ? 'Clic para editar etiqueta' : undefined}
+                            onClick={() => {
+                              if (canEditMetadata && !isTerminal) {
+                                setSelectedPedidoForEtiqueta(ped);
+                              }
+                            }}
+                          >
+                            🏷️ {ped.etiqueta_interna}
+                          </span>
+                        ) : canEditMetadata && !isTerminal ? (
+                          <button
+                            type="button"
+                            className="btn-add-etiqueta"
+                            onClick={() => setSelectedPedidoForEtiqueta(ped)}
+                            title="Agregar etiqueta interna"
+                          >
+                            + Etiqueta
+                          </button>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>—</span>
+                        )}
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
@@ -1173,7 +1415,7 @@ export const GestionDashboardPage: React.FC = () => {
                 })}
                 {paginatedPedidos.length === 0 && (
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <td colSpan={isAdmin ? 9 : 8} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
                       No se encontraron pedidos con los filtros seleccionados.
                     </td>
                   </tr>
@@ -1218,6 +1460,17 @@ export const GestionDashboardPage: React.FC = () => {
           onClose={() => setShowDeleteModal(false)}
           pedidoIds={Array.from(selectedPedidoIds)}
           onSuccess={handleDeleteSuccess}
+        />
+      )}
+
+      {/* Editar Etiqueta Modal */}
+      {selectedPedidoForEtiqueta && (
+        <EditarEtiquetaModal
+          isOpen={Boolean(selectedPedidoForEtiqueta)}
+          onClose={() => setSelectedPedidoForEtiqueta(null)}
+          pedidoVisible={selectedPedidoForEtiqueta.pedido_visible}
+          initialEtiqueta={selectedPedidoForEtiqueta.etiqueta_interna || null}
+          onSave={handleSaveEtiqueta}
         />
       )}
     </div>
