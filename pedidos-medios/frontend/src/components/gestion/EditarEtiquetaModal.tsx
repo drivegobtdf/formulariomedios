@@ -70,7 +70,7 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: 'var(--pedidos-surface-backdrop, rgba(0, 0, 0, 0.6))',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -81,9 +81,9 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
     >
       <div
         style={{
-          backgroundColor: 'var(--pedidos-brand-card, #ffffff)',
-          color: 'var(--pedidos-brand-text, #1f2937)',
-          border: '1px solid var(--pedidos-brand-border, #e2e8f0)',
+          backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)',
+          color: 'var(--pedidos-text-primary, #1f2937)',
+          border: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
           borderRadius: '0.75rem',
           maxWidth: '420px',
           width: '100%',
@@ -95,17 +95,17 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
         <div
           style={{
             padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid var(--pedidos-brand-border, #e2e8f0)',
+            borderBottom: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}
         >
           <div>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #1f2937)' }}>
               Etiqueta interna
             </h3>
-            <span style={{ fontSize: '0.8rem', color: 'var(--pedidos-brand-text-muted, #64748b)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
               {pedidoVisible}
             </span>
           </div>
@@ -118,7 +118,7 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
               border: 'none',
               fontSize: '1.25rem',
               cursor: 'pointer',
-              color: 'var(--pedidos-brand-text-muted, #64748b)',
+              color: 'var(--pedidos-text-muted, #64748b)',
             }}
           >
             ✕
@@ -130,10 +130,10 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
             <div
               style={{
                 padding: '0.65rem 0.85rem',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
+                backgroundColor: 'var(--pedidos-status-rejected-bg, #fef2f2)',
+                border: '1px solid var(--pedidos-status-rejected-border, #fecaca)',
                 borderRadius: '0.375rem',
-                color: '#b91c1c',
+                color: 'var(--pedidos-status-rejected-text, #b91c1c)',
                 fontSize: '0.825rem',
                 marginBottom: '1rem',
               }}
@@ -149,6 +149,7 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 marginBottom: '0.35rem',
+                color: 'var(--pedidos-text-primary, #1f2937)',
               }}
             >
               Texto de la etiqueta (máx. 10 caracteres)
@@ -165,9 +166,9 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
                 width: '100%',
                 padding: '0.6rem 0.75rem',
                 borderRadius: '0.375rem',
-                border: '1px solid var(--pedidos-brand-border, #cbd5e1)',
-                backgroundColor: 'var(--pedidos-brand-card, #ffffff)',
-                color: 'var(--pedidos-brand-text, #1f2937)',
+                border: '1px solid var(--pedidos-control-border, #cbd5e1)',
+                backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+                color: 'var(--pedidos-control-text, #1f2937)',
                 fontSize: '0.95rem',
                 boxSizing: 'border-box',
               }}
@@ -178,7 +179,7 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
                 justifyContent: 'space-between',
                 marginTop: '0.35rem',
                 fontSize: '0.75rem',
-                color: 'var(--pedidos-brand-text-muted, #64748b)',
+                color: 'var(--pedidos-text-muted, #64748b)',
               }}
             >
               <span>Uso operativo interno únicamente</span>
@@ -203,9 +204,9 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
                   style={{
                     padding: '0.5rem 0.85rem',
                     backgroundColor: 'transparent',
-                    border: '1px solid var(--pedidos-brand-border, #cbd5e1)',
+                    border: '1px solid var(--pedidos-status-rejected-border, #cbd5e1)',
                     borderRadius: '0.375rem',
-                    color: '#dc2626',
+                    color: 'var(--pedidos-status-rejected-text, #dc2626)',
                     fontSize: '0.825rem',
                     fontWeight: 600,
                     cursor: saving ? 'not-allowed' : 'pointer',
@@ -223,10 +224,10 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
                 disabled={saving}
                 style={{
                   padding: '0.5rem 1rem',
-                  backgroundColor: 'transparent',
-                  border: '1px solid var(--pedidos-brand-border, #cbd5e1)',
+                  backgroundColor: 'var(--pedidos-surface-sunken, #f1f5f9)',
+                  border: '1px solid var(--pedidos-border-default, #cbd5e1)',
                   borderRadius: '0.375rem',
-                  color: 'var(--pedidos-brand-text, #334155)',
+                  color: 'var(--pedidos-text-primary, #334155)',
                   fontSize: '0.825rem',
                   fontWeight: 600,
                   cursor: saving ? 'not-allowed' : 'pointer',

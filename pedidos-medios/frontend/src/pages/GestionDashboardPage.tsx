@@ -265,20 +265,20 @@ export const GestionDashboardPage: React.FC = () => {
   };
 
   const estadoTitles: Record<string, { label: string; color: string; bg: string; border: string }> = {
-    'Nuevo': { label: 'Nuevo', color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
-    'En revisión': { label: 'En Revisión', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
-    'En proceso': { label: 'En Proceso', color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' },
-    'Esperando información': { label: 'Esperando Información', color: '#a16207', bg: '#fefce8', border: '#fef08a' },
-    'Finalizado': { label: 'Finalizado', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
-    'Cancelado': { label: 'Cancelado', color: '#b91c1c', bg: '#fef2f2', border: '#fecaca' },
+    'Nuevo': { label: 'Nuevo', color: 'var(--pedidos-status-nuevo-text, #0369a1)', bg: 'var(--pedidos-status-nuevo-bg, #f0f9ff)', border: 'var(--pedidos-status-nuevo-border, #bae6fd)' },
+    'En revisión': { label: 'En Revisión', color: 'var(--pedidos-status-revision-text, #b45309)', bg: 'var(--pedidos-status-revision-bg, #fffbeb)', border: 'var(--pedidos-status-revision-border, #fde68a)' },
+    'En proceso': { label: 'En Proceso', color: 'var(--pedidos-status-proceso-text, #4338ca)', bg: 'var(--pedidos-status-proceso-bg, #eef2ff)', border: 'var(--pedidos-status-proceso-border, #c7d2fe)' },
+    'Esperando información': { label: 'Esperando Información', color: 'var(--pedidos-status-esperando-text, #a16207)', bg: 'var(--pedidos-status-esperando-bg, #fefce8)', border: 'var(--pedidos-status-esperando-border, #fef08a)' },
+    'Finalizado': { label: 'Finalizado', color: 'var(--pedidos-status-finalizado-text, #15803d)', bg: 'var(--pedidos-status-finalizado-bg, #f0fdf4)', border: 'var(--pedidos-status-finalizado-border, #bbf7d0)' },
+    'Cancelado': { label: 'Cancelado', color: 'var(--pedidos-status-cancelado-text, #b91c1c)', bg: 'var(--pedidos-status-cancelado-bg, #fef2f2)', border: 'var(--pedidos-status-cancelado-border, #fecaca)' },
   };
 
   // Auth Loading State
   if (authLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#64748b' }}>
+      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
-        <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>Verificando credenciales...</h3>
+        <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--pedidos-text-primary, #1e293b)' }}>Verificando credenciales...</h3>
         <p style={{ margin: 0, fontSize: '0.875rem' }}>Conectando con el servidor de autenticación institucional.</p>
       </div>
     );
@@ -290,9 +290,9 @@ export const GestionDashboardPage: React.FC = () => {
       <div style={{ maxWidth: '480px', margin: '3rem auto', padding: '0 1rem' }}>
         <div
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--pedidos-surface-raised, #ffffff)',
             borderRadius: '0.75rem',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--pedidos-border-default, #e2e8f0)',
             padding: '2rem',
             textAlign: 'center',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
@@ -303,7 +303,7 @@ export const GestionDashboardPage: React.FC = () => {
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              backgroundColor: '#e0f2fe',
+              backgroundColor: 'rgba(2, 132, 199, 0.15)',
               color: '#0284c7',
               display: 'flex',
               alignItems: 'center',
@@ -314,10 +314,10 @@ export const GestionDashboardPage: React.FC = () => {
           >
             🔒
           </div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)', margin: '0 0 0.5rem 0' }}>
             Acceso restringido
           </h2>
-          <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.5, margin: '0 0 1.5rem 0' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--pedidos-text-muted, #64748b)', lineHeight: 1.5, margin: '0 0 1.5rem 0' }}>
             Iniciá sesión con una cuenta institucional autorizada.
           </p>
           <button
@@ -353,9 +353,9 @@ export const GestionDashboardPage: React.FC = () => {
       <div style={{ maxWidth: '520px', margin: '3rem auto', padding: '0 1rem' }}>
         <div
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--pedidos-surface-raised, #ffffff)',
             borderRadius: '0.75rem',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--pedidos-border-default, #e2e8f0)',
             padding: '2.5rem 2rem',
             textAlign: 'center',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
@@ -366,7 +366,7 @@ export const GestionDashboardPage: React.FC = () => {
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              backgroundColor: isPendiente ? '#fef3c7' : '#fee2e2',
+              backgroundColor: isPendiente ? 'rgba(217, 119, 6, 0.15)' : 'rgba(239, 68, 68, 0.15)',
               color: isPendiente ? '#b45309' : '#b91c1c',
               display: 'flex',
               alignItems: 'center',
@@ -378,7 +378,7 @@ export const GestionDashboardPage: React.FC = () => {
             {isPendiente ? '⏳' : isRechazado ? '❌' : '🚫'}
           </div>
 
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)', margin: '0 0 0.5rem 0' }}>
             {isPendiente
               ? 'Acceso pendiente'
               : isRechazado
@@ -386,7 +386,7 @@ export const GestionDashboardPage: React.FC = () => {
               : 'Acceso revocado'}
           </h2>
 
-          <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.6, margin: '0 0 1.5rem 0' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--pedidos-text-muted, #64748b)', lineHeight: 1.6, margin: '0 0 1.5rem 0' }}>
             {isPendiente && 'Tu cuenta está en espera de aprobación por un administrador.'}
             {isRechazado && 'Tu solicitud de acceso no fue aprobada.'}
             {isRevocado && 'Tu acceso al sistema fue revocado.'}
@@ -398,9 +398,9 @@ export const GestionDashboardPage: React.FC = () => {
             style={{
               padding: '0.65rem 1.5rem',
               borderRadius: '0.375rem',
-              border: '1px solid #cbd5e1',
-              backgroundColor: '#ffffff',
-              color: '#334155',
+              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+              backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+              color: 'var(--pedidos-control-text, #334155)',
               fontSize: '0.875rem',
               fontWeight: 600,
               cursor: 'pointer',
@@ -419,19 +419,14 @@ export const GestionDashboardPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)', margin: 0 }}>
               Gestión de pedidos
             </h1>
-            <span style={{
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              padding: '0.2rem 0.6rem',
-              borderRadius: '9999px',
-              backgroundColor: isObserver ? '#f1f5f9' : isAdmin ? '#fef3c7' : '#e0e7ff',
-              color: isObserver ? '#475569' : isAdmin ? '#b45309' : '#4338ca',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
+            <span
+              className={`pedidos-role-badge ${
+                isAdmin ? 'pedidos-role-admin' : isObserver ? 'pedidos-role-obs' : 'pedidos-role-equipo'
+              }`}
+            >
               {isObserver ? 'Observador' : isAdmin ? 'Administrador' : 'Equipo'}
             </span>
             <span
@@ -441,9 +436,9 @@ export const GestionDashboardPage: React.FC = () => {
                 fontWeight: 600,
                 padding: '0.2rem 0.55rem',
                 borderRadius: '9999px',
-                backgroundColor: realtimeConnected ? '#f0fdf4' : '#f8fafc',
-                color: realtimeConnected ? '#166534' : '#64748b',
-                border: `1px solid ${realtimeConnected ? '#bbf7d0' : '#cbd5e1'}`,
+                backgroundColor: realtimeConnected ? 'var(--pedidos-status-finalizado-bg, #f0fdf4)' : 'var(--pedidos-surface-sunken, #f8fafc)',
+                color: realtimeConnected ? 'var(--pedidos-status-finalizado-text, #166534)' : 'var(--pedidos-text-muted, #64748b)',
+                border: `1px solid ${realtimeConnected ? 'var(--pedidos-status-finalizado-border, #bbf7d0)' : 'var(--pedidos-border-default, #cbd5e1)'}`,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.35rem',
@@ -470,9 +465,9 @@ export const GestionDashboardPage: React.FC = () => {
             style={{
               padding: '0.45rem 0.9rem',
               borderRadius: '0.375rem',
-              border: '1px solid #cbd5e1',
-              background: viewMode === 'board' ? '#0284c7' : '#ffffff',
-              color: viewMode === 'board' ? '#ffffff' : '#334155',
+              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+              background: viewMode === 'board' ? 'var(--pedidos-brand-accent, #0284c7)' : 'var(--pedidos-control-bg, #ffffff)',
+              color: viewMode === 'board' ? '#ffffff' : 'var(--pedidos-control-text, #334155)',
               fontWeight: 600,
               cursor: 'pointer',
               fontSize: '0.85rem',
@@ -486,9 +481,9 @@ export const GestionDashboardPage: React.FC = () => {
             style={{
               padding: '0.45rem 0.9rem',
               borderRadius: '0.375rem',
-              border: '1px solid #cbd5e1',
-              background: viewMode === 'table' ? '#0284c7' : '#ffffff',
-              color: viewMode === 'table' ? '#ffffff' : '#334155',
+              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+              background: viewMode === 'table' ? 'var(--pedidos-brand-accent, #0284c7)' : 'var(--pedidos-control-bg, #ffffff)',
+              color: viewMode === 'table' ? '#ffffff' : 'var(--pedidos-control-text, #334155)',
               fontWeight: 600,
               cursor: 'pointer',
               fontSize: '0.85rem',
@@ -504,14 +499,14 @@ export const GestionDashboardPage: React.FC = () => {
         <div
           style={{
             padding: '0.85rem 1.25rem',
-            backgroundColor: '#f0fdf4',
-            border: '1px solid #86efac',
+            backgroundColor: 'var(--pedidos-status-finalizado-bg, #f0fdf4)',
+            border: '1px solid var(--pedidos-status-finalizado-border, #86efac)',
             borderRadius: '0.5rem',
             marginBottom: '1rem',
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            color: '#166534',
+            color: 'var(--pedidos-status-finalizado-text, #166534)',
             fontSize: '0.9rem',
             fontWeight: 600,
           }}
@@ -525,8 +520,8 @@ export const GestionDashboardPage: React.FC = () => {
       {isAdmin && (
         <div
           style={{
-            backgroundColor: selectedPedidoIds.size > 0 ? '#eff6ff' : '#f8fafc',
-            border: selectedPedidoIds.size > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+            backgroundColor: selectedPedidoIds.size > 0 ? 'var(--pedidos-surface-sunken, #eff6ff)' : 'var(--pedidos-surface-default, #f8fafc)',
+            border: selectedPedidoIds.size > 0 ? '1px solid var(--pedidos-brand-accent, #bfdbfe)' : '1px solid var(--pedidos-border-default, #e2e8f0)',
             borderRadius: '0.5rem',
             padding: '0.6rem 1rem',
             marginBottom: '1rem',
@@ -538,14 +533,14 @@ export const GestionDashboardPage: React.FC = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
-            <span style={{ fontWeight: 600, color: '#1e293b' }}>
+            <span style={{ fontWeight: 600, color: 'var(--pedidos-text-primary, #1e293b)' }}>
               Selección masiva:
             </span>
             <span
               style={{
                 fontWeight: 700,
-                color: selectedPedidoIds.size > 0 ? '#1d4ed8' : '#64748b',
-                backgroundColor: selectedPedidoIds.size > 0 ? '#dbeafe' : '#f1f5f9',
+                color: selectedPedidoIds.size > 0 ? '#1d4ed8' : 'var(--pedidos-text-muted, #64748b)',
+                backgroundColor: selectedPedidoIds.size > 0 ? 'rgba(59, 130, 246, 0.15)' : 'var(--pedidos-surface-sunken, #f1f5f9)',
                 padding: '0.15rem 0.55rem',
                 borderRadius: '9999px',
               }}
@@ -619,49 +614,49 @@ export const GestionDashboardPage: React.FC = () => {
       {/* Metric Cards Banner (only if no error) */}
       {!error && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.65rem', marginBottom: '1.25rem' }}>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Activos</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: '0.1rem 0 0 0' }}>
+          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 600, textTransform: 'uppercase' }}>Activos</span>
+            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-text-primary, #0f172a)', margin: '0.1rem 0 0 0' }}>
               {stats.nuevos + stats.enRevision + stats.enProceso + stats.esperandoInfo}
             </p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: '#0369a1', fontWeight: 600, textTransform: 'uppercase' }}>Nuevos</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0369a1', margin: '0.1rem 0 0 0' }}>{stats.nuevos}</p>
+          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-nuevo-text, #0369a1)', fontWeight: 600, textTransform: 'uppercase' }}>Nuevos</span>
+            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-nuevo-text, #0369a1)', margin: '0.1rem 0 0 0' }}>{stats.nuevos}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: '#b45309', fontWeight: 600, textTransform: 'uppercase' }}>En revisión</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#b45309', margin: '0.1rem 0 0 0' }}>{stats.enRevision}</p>
+          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-revision-text, #b45309)', fontWeight: 600, textTransform: 'uppercase' }}>En revisión</span>
+            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-revision-text, #b45309)', margin: '0.1rem 0 0 0' }}>{stats.enRevision}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: '#4338ca', fontWeight: 600, textTransform: 'uppercase' }}>En proceso</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#4338ca', margin: '0.1rem 0 0 0' }}>{stats.enProceso}</p>
+          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-proceso-text, #4338ca)', fontWeight: 600, textTransform: 'uppercase' }}>En proceso</span>
+            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-proceso-text, #4338ca)', margin: '0.1rem 0 0 0' }}>{stats.enProceso}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: '#a16207', fontWeight: 600, textTransform: 'uppercase' }}>Esperando información</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#a16207', margin: '0.1rem 0 0 0' }}>{stats.esperandoInfo}</p>
+          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-esperando-text, #a16207)', fontWeight: 600, textTransform: 'uppercase' }}>Esperando información</span>
+            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-esperando-text, #a16207)', margin: '0.1rem 0 0 0' }}>{stats.esperandoInfo}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: '#b91c1c', fontWeight: 600, textTransform: 'uppercase' }}>Sin asignar</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#b91c1c', margin: '0.1rem 0 0 0' }}>{stats.sinAsignar}</p>
+          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-cancelado-text, #b91c1c)', fontWeight: 600, textTransform: 'uppercase' }}>Sin asignar</span>
+            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-cancelado-text, #b91c1c)', margin: '0.1rem 0 0 0' }}>{stats.sinAsignar}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: '#15803d', fontWeight: 600, textTransform: 'uppercase' }}>Finalizados</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#15803d', margin: '0.1rem 0 0 0' }}>{stats.finalizados}</p>
+          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-finalizado-text, #15803d)', fontWeight: 600, textTransform: 'uppercase' }}>Finalizados</span>
+            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-finalizado-text, #15803d)', margin: '0.1rem 0 0 0' }}>{stats.finalizados}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Cancelados</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#64748b', margin: '0.1rem 0 0 0' }}>{stats.cancelados}</p>
+          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 600, textTransform: 'uppercase' }}>Cancelados</span>
+            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-text-muted, #64748b)', margin: '0.1rem 0 0 0' }}>{stats.cancelados}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: '#475569', fontWeight: 600, textTransform: 'uppercase' }}>Archivados</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#475569', margin: '0.1rem 0 0 0' }}>{stats.archivados}</p>
+          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-text-secondary, #475569)', fontWeight: 600, textTransform: 'uppercase' }}>Archivados</span>
+            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-text-secondary, #475569)', margin: '0.1rem 0 0 0' }}>{stats.archivados}</p>
           </div>
         </div>
       )}
 
       {/* Filter Tabs & Search Controls */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem', backgroundColor: '#ffffff', padding: '0.65rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem', backgroundColor: 'var(--pedidos-surface-default, #ffffff)', padding: '0.65rem 1rem', borderRadius: '0.5rem', border: '1px solid var(--pedidos-border-default, #e2e8f0)' }}>
         <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
           {[
             { id: 'todos', label: 'Todos' },
@@ -680,8 +675,8 @@ export const GestionDashboardPage: React.FC = () => {
                 padding: '0.35rem 0.75rem',
                 borderRadius: '0.375rem',
                 border: 'none',
-                background: tabFilter === t.id ? '#0f172a' : 'transparent',
-                color: tabFilter === t.id ? '#ffffff' : '#64748b',
+                background: tabFilter === t.id ? 'var(--pedidos-brand-accent, #0284c7)' : 'transparent',
+                color: tabFilter === t.id ? '#ffffff' : 'var(--pedidos-text-muted, #64748b)',
                 fontWeight: 600,
                 fontSize: '0.825rem',
                 cursor: 'pointer',
@@ -701,10 +696,10 @@ export const GestionDashboardPage: React.FC = () => {
             style={{
               padding: '0.35rem 0.65rem',
               borderRadius: '0.375rem',
-              border: '1px solid #cbd5e1',
+              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
               fontSize: '0.825rem',
-              backgroundColor: '#ffffff',
-              color: '#334155',
+              backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+              color: 'var(--pedidos-text-primary, #334155)',
               cursor: 'pointer',
             }}
             aria-label="Filtrar por prioridad"
@@ -725,9 +720,11 @@ export const GestionDashboardPage: React.FC = () => {
               style={{
                 padding: '0.35rem 0.65rem',
                 borderRadius: '0.375rem',
-                border: '1px solid #cbd5e1',
+                border: '1px solid var(--pedidos-border-default, #cbd5e1)',
                 fontSize: '0.825rem',
                 minWidth: '200px',
+                backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+                color: 'var(--pedidos-text-primary, #1e293b)',
               }}
             />
             <button
@@ -800,10 +797,10 @@ export const GestionDashboardPage: React.FC = () => {
         /* Board View */
         isTerminalOrArchivedTab ? (
           /* Dedicated Terminal / Archived Panel */
-          <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1.25rem' }}>
+          <div style={{ backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', padding: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--pedidos-text-primary, #0f172a)' }}>
                   {tabFilter === 'finalizados' && 'Finalizados'}
                   {tabFilter === 'cancelados' && 'Cancelados'}
                   {tabFilter === 'archivados' && 'Archivados'}
@@ -811,11 +808,11 @@ export const GestionDashboardPage: React.FC = () => {
                 <span style={{
                   fontSize: '0.75rem',
                   fontWeight: 700,
-                  backgroundColor: tabFilter === 'finalizados' ? '#f0fdf4' : tabFilter === 'cancelados' ? '#fef2f2' : '#f1f5f9',
-                  color: tabFilter === 'finalizados' ? '#15803d' : tabFilter === 'cancelados' ? '#b91c1c' : '#475569',
+                  backgroundColor: tabFilter === 'finalizados' ? 'var(--pedidos-status-finalizado-bg, #f0fdf4)' : tabFilter === 'cancelados' ? 'var(--pedidos-status-cancelado-bg, #fef2f2)' : 'var(--pedidos-surface-sunken, #f1f5f9)',
+                  color: tabFilter === 'finalizados' ? 'var(--pedidos-status-finalizado-text, #15803d)' : tabFilter === 'cancelados' ? 'var(--pedidos-status-cancelado-text, #b91c1c)' : 'var(--pedidos-text-secondary, #475569)',
                   padding: '0.15rem 0.5rem',
                   borderRadius: '9999px',
-                  border: `1px solid ${tabFilter === 'finalizados' ? '#bbf7d0' : tabFilter === 'cancelados' ? '#fecaca' : '#cbd5e1'}`,
+                  border: `1px solid ${tabFilter === 'finalizados' ? 'var(--pedidos-status-finalizado-border, #bbf7d0)' : tabFilter === 'cancelados' ? 'var(--pedidos-status-cancelado-border, #fecaca)' : 'var(--pedidos-border-default, #cbd5e1)'}`,
                 }}>
                   {pedidos.length} pedidos
                 </span>
@@ -826,9 +823,9 @@ export const GestionDashboardPage: React.FC = () => {
                 style={{
                   padding: '0.35rem 0.75rem',
                   borderRadius: '0.375rem',
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#ffffff',
-                  color: '#0284c7',
+                  border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+                  backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+                  color: 'var(--pedidos-brand-accent, #0284c7)',
                   fontSize: '0.8rem',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -839,22 +836,22 @@ export const GestionDashboardPage: React.FC = () => {
             </div>
 
             {pedidos.length === 0 ? (
-              <div style={{ padding: '3rem 1rem', textAlign: 'center', color: '#94a3b8', border: '1px dashed #e2e8f0', borderRadius: '0.5rem' }}>
+              <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--pedidos-text-muted, #94a3b8)', border: '1px dashed var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem' }}>
                 No hay pedidos en este estado.
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                 {pedidos.map((ped) => {
-                  const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: '#334155', bg: '#f1f5f9', border: '#cbd5e1' };
+                  const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)', border: 'var(--pedidos-border-default, #cbd5e1)' };
                   const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
                   return (
                     <Link
                       key={ped.id}
                       to={`/gestion/pedidos/${ped.id}`}
                       style={{
-                        backgroundColor: ped.retrabajo_activo ? '#fffbeb' : '#ffffff',
-                        border: ped.retrabajo_activo ? '1px solid #fde68a' : '1px solid #e2e8f0',
-                        borderLeft: ped.retrabajo_activo ? '4px solid #d97706' : undefined,
+                        backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : 'var(--pedidos-surface-raised, #ffffff)',
+                        border: ped.retrabajo_activo ? '1px solid var(--pedidos-rework-border, #fde68a)' : '1px solid var(--pedidos-border-default, #e2e8f0)',
+                        borderLeft: ped.retrabajo_activo ? '4px solid var(--pedidos-rework-accent, #d97706)' : undefined,
                         borderRadius: '0.5rem',
                         padding: '1rem',
                         textDecoration: 'none',
@@ -869,7 +866,7 @@ export const GestionDashboardPage: React.FC = () => {
                         e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.08)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#fde68a' : '#e2e8f0';
+                        e.currentTarget.style.borderColor = ped.retrabajo_activo ? 'var(--pedidos-rework-border, #fde68a)' : 'var(--pedidos-border-default, #e2e8f0)';
                         e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
                       }}
                     >
@@ -884,7 +881,7 @@ export const GestionDashboardPage: React.FC = () => {
                               style={{ cursor: 'pointer', width: '15px', height: '15px' }}
                             />
                           )}
-                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>{ped.pedido_visible}</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--pedidos-text-primary, #0f172a)' }}>{ped.pedido_visible}</span>
                         </div>
                         <span style={{
                           fontSize: '0.725rem',
@@ -903,9 +900,9 @@ export const GestionDashboardPage: React.FC = () => {
                           style={{
                             fontSize: '0.7rem',
                             fontWeight: 800,
-                            color: '#b45309',
-                            backgroundColor: '#fef3c7',
-                            border: '1px solid #fde68a',
+                            color: 'var(--pedidos-rework-text, #b45309)',
+                            backgroundColor: 'var(--pedidos-rework-bg, #fef3c7)',
+                            border: '1px solid var(--pedidos-rework-border, #fde68a)',
                             borderRadius: '0.25rem',
                             padding: '0.2rem 0.45rem',
                             display: 'inline-flex',
@@ -921,9 +918,9 @@ export const GestionDashboardPage: React.FC = () => {
                           style={{
                             fontSize: '0.7rem',
                             fontWeight: 700,
-                            color: '#475569',
-                            backgroundColor: '#f1f5f9',
-                            border: '1px solid #cbd5e1',
+                            color: 'var(--pedidos-text-secondary, #475569)',
+                            backgroundColor: 'var(--pedidos-surface-sunken, #f1f5f9)',
+                            border: '1px solid var(--pedidos-border-default, #cbd5e1)',
                             borderRadius: '0.25rem',
                             padding: '0.2rem 0.45rem',
                             display: 'inline-flex',
@@ -935,7 +932,7 @@ export const GestionDashboardPage: React.FC = () => {
                           RETRABAJADO · {formatReworkHistoricalText(ped.revision_count || 0)}
                         </div>
                       ) : null}
-                      <div style={{ fontSize: '0.825rem', color: '#334155', fontWeight: 500 }}>
+                      <div style={{ fontSize: '0.825rem', color: 'var(--pedidos-text-secondary, #334155)', fontWeight: 500 }}>
                         {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                       </div>
 
@@ -997,11 +994,11 @@ export const GestionDashboardPage: React.FC = () => {
                         ) : null}
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
-                        <span style={{ color: ped.responsable_nombre ? '#334155' : '#b91c1c', fontWeight: 500 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)' }}>
+                        <span style={{ color: ped.responsable_nombre ? 'var(--pedidos-text-secondary, #334155)' : '#b91c1c', fontWeight: 500 }}>
                           {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
                         </span>
-                        <span style={{ color: '#0284c7', fontWeight: 600 }}>Ver detalle &rarr;</span>
+                        <span style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600 }}>Ver detalle &rarr;</span>
                       </div>
                     </Link>
                   );
@@ -1025,13 +1022,13 @@ export const GestionDashboardPage: React.FC = () => {
           >
             {estadosKanban.map((estado) => {
               const columnPedidos = pedidos.filter((p) => p.estado === estado);
-              const styleInfo = estadoTitles[estado] || { label: estado, color: '#334155', bg: '#f1f5f9', border: '#cbd5e1' };
+              const styleInfo = estadoTitles[estado] || { label: estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)', border: 'var(--pedidos-border-default, #cbd5e1)' };
 
               return (
                 <div
                   key={estado}
                   style={{
-                    backgroundColor: '#f8fafc',
+                    backgroundColor: 'var(--pedidos-surface-sunken, #f8fafc)',
                     border: `1px solid ${styleInfo.border}`,
                     borderRadius: '0.5rem',
                     display: 'flex',
@@ -1045,11 +1042,11 @@ export const GestionDashboardPage: React.FC = () => {
                   <div
                     style={{
                       padding: '0.75rem 1rem',
-                      borderBottom: '1px solid #e2e8f0',
+                      borderBottom: '1px solid var(--pedidos-border-default, #e2e8f0)',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      backgroundColor: '#ffffff',
+                      backgroundColor: 'var(--pedidos-surface-raised, #ffffff)',
                       borderTopLeftRadius: '0.5rem',
                       borderTopRightRadius: '0.5rem',
                     }}
@@ -1064,7 +1061,7 @@ export const GestionDashboardPage: React.FC = () => {
                           display: 'inline-block',
                         }}
                       />
-                      <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#1e293b' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>
                         {styleInfo.label}
                       </span>
                     </div>
@@ -1102,9 +1099,9 @@ export const GestionDashboardPage: React.FC = () => {
                           key={ped.id}
                           to={`/gestion/pedidos/${ped.id}`}
                           style={{
-                            backgroundColor: ped.retrabajo_activo ? '#fffbeb' : '#ffffff',
-                            border: ped.retrabajo_activo ? '1px solid #fde68a' : '1px solid #cbd5e1',
-                            borderLeft: ped.retrabajo_activo ? '4px solid #d97706' : undefined,
+                            backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : 'var(--pedidos-surface-raised, #ffffff)',
+                            border: ped.retrabajo_activo ? '1px solid var(--pedidos-rework-border, #fde68a)' : '1px solid var(--pedidos-border-default, #cbd5e1)',
+                            borderLeft: ped.retrabajo_activo ? '4px solid var(--pedidos-rework-accent, #d97706)' : undefined,
                             borderRadius: '0.5rem',
                             padding: '0.85rem',
                             textDecoration: 'none',
@@ -1119,7 +1116,7 @@ export const GestionDashboardPage: React.FC = () => {
                             e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.08)';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#fde68a' : '#cbd5e1';
+                            e.currentTarget.style.borderColor = ped.retrabajo_activo ? 'var(--pedidos-rework-border, #fde68a)' : 'var(--pedidos-border-default, #cbd5e1)';
                             e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
                           }}
                         >
@@ -1135,11 +1132,11 @@ export const GestionDashboardPage: React.FC = () => {
                                   style={{ cursor: 'pointer', width: '15px', height: '15px' }}
                                 />
                               )}
-                              <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
+                              <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #0f172a)' }}>
                                 {ped.pedido_visible}
                               </span>
                             </div>
-                            <span style={{ fontSize: '0.725rem', color: '#64748b' }}>
+                            <span style={{ fontSize: '0.725rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
                               {new Date(ped.created_at).toLocaleDateString()}
                             </span>
                           </div>
@@ -1150,9 +1147,9 @@ export const GestionDashboardPage: React.FC = () => {
                               style={{
                                 fontSize: '0.7rem',
                                 fontWeight: 800,
-                                color: '#b45309',
-                                backgroundColor: '#fef3c7',
-                                border: '1px solid #fde68a',
+                                color: 'var(--pedidos-rework-text, #b45309)',
+                                backgroundColor: 'var(--pedidos-rework-bg, #fef3c7)',
+                                border: '1px solid var(--pedidos-rework-border, #fde68a)',
                                 borderRadius: '0.25rem',
                                 padding: '0.2rem 0.45rem',
                                 display: 'inline-flex',
@@ -1166,7 +1163,7 @@ export const GestionDashboardPage: React.FC = () => {
                           )}
 
                           {/* Service Category & Type */}
-                          <div style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 500 }}>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--pedidos-text-secondary, #334155)', fontWeight: 500 }}>
                             {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                           </div>
 
@@ -1234,9 +1231,9 @@ export const GestionDashboardPage: React.FC = () => {
                               style={{
                                 fontSize: '0.7rem',
                                 fontWeight: 700,
-                                color: '#a16207',
-                                backgroundColor: '#fefce8',
-                                border: '1px solid #fef08a',
+                                color: 'var(--pedidos-status-esperando-text, #a16207)',
+                                backgroundColor: 'var(--pedidos-status-esperando-bg, #fefce8)',
+                                border: '1px solid var(--pedidos-status-esperando-border, #fef08a)',
                                 borderRadius: '0.25rem',
                                 padding: '0.2rem 0.4rem',
                                 display: 'inline-flex',
@@ -1250,18 +1247,18 @@ export const GestionDashboardPage: React.FC = () => {
                           )}
 
                           {/* Footer: Responsable & Action */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.4rem', borderTop: '1px solid #f1f5f9' }}>
-                            <span style={{ color: ped.responsable_nombre ? '#334155' : '#b91c1c', fontWeight: 500 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.4rem', borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)' }}>
+                            <span style={{ color: ped.responsable_nombre ? 'var(--pedidos-text-secondary, #334155)' : '#b91c1c', fontWeight: 500 }}>
                               {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
                             </span>
-                            <span style={{ color: '#0284c7', fontWeight: 600 }}>Ver detalle &rarr;</span>
+                            <span style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600 }}>Ver detalle &rarr;</span>
                           </div>
                         </Link>
                       );
                     })}
 
                     {columnPedidos.length === 0 && (
-                      <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem', border: '1px dashed #e2e8f0', borderRadius: '0.375rem', margin: 'auto 0' }}>
+                      <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--pedidos-text-muted, #94a3b8)', fontSize: '0.8rem', border: '1px dashed var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.375rem', margin: 'auto 0' }}>
                         Sin pedidos en este estado
                       </div>
                     )}
@@ -1273,11 +1270,11 @@ export const GestionDashboardPage: React.FC = () => {
         )
       ) : (
         /* Table View */
-        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 600 }}>
+                <tr style={{ backgroundColor: 'var(--pedidos-table-header-bg, #f8fafc)', borderBottom: '1px solid var(--pedidos-border-default, #e2e8f0)', color: 'var(--pedidos-text-secondary, #475569)', fontWeight: 600 }}>
                   {isAdmin && (
                     <th style={{ padding: '0.75rem 0.5rem 0.75rem 1rem', width: '36px' }}>
                       <input
@@ -1311,10 +1308,10 @@ export const GestionDashboardPage: React.FC = () => {
               </thead>
               <tbody>
                 {paginatedPedidos.map((ped) => {
-                  const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: '#334155', bg: '#f1f5f9' };
+                  const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)' };
                   const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
                   return (
-                    <tr key={ped.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: ped.retrabajo_activo ? '#fffbeb' : undefined }}>
+                    <tr key={ped.id} style={{ borderBottom: '1px solid var(--pedidos-table-row-border, #f1f5f9)', backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : undefined }}>
                       {isAdmin && (
                         <td style={{ padding: '0.75rem 0.5rem 0.75rem 1rem' }}>
                           <input
@@ -1325,12 +1322,12 @@ export const GestionDashboardPage: React.FC = () => {
                           />
                         </td>
                       )}
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f172a' }}>
+                      <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)' }}>
                         {ped.pedido_visible}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: '#334155' }}>
+                      <td style={{ padding: '0.75rem 1rem', color: 'var(--pedidos-text-secondary, #334155)' }}>
                         <div style={{ fontWeight: 500 }}>{ped.categoria_nombre || 'General'}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{ped.tipo_nombre || 'Pieza'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>{ped.tipo_nombre || 'Pieza'}</div>
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         {canEditMetadata && !isTerminal ? (
@@ -1377,7 +1374,7 @@ export const GestionDashboardPage: React.FC = () => {
                             + Etiqueta
                           </button>
                         ) : (
-                          <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>—</span>
+                          <span style={{ color: 'var(--pedidos-text-muted, #94a3b8)', fontSize: '0.8rem' }}>—</span>
                         )}
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
@@ -1386,26 +1383,26 @@ export const GestionDashboardPage: React.FC = () => {
                             {styleInfo.label}
                           </span>
                           {ped.retrabajo_activo ? (
-                            <span style={{ fontSize: '0.675rem', fontWeight: 800, padding: '0.15rem 0.4rem', borderRadius: '0.25rem', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}>
+                            <span style={{ fontSize: '0.675rem', fontWeight: 800, padding: '0.15rem 0.4rem', borderRadius: '0.25rem', backgroundColor: 'var(--pedidos-rework-bg, #fef3c7)', color: 'var(--pedidos-rework-text, #b45309)', border: '1px solid var(--pedidos-rework-border, #fde68a)' }}>
                               🔄 DEVUELTO {ped.revision_count ? `(#${ped.revision_count})` : ''}
                             </span>
                           ) : !ped.retrabajo_activo && ped.estado === 'Finalizado' && (ped.revision_count || 0) > 0 ? (
-                            <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '0.25rem', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1' }}>
+                            <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '0.25rem', backgroundColor: 'var(--pedidos-surface-sunken, #f1f5f9)', color: 'var(--pedidos-text-secondary, #475569)', border: '1px solid var(--pedidos-border-default, #cbd5e1)' }}>
                               RETRABAJADO · {formatReworkHistoricalText(ped.revision_count || 0)}
                             </span>
                           ) : null}
                         </div>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: ped.responsable_nombre ? '#334155' : '#b91c1c', fontWeight: 500 }}>
+                      <td style={{ padding: '0.75rem 1rem', color: ped.responsable_nombre ? 'var(--pedidos-text-secondary, #334155)' : '#b91c1c', fontWeight: 500 }}>
                         {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: '#64748b', fontSize: '0.8rem' }}>
+                      <td style={{ padding: '0.75rem 1rem', color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.8rem' }}>
                         {new Date(ped.created_at).toLocaleDateString()}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
                         <Link
                           to={`/gestion/pedidos/${ped.id}`}
-                          style={{ color: '#0284c7', fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}
+                          style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}
                         >
                           Ver detalle &rarr;
                         </Link>
@@ -1415,7 +1412,7 @@ export const GestionDashboardPage: React.FC = () => {
                 })}
                 {paginatedPedidos.length === 0 && (
                   <tr>
-                    <td colSpan={isAdmin ? 9 : 8} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <td colSpan={isAdmin ? 9 : 8} style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--pedidos-text-muted, #94a3b8)' }}>
                       No se encontraron pedidos con los filtros seleccionados.
                     </td>
                   </tr>
@@ -1426,8 +1423,8 @@ export const GestionDashboardPage: React.FC = () => {
 
           {/* Table Pagination Controls */}
           {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontSize: '0.85rem' }}>
-              <span style={{ color: '#64748b' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderTop: '1px solid var(--pedidos-border-default, #e2e8f0)', backgroundColor: 'var(--pedidos-surface-sunken, #f8fafc)', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--pedidos-text-muted, #64748b)' }}>
                 Página {currentPage} de {totalPages} ({pedidos.length} pedidos)
               </span>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -1435,7 +1432,7 @@ export const GestionDashboardPage: React.FC = () => {
                   type="button"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  style={{ padding: '0.3rem 0.6rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1', background: currentPage === 1 ? '#f1f5f9' : '#ffffff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  style={{ padding: '0.3rem 0.6rem', borderRadius: '0.25rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', background: currentPage === 1 ? 'var(--pedidos-surface-sunken, #f1f5f9)' : 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #334155)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
                 >
                   ← Anterior
                 </button>
@@ -1443,7 +1440,7 @@ export const GestionDashboardPage: React.FC = () => {
                   type="button"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  style={{ padding: '0.3rem 0.6rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1', background: currentPage === totalPages ? '#f1f5f9' : '#ffffff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                  style={{ padding: '0.3rem 0.6rem', borderRadius: '0.25rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', background: currentPage === totalPages ? 'var(--pedidos-surface-sunken, #f1f5f9)' : 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #334155)', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
                 >
                   Siguiente →
                 </button>

@@ -58,7 +58,7 @@ export const UsuariosAdminPage: React.FC = () => {
   // Auth Loading
   if (authLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#64748b' }}>
+      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
         <h3>Verificando permisos de administración...</h3>
       </div>
@@ -69,14 +69,14 @@ export const UsuariosAdminPage: React.FC = () => {
   if (!user) {
     return (
       <div style={{ maxWidth: '480px', margin: '3rem auto', padding: '0 1rem', textAlign: 'center' }}>
-        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '2rem' }}>
+        <div style={{ backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.75rem', padding: '2rem' }}>
           <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔒</div>
-          <h2>Acceso restringido</h2>
-          <p style={{ color: '#64748b' }}>Iniciá sesión como administrador para acceder.</p>
+          <h2 style={{ color: 'var(--pedidos-text-primary, #0f172a)' }}>Acceso restringido</h2>
+          <p style={{ color: 'var(--pedidos-text-muted, #64748b)' }}>Iniciá sesión como administrador para acceder.</p>
           <button
             type="button"
             onClick={() => navigate('/login')}
-            style={{ padding: '0.65rem 1.5rem', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '0.375rem', fontWeight: 600, cursor: 'pointer' }}
+            style={{ padding: '0.65rem 1.5rem', backgroundColor: 'var(--pedidos-brand-accent, #0284c7)', color: '#ffffff', border: 'none', borderRadius: '0.375rem', fontWeight: 600, cursor: 'pointer' }}
           >
             Iniciar sesión
           </button>
@@ -89,15 +89,15 @@ export const UsuariosAdminPage: React.FC = () => {
   if (!isAdmin) {
     return (
       <div style={{ maxWidth: '540px', margin: '3rem auto', padding: '0 1rem', textAlign: 'center' }}>
-        <div style={{ backgroundColor: '#ffffff', border: '1px solid #fecaca', borderRadius: '0.75rem', padding: '2.5rem 2rem' }}>
+        <div style={{ backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)', borderRadius: '0.75rem', padding: '2.5rem 2rem' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🚫</div>
-          <h2 style={{ color: '#991b1b', margin: '0 0 0.5rem 0' }}>Acceso denegado</h2>
-          <p style={{ color: '#64748b', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
+          <h2 style={{ color: 'var(--pedidos-status-cancelado-text, #991b1b)', margin: '0 0 0.5rem 0' }}>Acceso denegado</h2>
+          <p style={{ color: 'var(--pedidos-text-muted, #64748b)', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
             Esta sección es exclusiva para administradores.
           </p>
           <Link
             to="/gestion"
-            style={{ display: 'inline-block', padding: '0.65rem 1.5rem', backgroundColor: '#0284c7', color: '#ffffff', textDecoration: 'none', borderRadius: '0.375rem', fontWeight: 600 }}
+            style={{ display: 'inline-block', padding: '0.65rem 1.5rem', backgroundColor: 'var(--pedidos-brand-accent, #0284c7)', color: '#ffffff', textDecoration: 'none', borderRadius: '0.375rem', fontWeight: 600 }}
           >
             ← Volver
           </Link>
@@ -308,10 +308,10 @@ export const UsuariosAdminPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)', margin: 0 }}>
               Usuarios y roles
             </h1>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '9999px', backgroundColor: '#fef3c7', color: '#b45309', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '9999px', backgroundColor: 'var(--pedidos-status-revision-bg, #fef3c7)', color: 'var(--pedidos-status-revision-text, #b45309)', textTransform: 'uppercase' }}>
               ADMINISTRADOR
             </span>
           </div>
@@ -319,7 +319,7 @@ export const UsuariosAdminPage: React.FC = () => {
 
         <Link
           to="/gestion"
-          style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', textDecoration: 'none', fontWeight: 600, fontSize: '0.85rem' }}
+          style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #334155)', textDecoration: 'none', fontWeight: 600, fontSize: '0.85rem' }}
         >
           ← Volver
         </Link>
@@ -327,44 +327,44 @@ export const UsuariosAdminPage: React.FC = () => {
 
       {/* Notifications */}
       {actionSuccess && (
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: '#f0fdf4', border: '1px solid #86efac', color: '#166534', borderRadius: '0.375rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--pedidos-status-finalizado-bg, #f0fdf4)', border: '1px solid var(--pedidos-status-finalizado-border, #86efac)', color: 'var(--pedidos-status-finalizado-text, #166534)', borderRadius: '0.375rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>✅ {actionSuccess}</span>
-          <button type="button" onClick={() => setActionSuccess(null)} style={{ background: 'none', border: 'none', color: '#166534', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+          <button type="button" onClick={() => setActionSuccess(null)} style={{ background: 'none', border: 'none', color: 'var(--pedidos-status-finalizado-text, #166534)', cursor: 'pointer', fontWeight: 700 }}>✕</button>
         </div>
       )}
 
       {error && (
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', borderRadius: '0.375rem', marginBottom: '1rem' }}>
+        <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)', border: '1px solid var(--pedidos-status-cancelado-border, #f87171)', color: 'var(--pedidos-status-cancelado-text, #991b1b)', borderRadius: '0.375rem', marginBottom: '1rem' }}>
           {error}
         </div>
       )}
 
       {/* Metric Cards Banner */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total</span>
-          <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: '0.15rem 0 0 0' }}>{stats.total}</p>
+        <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem' }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 600, textTransform: 'uppercase' }}>Total</span>
+          <p style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--pedidos-text-primary, #0f172a)', margin: '0.15rem 0 0 0' }}>{stats.total}</p>
         </div>
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-          <span style={{ fontSize: '0.7rem', color: '#b45309', fontWeight: 600, textTransform: 'uppercase' }}>Pendientes</span>
-          <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#b45309', margin: '0.15rem 0 0 0' }}>{stats.pendientes}</p>
+        <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem' }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--pedidos-status-revision-text, #b45309)', fontWeight: 600, textTransform: 'uppercase' }}>Pendientes</span>
+          <p style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--pedidos-status-revision-text, #b45309)', margin: '0.15rem 0 0 0' }}>{stats.pendientes}</p>
         </div>
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-          <span style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 600, textTransform: 'uppercase' }}>Aprobados</span>
-          <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#15803d', margin: '0.15rem 0 0 0' }}>{stats.aprobados}</p>
+        <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem' }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--pedidos-status-finalizado-text, #15803d)', fontWeight: 600, textTransform: 'uppercase' }}>Aprobados</span>
+          <p style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--pedidos-status-finalizado-text, #15803d)', margin: '0.15rem 0 0 0' }}>{stats.aprobados}</p>
         </div>
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-          <span style={{ fontSize: '0.7rem', color: '#b91c1c', fontWeight: 600, textTransform: 'uppercase' }}>Rechazados</span>
-          <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#b91c1c', margin: '0.15rem 0 0 0' }}>{stats.rechazados}</p>
+        <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem' }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--pedidos-status-cancelado-text, #b91c1c)', fontWeight: 600, textTransform: 'uppercase' }}>Rechazados</span>
+          <p style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--pedidos-status-cancelado-text, #b91c1c)', margin: '0.15rem 0 0 0' }}>{stats.rechazados}</p>
         </div>
-        <div style={{ padding: '0.75rem 1rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Revocados</span>
-          <p style={{ fontSize: '1.35rem', fontWeight: 800, color: '#64748b', margin: '0.15rem 0 0 0' }}>{stats.revocados}</p>
+        <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem' }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 600, textTransform: 'uppercase' }}>Revocados</span>
+          <p style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--pedidos-text-muted, #64748b)', margin: '0.15rem 0 0 0' }}>{stats.revocados}</p>
         </div>
       </div>
 
       {/* Filter Tabs & Search */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem', backgroundColor: '#ffffff', padding: '0.65rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', padding: '0.65rem 1rem', borderRadius: '0.5rem', border: '1px solid var(--pedidos-border-default, #e2e8f0)' }}>
         <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
           {[
             { id: 'todos', label: 'Todos' },
@@ -381,8 +381,8 @@ export const UsuariosAdminPage: React.FC = () => {
                 padding: '0.35rem 0.75rem',
                 borderRadius: '0.375rem',
                 border: 'none',
-                background: statusFilter === t.id ? '#0f172a' : 'transparent',
-                color: statusFilter === t.id ? '#ffffff' : '#64748b',
+                background: statusFilter === t.id ? 'var(--pedidos-brand-accent, #0284c7)' : 'transparent',
+                color: statusFilter === t.id ? '#ffffff' : 'var(--pedidos-text-muted, #64748b)',
                 fontWeight: 600,
                 fontSize: '0.825rem',
                 cursor: 'pointer',
@@ -401,7 +401,9 @@ export const UsuariosAdminPage: React.FC = () => {
           style={{
             padding: '0.35rem 0.65rem',
             borderRadius: '0.375rem',
-            border: '1px solid #cbd5e1',
+            border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+            backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+            color: 'var(--pedidos-text-primary, #0f172a)',
             fontSize: '0.825rem',
             minWidth: '240px',
           }}
@@ -410,13 +412,13 @@ export const UsuariosAdminPage: React.FC = () => {
 
       {/* User Table */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Cargando usuarios...</div>
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--pedidos-text-muted, #64748b)' }}>Cargando usuarios...</div>
       ) : (
-        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 600 }}>
+                <tr style={{ backgroundColor: 'var(--pedidos-table-header-bg, #f8fafc)', borderBottom: '1px solid var(--pedidos-border-default, #e2e8f0)', color: 'var(--pedidos-text-secondary, #475569)', fontWeight: 600 }}>
                   <th style={{ padding: '0.75rem 1rem' }}>Usuario</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Rol asignado</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Estado</th>
@@ -432,12 +434,12 @@ export const UsuariosAdminPage: React.FC = () => {
                   const isRev = u.estado_acceso === 'revocado';
 
                   return (
-                    <tr key={u.user_id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <tr key={u.user_id} style={{ borderBottom: '1px solid var(--pedidos-table-row-border, #f1f5f9)' }}>
                       <td style={{ padding: '0.75rem 1rem' }}>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)' }}>
                           {u.nombre} {u.apellido}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
                           @{u.nombre_usuario}
                         </div>
                       </td>
@@ -451,16 +453,16 @@ export const UsuariosAdminPage: React.FC = () => {
                             fontWeight: 700,
                             backgroundColor:
                               u.app_role === 'administrador'
-                                ? '#fef3c7'
+                                ? 'var(--pedidos-status-revision-bg, #fef3c7)'
                                 : u.app_role === 'equipo'
-                                ? '#e0e7ff'
-                                : '#f1f5f9',
+                                ? 'var(--pedidos-status-proceso-bg, #e0e7ff)'
+                                : 'var(--pedidos-surface-sunken, #f1f5f9)',
                             color:
                               u.app_role === 'administrador'
-                                ? '#b45309'
+                                ? 'var(--pedidos-status-revision-text, #b45309)'
                                 : u.app_role === 'equipo'
-                                ? '#4338ca'
-                                : '#475569',
+                                ? 'var(--pedidos-status-proceso-text, #4338ca)'
+                                : 'var(--pedidos-text-secondary, #475569)',
                             textTransform: 'uppercase',
                           }}
                         >
@@ -476,28 +478,28 @@ export const UsuariosAdminPage: React.FC = () => {
                             fontSize: '0.75rem',
                             fontWeight: 700,
                             backgroundColor: isPend
-                              ? '#fef3c7'
+                              ? 'var(--pedidos-status-revision-bg, #fef3c7)'
                               : isAprob
-                              ? '#dcfce7'
-                              : '#fee2e2',
+                              ? 'var(--pedidos-status-finalizado-bg, #dcfce7)'
+                              : 'var(--pedidos-status-cancelado-bg, #fee2e2)',
                             color: isPend
-                              ? '#b45309'
+                              ? 'var(--pedidos-status-revision-text, #b45309)'
                               : isAprob
-                              ? '#15803d'
-                              : '#b91c1c',
+                              ? 'var(--pedidos-status-finalizado-text, #15803d)'
+                              : 'var(--pedidos-status-cancelado-text, #b91c1c)',
                             textTransform: 'uppercase',
                           }}
                         >
                           {u.estado_acceso}
                         </span>
                         {isRev && u.motivo_revocacion && (
-                          <div style={{ fontSize: '0.725rem', color: '#991b1b', marginTop: '0.2rem' }}>
+                          <div style={{ fontSize: '0.725rem', color: 'var(--pedidos-status-cancelado-text, #991b1b)', marginTop: '0.2rem' }}>
                             Motivo: {u.motivo_revocacion}
                           </div>
                         )}
                       </td>
 
-                      <td style={{ padding: '0.75rem 1rem', color: '#64748b', fontSize: '0.8rem' }}>
+                      <td style={{ padding: '0.75rem 1rem', color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.8rem' }}>
                         {new Date(u.solicitado_at).toLocaleDateString()}
                       </td>
 
@@ -536,21 +538,21 @@ export const UsuariosAdminPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleOpenChangeRole(u)}
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: 'var(--pedidos-control-bg, #f1f5f9)', color: 'var(--pedidos-control-text, #334155)', border: '1px solid var(--pedidos-border-default, #cbd5e1)', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
                               >
                                 Cambiar rol
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleOpenChangeUsername(u)}
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: 'var(--pedidos-control-bg, #f1f5f9)', color: 'var(--pedidos-control-text, #334155)', border: '1px solid var(--pedidos-border-default, #cbd5e1)', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
                               >
                                 @Usuario
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleOpenRevoke(u)}
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: 'var(--pedidos-status-cancelado-bg, #fee2e2)', color: 'var(--pedidos-status-cancelado-text, #b91c1c)', border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
                               >
                                 Revocar
                               </button>
@@ -562,7 +564,7 @@ export const UsuariosAdminPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleOpenApprove(u)}
-                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', backgroundColor: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
+                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', backgroundColor: 'var(--pedidos-brand-accent, #0284c7)', color: '#ffffff', border: 'none', borderRadius: '0.25rem', fontWeight: 600, cursor: 'pointer' }}
                               >
                                 Aprobar
                               </button>
@@ -585,7 +587,7 @@ export const UsuariosAdminPage: React.FC = () => {
 
                 {filteredUsers.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <td colSpan={5} style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--pedidos-text-muted, #94a3b8)' }}>
                       No se encontraron usuarios.
                     </td>
                   </tr>
@@ -598,27 +600,27 @@ export const UsuariosAdminPage: React.FC = () => {
 
       {/* Modal: Aprobar / Reactivar */}
       {activeModal === 'approve' && selectedUser && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a' }}>Aprobar acceso</h3>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--pedidos-backdrop-bg, rgba(0,0,0,0.5))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+          <div style={{ backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid var(--pedidos-border-default, #e2e8f0)' }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--pedidos-text-primary, #0f172a)' }}>Aprobar acceso</h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--pedidos-text-muted, #64748b)', margin: '0 0 1rem 0' }}>
               <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario})
             </p>
 
             {modalError && (
-              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: '#fef2f2', color: '#991b1b', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem' }}>
+              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)', color: 'var(--pedidos-status-cancelado-text, #991b1b)', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem', border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)' }}>
                 {modalError}
               </div>
             )}
 
             <form onSubmit={handleApproveSubmit}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--pedidos-text-secondary, #334155)', marginBottom: '0.35rem' }}>
                 Rol:
               </label>
               <select
                 value={modalRole}
                 onChange={(e) => setModalRole(e.target.value as any)}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', marginBottom: '1.25rem', fontSize: '0.875rem' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-text-primary, #0f172a)', marginBottom: '1.25rem', fontSize: '0.875rem' }}
               >
                 <option value="equipo">Equipo</option>
                 <option value="observador">Observador</option>
@@ -629,7 +631,7 @@ export const UsuariosAdminPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={closeModal}
-                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #475569)', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cancelar
                 </button>
@@ -648,21 +650,21 @@ export const UsuariosAdminPage: React.FC = () => {
 
       {/* Modal: Rechazar */}
       {activeModal === 'reject' && selectedUser && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#991b1b' }}>Rechazar solicitud</h3>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--pedidos-backdrop-bg, rgba(0,0,0,0.5))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+          <div style={{ backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid var(--pedidos-border-default, #e2e8f0)' }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--pedidos-status-cancelado-text, #991b1b)' }}>Rechazar solicitud</h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--pedidos-text-muted, #64748b)', margin: '0 0 1rem 0' }}>
               <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario})
             </p>
 
             {modalError && (
-              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: '#fef2f2', color: '#991b1b', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem' }}>
+              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)', color: 'var(--pedidos-status-cancelado-text, #991b1b)', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem', border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)' }}>
                 {modalError}
               </div>
             )}
 
             <form onSubmit={handleRejectSubmit}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--pedidos-text-secondary, #334155)', marginBottom: '0.35rem' }}>
                 Motivo (opcional):
               </label>
               <textarea
@@ -670,14 +672,14 @@ export const UsuariosAdminPage: React.FC = () => {
                 onChange={(e) => setModalMotivo(e.target.value)}
                 placeholder="Motivo del rechazo..."
                 rows={3}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', marginBottom: '1.25rem', fontSize: '0.875rem' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-text-primary, #0f172a)', marginBottom: '1.25rem', fontSize: '0.875rem' }}
               />
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                 <button
                   type="button"
                   onClick={closeModal}
-                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #475569)', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cancelar
                 </button>
@@ -696,21 +698,21 @@ export const UsuariosAdminPage: React.FC = () => {
 
       {/* Modal: Revocar */}
       {activeModal === 'revoke' && selectedUser && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#991b1b' }}>Revocar acceso</h3>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--pedidos-backdrop-bg, rgba(0,0,0,0.5))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+          <div style={{ backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid var(--pedidos-border-default, #e2e8f0)' }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--pedidos-status-cancelado-text, #991b1b)' }}>Revocar acceso</h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--pedidos-text-muted, #64748b)', margin: '0 0 1rem 0' }}>
               <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario})
             </p>
 
             {modalError && (
-              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: '#fef2f2', color: '#991b1b', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem' }}>
+              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)', color: 'var(--pedidos-status-cancelado-text, #991b1b)', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem', border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)' }}>
                 {modalError}
               </div>
             )}
 
             <form onSubmit={handleRevokeSubmit}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--pedidos-text-secondary, #334155)', marginBottom: '0.35rem' }}>
                 Motivo (obligatorio):
               </label>
               <textarea
@@ -719,14 +721,14 @@ export const UsuariosAdminPage: React.FC = () => {
                 onChange={(e) => setModalMotivo(e.target.value)}
                 placeholder="Motivo de la revocación..."
                 rows={3}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', marginBottom: '1.25rem', fontSize: '0.875rem' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-text-primary, #0f172a)', marginBottom: '1.25rem', fontSize: '0.875rem' }}
               />
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                 <button
                   type="button"
                   onClick={closeModal}
-                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #475569)', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cancelar
                 </button>
@@ -745,27 +747,27 @@ export const UsuariosAdminPage: React.FC = () => {
 
       {/* Modal: Cambiar Rol */}
       {activeModal === 'changeRole' && selectedUser && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a' }}>Cambiar rol</h3>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--pedidos-backdrop-bg, rgba(0,0,0,0.5))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+          <div style={{ backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid var(--pedidos-border-default, #e2e8f0)' }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--pedidos-text-primary, #0f172a)' }}>Cambiar rol</h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--pedidos-text-muted, #64748b)', margin: '0 0 1rem 0' }}>
               <strong>{selectedUser.nombre} {selectedUser.apellido}</strong> (@{selectedUser.nombre_usuario})
             </p>
 
             {modalError && (
-              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: '#fef2f2', color: '#991b1b', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem' }}>
+              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)', color: 'var(--pedidos-status-cancelado-text, #991b1b)', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem', border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)' }}>
                 {modalError}
               </div>
             )}
 
             <form onSubmit={handleChangeRoleSubmit}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--pedidos-text-secondary, #334155)', marginBottom: '0.35rem' }}>
                 Nuevo rol:
               </label>
               <select
                 value={modalRole}
                 onChange={(e) => setModalRole(e.target.value as any)}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', marginBottom: '1.25rem', fontSize: '0.875rem' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-text-primary, #0f172a)', marginBottom: '1.25rem', fontSize: '0.875rem' }}
               >
                 <option value="equipo">Equipo</option>
                 <option value="observador">Observador</option>
@@ -776,14 +778,14 @@ export const UsuariosAdminPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={closeModal}
-                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #475569)', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={modalLoading}
-                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: '#0284c7', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: 'var(--pedidos-brand-accent, #0284c7)', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                 >
                   {modalLoading ? 'Guardando...' : 'Guardar cambios'}
                 </button>
@@ -795,21 +797,21 @@ export const UsuariosAdminPage: React.FC = () => {
 
       {/* Modal: Cambiar Nombre de Usuario */}
       {activeModal === 'changeUsername' && selectedUser && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a' }}>Cambiar nombre de usuario</h3>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--pedidos-backdrop-bg, rgba(0,0,0,0.5))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+          <div style={{ backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '440px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid var(--pedidos-border-default, #e2e8f0)' }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--pedidos-text-primary, #0f172a)' }}>Cambiar nombre de usuario</h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--pedidos-text-muted, #64748b)', margin: '0 0 1rem 0' }}>
               <strong>{selectedUser.nombre} {selectedUser.apellido}</strong>
             </p>
 
             {modalError && (
-              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: '#fef2f2', color: '#991b1b', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem' }}>
+              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)', color: 'var(--pedidos-status-cancelado-text, #991b1b)', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem', border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)' }}>
                 {modalError}
               </div>
             )}
 
             <form onSubmit={handleChangeUsernameSubmit}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--pedidos-text-secondary, #334155)', marginBottom: '0.35rem' }}>
                 Nuevo @nombre_usuario:
               </label>
               <input
@@ -817,9 +819,9 @@ export const UsuariosAdminPage: React.FC = () => {
                 required
                 value={modalUsername}
                 onChange={(e) => setModalUsername(e.target.value.toLowerCase())}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', marginBottom: '0.35rem', fontSize: '0.875rem' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-text-primary, #0f172a)', marginBottom: '0.35rem', fontSize: '0.875rem' }}
               />
-              <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '1.25rem' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)', display: 'block', marginBottom: '1.25rem' }}>
                 2-30 caracteres alfanuméricos en minúsculas, puntos, guiones o guiones bajos.
               </span>
 
@@ -827,14 +829,14 @@ export const UsuariosAdminPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={closeModal}
-                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #475569)', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={modalLoading}
-                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: '#0284c7', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: 'none', backgroundColor: 'var(--pedidos-brand-accent, #0284c7)', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                 >
                   {modalLoading ? 'Guardando...' : 'Guardar cambios'}
                 </button>
@@ -846,21 +848,21 @@ export const UsuariosAdminPage: React.FC = () => {
 
       {/* Modal: Eliminar definitivamente */}
       {activeModal === 'delete' && selectedUser && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '460px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 0.75rem 0', color: '#991b1b' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--pedidos-backdrop-bg, rgba(0,0,0,0.5))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+          <div style={{ backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: '460px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid var(--pedidos-border-default, #e2e8f0)' }}>
+            <h3 style={{ margin: '0 0 0.75rem 0', color: 'var(--pedidos-status-cancelado-text, #991b1b)' }}>
               ¿Eliminar definitivamente a {selectedUser.nombre} {selectedUser.apellido}?
             </h3>
-            <p style={{ fontSize: '0.875rem', color: '#475569', margin: '0 0 0.75rem 0', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--pedidos-text-secondary, #475569)', margin: '0 0 0.75rem 0', lineHeight: 1.5 }}>
               Esta acción eliminará su cuenta de acceso y no se puede deshacer.
               El historial de pedidos no será eliminado.
             </p>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1.25rem 0', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--pedidos-text-muted, #64748b)', margin: '0 0 1.25rem 0', lineHeight: 1.5 }}>
               Si vuelve a necesitar acceso, deberá registrarse nuevamente.
             </p>
 
             {modalError && (
-              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: '#fef2f2', color: '#991b1b', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem' }}>
+              <div style={{ padding: '0.5rem 0.75rem', backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)', color: 'var(--pedidos-status-cancelado-text, #991b1b)', borderRadius: '0.25rem', fontSize: '0.8rem', marginBottom: '1rem', border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)' }}>
                 {modalError}
               </div>
             )}
@@ -870,7 +872,7 @@ export const UsuariosAdminPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={closeModal}
-                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '0.45rem 0.9rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #475569)', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cancelar
                 </button>

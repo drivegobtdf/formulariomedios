@@ -82,7 +82,7 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.7)',
+        backgroundColor: 'var(--pedidos-backdrop-bg, rgba(15, 23, 42, 0.7))',
         backdropFilter: 'blur(3px)',
         display: 'flex',
         alignItems: 'center',
@@ -96,7 +96,7 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
     >
       <div
         style={{
-          backgroundColor: '#ffffff',
+          backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)',
           borderRadius: '0.75rem',
           maxWidth: '540px',
           width: '100%',
@@ -104,7 +104,7 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          border: '1px solid #e2e8f0',
+          border: '1px solid var(--pedidos-border-default, #e2e8f0)',
           overflow: 'hidden',
         }}
       >
@@ -112,18 +112,18 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
         <div
           style={{
             padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid #fee2e2',
+            borderBottom: '1px solid var(--pedidos-status-cancelado-border, #fee2e2)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            backgroundColor: '#fef2f2',
+            backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '1.35rem' }}>⚠️</span>
             <h3
               id="modal-purge-title"
-              style={{ margin: 0, fontSize: '1.15rem', color: '#991b1b', fontWeight: 800 }}
+              style={{ margin: 0, fontSize: '1.15rem', color: 'var(--pedidos-status-cancelado-text, #991b1b)', fontWeight: 800 }}
             >
               ELIMINAR PEDIDOS PERMANENTEMENTE
             </h3>
@@ -136,7 +136,7 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
               background: 'transparent',
               border: 'none',
               fontSize: '1.25rem',
-              color: '#94a3b8',
+              color: 'var(--pedidos-text-muted, #94a3b8)',
               cursor: isDeleting ? 'not-allowed' : 'pointer',
               padding: '0.25rem',
               lineHeight: 1,
@@ -150,7 +150,7 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
         {/* Body */}
         <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
           {loadingPreview ? (
-            <div style={{ textAlign: 'center', padding: '2rem 0', color: '#64748b' }}>
+            <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--pedidos-text-muted, #64748b)' }}>
               <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
               <p style={{ margin: 0, fontWeight: 500 }}>Calculando impacto de la eliminación...</p>
             </div>
@@ -158,10 +158,10 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
             <div
               style={{
                 padding: '1rem',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
+                backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)',
+                border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)',
                 borderRadius: '0.5rem',
-                color: '#991b1b',
+                color: 'var(--pedidos-status-cancelado-text, #991b1b)',
                 fontSize: '0.875rem',
               }}
             >
@@ -173,10 +173,10 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
                 <div
                   style={{
                     padding: '0.85rem 1rem',
-                    backgroundColor: '#fef2f2',
-                    border: '1px solid #fecaca',
+                    backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)',
+                    border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)',
                     borderRadius: '0.5rem',
-                    color: '#991b1b',
+                    color: 'var(--pedidos-status-cancelado-text, #991b1b)',
                     fontSize: '0.85rem',
                   }}
                 >
@@ -187,31 +187,31 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
               {isDeleting ? (
                 <div style={{ textAlign: 'center', padding: '1.5rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ fontSize: '2.5rem' }}>🔄</div>
-                  <div style={{ fontWeight: 700, color: '#991b1b', fontSize: '1rem' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--pedidos-status-cancelado-text, #991b1b)', fontSize: '1rem' }}>
                     {deleteStage === 'preparing' && 'Preparando operación segura...'}
                     {deleteStage === 'drive' && 'Limpiando archivos en Google Drive...'}
                     {deleteStage === 'db' && 'Eliminando registros de base de datos...'}
                     {deleteStage === 'completed' && 'Operación completada con éxito'}
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', maxWidth: '380px' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--pedidos-text-muted, #64748b)', maxWidth: '380px' }}>
                     Esta operación es transaccional y duradera. Por favor no cierres la ventana.
                   </p>
                 </div>
               ) : (
                 <>
-                  <p style={{ margin: 0, fontSize: '0.95rem', color: '#1e293b', lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--pedidos-text-primary, #1e293b)', lineHeight: 1.5 }}>
                     Estás por eliminar permanentemente <strong>{count} pedido{count > 1 ? 's' : ''}</strong>.
                   </p>
 
                   {/* Impact Breakdown */}
                   <div
                     style={{
-                      backgroundColor: '#fff1f2',
-                      border: '1px solid #ffe4e6',
+                      backgroundColor: 'var(--pedidos-status-cancelado-bg, #fff1f2)',
+                      border: '1px solid var(--pedidos-status-cancelado-border, #ffe4e6)',
                       borderRadius: '0.5rem',
                       padding: '1rem',
                       fontSize: '0.85rem',
-                      color: '#881337',
+                      color: 'var(--pedidos-status-cancelado-text, #881337)',
                     }}
                   >
                     <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>
@@ -231,19 +231,19 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
                   {/* Visible PED Codes */}
                   {preview?.pedidos_visibles && preview.pedidos_visibles.length > 0 && (
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#64748b', marginBottom: '0.35rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--pedidos-text-muted, #64748b)', marginBottom: '0.35rem' }}>
                         Pedidos afectados:
                       </label>
                       <div
                         style={{
                           maxHeight: '80px',
                           overflowY: 'auto',
-                          backgroundColor: '#f8fafc',
-                          border: '1px solid #e2e8f0',
+                          backgroundColor: 'var(--pedidos-surface-sunken, #f8fafc)',
+                          border: '1px solid var(--pedidos-border-default, #e2e8f0)',
                           borderRadius: '0.375rem',
                           padding: '0.5rem 0.75rem',
                           fontSize: '0.8rem',
-                          color: '#334155',
+                          color: 'var(--pedidos-text-primary, #334155)',
                           fontFamily: 'monospace',
                         }}
                       >
@@ -255,7 +255,7 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
                   {/* Require typing ELIMINAR */}
                   {requiresConfirmWord && (
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#991b1b', marginBottom: '0.4rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: 'var(--pedidos-status-cancelado-text, #991b1b)', marginBottom: '0.4rem' }}>
                         Para confirmar la eliminación masiva, escribí <span style={{ textDecoration: 'underline' }}>ELIMINAR</span> a continuación:
                       </label>
                       <input
@@ -269,10 +269,11 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
                           boxSizing: 'border-box',
                           padding: '0.65rem 0.75rem',
                           borderRadius: '0.375rem',
-                          border: confirmInput.trim() === 'ELIMINAR' ? '2px solid #dc2626' : '1px solid #cbd5e1',
+                          border: confirmInput.trim() === 'ELIMINAR' ? '2px solid #dc2626' : '1px solid var(--pedidos-border-default, #cbd5e1)',
+                          backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
                           fontSize: '0.9rem',
                           fontWeight: 700,
-                          color: '#991b1b',
+                          color: 'var(--pedidos-status-cancelado-text, #991b1b)',
                         }}
                       />
                     </div>
@@ -285,7 +286,7 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
                       justifyContent: 'flex-end',
                       gap: '0.75rem',
                       paddingTop: '0.75rem',
-                      borderTop: '1px solid #e2e8f0',
+                      borderTop: '1px solid var(--pedidos-border-default, #e2e8f0)',
                     }}
                   >
                     <button
@@ -294,10 +295,10 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
                       disabled={isDeleting}
                       style={{
                         padding: '0.6rem 1.25rem',
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #cbd5e1',
+                        backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+                        border: '1px solid var(--pedidos-border-default, #cbd5e1)',
                         borderRadius: '0.375rem',
-                        color: '#475569',
+                        color: 'var(--pedidos-control-text, #475569)',
                         fontSize: '0.875rem',
                         fontWeight: 600,
                         cursor: isDeleting ? 'not-allowed' : 'pointer',
@@ -310,7 +311,7 @@ export const EliminarPedidosModal: React.FC<EliminarPedidosModalProps> = ({
                       disabled={!isConfirmValid || isDeleting}
                       style={{
                         padding: '0.6rem 1.5rem',
-                        backgroundColor: isConfirmValid && !isDeleting ? '#dc2626' : '#fca5a5',
+                        backgroundColor: isConfirmValid && !isDeleting ? '#dc2626' : 'var(--pedidos-border-strong, #fca5a5)',
                         border: 'none',
                         borderRadius: '0.375rem',
                         color: '#ffffff',

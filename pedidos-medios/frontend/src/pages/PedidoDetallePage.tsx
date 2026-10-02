@@ -589,14 +589,14 @@ export const PedidoDetallePage: React.FC = () => {
 
   const getEstadoBadge = (estado: string) => {
     const config: Record<string, { bg: string; color: string; border: string }> = {
-      'Nuevo': { bg: '#f0f9ff', color: '#0369a1', border: '#bae6fd' },
-      'En revisión': { bg: '#fffbeb', color: '#b45309', border: '#fde68a' },
-      'En proceso': { bg: '#eef2ff', color: '#4338ca', border: '#c7d2fe' },
-      'Esperando información': { bg: '#fff7ed', color: '#c2410c', border: '#ffedd5' },
-      'Finalizado': { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0' },
-      'Cancelado': { bg: '#fef2f2', color: '#b91c1c', border: '#fecaca' },
+      'Nuevo': { bg: 'var(--pedidos-status-nuevo-bg, #f0f9ff)', color: 'var(--pedidos-status-nuevo-text, #0369a1)', border: 'var(--pedidos-status-nuevo-border, #bae6fd)' },
+      'En revisión': { bg: 'var(--pedidos-status-revision-bg, #fffbeb)', color: 'var(--pedidos-status-revision-text, #b45309)', border: 'var(--pedidos-status-revision-border, #fde68a)' },
+      'En proceso': { bg: 'var(--pedidos-status-proceso-bg, #eef2ff)', color: 'var(--pedidos-status-proceso-text, #4338ca)', border: 'var(--pedidos-status-proceso-border, #c7d2fe)' },
+      'Esperando información': { bg: 'var(--pedidos-status-esperando-bg, #fff7ed)', color: 'var(--pedidos-status-esperando-text, #c2410c)', border: 'var(--pedidos-status-esperando-border, #ffedd5)' },
+      'Finalizado': { bg: 'var(--pedidos-status-finalizado-bg, #f0fdf4)', color: 'var(--pedidos-status-finalizado-text, #15803d)', border: 'var(--pedidos-status-finalizado-border, #bbf7d0)' },
+      'Cancelado': { bg: 'var(--pedidos-status-cancelado-bg, #fef2f2)', color: 'var(--pedidos-status-cancelado-text, #b91c1c)', border: 'var(--pedidos-status-cancelado-border, #fecaca)' },
     };
-    const c = config[estado] || { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' };
+    const c = config[estado] || { bg: 'var(--pedidos-surface-sunken, #f1f5f9)', color: 'var(--pedidos-text-secondary, #475569)', border: 'var(--pedidos-border-default, #e2e8f0)' };
 
     return (
       <span
@@ -621,7 +621,7 @@ export const PedidoDetallePage: React.FC = () => {
   // Auth Loading Gate
   if (authLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#64748b' }}>
+      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
         <h3>Verificando sesión...</h3>
       </div>
@@ -631,7 +631,7 @@ export const PedidoDetallePage: React.FC = () => {
   // Unauthenticated Gate
   if (!user) {
     return (
-      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#64748b' }}>
+      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔒</div>
         <p>Redirigiendo a inicio de sesión...</p>
       </div>
@@ -649,9 +649,9 @@ export const PedidoDetallePage: React.FC = () => {
       <div style={{ maxWidth: '520px', margin: '3rem auto', padding: '0 1rem' }}>
         <div
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--pedidos-surface-raised, #ffffff)',
             borderRadius: '0.75rem',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--pedidos-border-default, #e2e8f0)',
             padding: '2.5rem 2rem',
             textAlign: 'center',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
@@ -662,8 +662,8 @@ export const PedidoDetallePage: React.FC = () => {
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              backgroundColor: isPendiente ? '#fef3c7' : '#fee2e2',
-              color: isPendiente ? '#b45309' : '#b91c1c',
+              backgroundColor: isPendiente ? 'var(--pedidos-status-revision-bg, #fef3c7)' : 'var(--pedidos-status-cancelado-bg, #fee2e2)',
+              color: isPendiente ? 'var(--pedidos-status-revision-text, #b45309)' : 'var(--pedidos-status-cancelado-text, #b91c1c)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -674,7 +674,7 @@ export const PedidoDetallePage: React.FC = () => {
             {isPendiente ? '⏳' : isRechazado ? '❌' : '🚫'}
           </div>
 
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)', margin: '0 0 0.5rem 0' }}>
             {isPendiente
               ? 'Acceso pendiente'
               : isRechazado
@@ -682,7 +682,7 @@ export const PedidoDetallePage: React.FC = () => {
               : 'Acceso revocado'}
           </h2>
 
-          <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.6, margin: '0 0 1.5rem 0' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--pedidos-text-muted, #64748b)', lineHeight: 1.6, margin: '0 0 1.5rem 0' }}>
             {isPendiente && 'Tu cuenta está en espera de aprobación por un administrador.'}
             {isRechazado && 'Tu solicitud de acceso no fue aprobada.'}
             {isRevocado && 'Tu acceso al sistema fue revocado.'}
@@ -694,9 +694,9 @@ export const PedidoDetallePage: React.FC = () => {
             style={{
               padding: '0.65rem 1.5rem',
               borderRadius: '0.375rem',
-              border: '1px solid #cbd5e1',
-              backgroundColor: '#ffffff',
-              color: '#334155',
+              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+              backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+              color: 'var(--pedidos-control-text, #334155)',
               fontSize: '0.875rem',
               fontWeight: 600,
               cursor: 'pointer',
@@ -711,7 +711,7 @@ export const PedidoDetallePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+      <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
         <p>Cargando detalles del pedido...</p>
       </div>
     );
@@ -719,10 +719,10 @@ export const PedidoDetallePage: React.FC = () => {
 
   if (error && !pedido) {
     return (
-      <div style={{ background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', padding: '1.5rem', borderRadius: '0.5rem', margin: '2rem auto', maxWidth: '600px' }}>
+      <div style={{ background: 'var(--pedidos-status-cancelado-bg, #fef2f2)', border: '1px solid var(--pedidos-status-cancelado-border, #f87171)', color: 'var(--pedidos-status-cancelado-text, #991b1b)', padding: '1.5rem', borderRadius: '0.5rem', margin: '2rem auto', maxWidth: '600px' }}>
         <h3 style={{ margin: '0 0 0.5rem 0' }}>Error al cargar el pedido</h3>
         <p style={{ margin: '0 0 1rem 0' }}>{error}</p>
-        <Link to="/gestion" style={{ color: '#dc2626', fontWeight: 600 }}>
+        <Link to="/gestion" style={{ color: 'var(--pedidos-status-cancelado-text, #dc2626)', fontWeight: 600 }}>
           ← Volver al Tablero de Gestión
         </Link>
       </div>
@@ -751,7 +751,7 @@ export const PedidoDetallePage: React.FC = () => {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.35rem',
-            color: '#0284c7',
+            color: 'var(--pedidos-brand-accent, #0284c7)',
             textDecoration: 'none',
             fontSize: '0.875rem',
             fontWeight: 700,
@@ -763,8 +763,8 @@ export const PedidoDetallePage: React.FC = () => {
         {isObserver && (
           <span
             style={{
-              background: '#fef3c7',
-              color: '#b45309',
+              background: 'var(--pedidos-status-revision-bg, #fef3c7)',
+              color: 'var(--pedidos-status-revision-text, #b45309)',
               padding: '0.2rem 0.6rem',
               borderRadius: '0.25rem',
               fontSize: '0.75rem',
@@ -781,9 +781,9 @@ export const PedidoDetallePage: React.FC = () => {
       {successMessage && (
         <div
           style={{
-            background: '#f0fdf4',
-            border: '1px solid #86efac',
-            color: '#166534',
+            background: 'var(--pedidos-status-finalizado-bg, #f0fdf4)',
+            border: '1px solid var(--pedidos-status-finalizado-border, #86efac)',
+            color: 'var(--pedidos-status-finalizado-text, #166534)',
             padding: '0.75rem 1.25rem',
             borderRadius: '0.5rem',
             marginBottom: '1rem',
@@ -796,7 +796,7 @@ export const PedidoDetallePage: React.FC = () => {
           <button
             type="button"
             onClick={() => setSuccessMessage(null)}
-            style={{ background: 'transparent', border: 'none', color: '#166534', cursor: 'pointer', fontWeight: 700, fontSize: '1rem' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--pedidos-status-finalizado-text, #166534)', cursor: 'pointer', fontWeight: 700, fontSize: '1rem' }}
           >
             ✕
           </button>
@@ -806,9 +806,9 @@ export const PedidoDetallePage: React.FC = () => {
       {error && (
         <div
           style={{
-            background: '#fef2f2',
-            border: '1px solid #f87171',
-            color: '#991b1b',
+            background: 'var(--pedidos-status-cancelado-bg, #fef2f2)',
+            border: '1px solid var(--pedidos-status-cancelado-border, #f87171)',
+            color: 'var(--pedidos-status-cancelado-text, #991b1b)',
             padding: '0.75rem 1.25rem',
             borderRadius: '0.5rem',
             marginBottom: '1rem',
@@ -821,9 +821,9 @@ export const PedidoDetallePage: React.FC = () => {
       {downloadError && (
         <div
           style={{
-            background: '#fff1f2',
-            border: '1px solid #fda4af',
-            color: '#be123c',
+            background: 'var(--pedidos-status-cancelado-bg, #fff1f2)',
+            border: '1px solid var(--pedidos-status-cancelado-border, #fda4af)',
+            color: 'var(--pedidos-status-cancelado-text, #be123c)',
             padding: '0.75rem 1.25rem',
             borderRadius: '0.5rem',
             marginBottom: '1rem',
@@ -836,7 +836,7 @@ export const PedidoDetallePage: React.FC = () => {
           <button
             type="button"
             onClick={() => setDownloadError(null)}
-            style={{ background: 'transparent', border: 'none', color: '#be123c', cursor: 'pointer', fontWeight: 700 }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--pedidos-status-cancelado-text, #be123c)', cursor: 'pointer', fontWeight: 700 }}
           >
             ✕
           </button>
@@ -848,7 +848,7 @@ export const PedidoDetallePage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--pedidos-text-primary, #0f172a)', margin: 0 }}>
                 {pedido.pedido_visible}
               </h1>
               {getEstadoBadge(pedido.estado)}
@@ -901,34 +901,34 @@ export const PedidoDetallePage: React.FC = () => {
               ) : null}
 
               {pedido.retrabajo_activo ? (
-                <span style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 800, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span style={{ background: 'var(--pedidos-rework-bg, #fef3c7)', color: 'var(--pedidos-rework-text, #b45309)', border: '1px solid var(--pedidos-rework-border, #fde68a)', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 800, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                   🔄 DEVUELTO - RETRABAJAR {pedido.revision_count ? `(Rev #${pedido.revision_count})` : ''}
                 </span>
               ) : !pedido.retrabajo_activo && pedido.estado === 'Finalizado' && (pedido.revision_count || 0) > 0 ? (
-                <span style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span style={{ background: 'var(--pedidos-surface-sunken, #f1f5f9)', color: 'var(--pedidos-text-secondary, #475569)', border: '1px solid var(--pedidos-border-default, #cbd5e1)', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                   RETRABAJADO · {formatReworkHistoricalText(pedido.revision_count || 0)}
                 </span>
               ) : null}
               {pedido.archivado && (
-                <span style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.75rem' }}>
+                <span style={{ background: 'var(--pedidos-status-cancelado-bg, #fee2e2)', color: 'var(--pedidos-status-cancelado-text, #b91c1c)', border: '1px solid var(--pedidos-status-cancelado-border, #fca5a5)', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.75rem' }}>
                   ARCHIVADO
                 </span>
               )}
-              <span style={{ color: '#64748b', fontSize: '0.8125rem' }}>
+              <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.8125rem' }}>
                 (v{pedido.version})
               </span>
             </div>
 
-            <p style={{ color: '#334155', margin: '0.35rem 0 0 0', fontSize: '1rem', fontWeight: 600 }}>
+            <p style={{ color: 'var(--pedidos-text-secondary, #334155)', margin: '0.35rem 0 0 0', fontSize: '1rem', fontWeight: 600 }}>
               {servicioEncabezado}
             </p>
 
-            <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.5rem', fontSize: '0.8125rem', color: '#64748b', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--pedidos-text-muted, #64748b)', flexWrap: 'wrap' }}>
               <span>
                 <strong>Ingreso:</strong> {new Date(pedido.created_at).toLocaleDateString('es-AR')}
               </span>
               {fechaLimiteVal && (
-                <span style={{ color: '#b45309', fontWeight: 600 }}>
+                <span style={{ color: 'var(--pedidos-rework-accent, #b45309)', fontWeight: 600 }}>
                   <strong>Fecha Límite:</strong> {formatLocalDate(fechaLimiteVal)}
                 </span>
               )}
@@ -959,9 +959,9 @@ export const PedidoDetallePage: React.FC = () => {
                     disabled={actionLoading || !pedido.responsable_user_id}
                     title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En revisión' : 'Pasar a En revisión'}
                     style={{
-                      background: '#f8fafc',
-                      color: !pedido.responsable_user_id ? '#94a3b8' : '#334155',
-                      border: '1px solid #cbd5e1',
+                      background: 'var(--pedidos-control-bg, #f8fafc)',
+                      color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
+                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
                       padding: '0.45rem 0.85rem',
                       borderRadius: '0.375rem',
                       fontSize: '0.8125rem',
@@ -990,9 +990,9 @@ export const PedidoDetallePage: React.FC = () => {
                     disabled={actionLoading || !pedido.responsable_user_id}
                     title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En proceso' : 'Pasar a En proceso'}
                     style={{
-                      background: '#f8fafc',
-                      color: !pedido.responsable_user_id ? '#94a3b8' : '#334155',
-                      border: '1px solid #cbd5e1',
+                      background: 'var(--pedidos-control-bg, #f8fafc)',
+                      color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
+                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
                       padding: '0.45rem 0.85rem',
                       borderRadius: '0.375rem',
                       fontSize: '0.8125rem',
@@ -1021,9 +1021,9 @@ export const PedidoDetallePage: React.FC = () => {
                     disabled={actionLoading || !pedido.responsable_user_id}
                     title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de volver a En revisión' : 'Volver a En revisión'}
                     style={{
-                      background: '#f8fafc',
-                      color: !pedido.responsable_user_id ? '#94a3b8' : '#334155',
-                      border: '1px solid #cbd5e1',
+                      background: 'var(--pedidos-control-bg, #f8fafc)',
+                      color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
+                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
                       padding: '0.45rem 0.85rem',
                       borderRadius: '0.375rem',
                       fontSize: '0.8125rem',
@@ -1053,9 +1053,9 @@ export const PedidoDetallePage: React.FC = () => {
                       disabled={actionLoading || !pedido.responsable_user_id}
                       title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En revisión' : 'Pasar a En revisión'}
                       style={{
-                        background: '#f8fafc',
-                        color: !pedido.responsable_user_id ? '#94a3b8' : '#334155',
-                        border: '1px solid #cbd5e1',
+                        background: 'var(--pedidos-control-bg, #f8fafc)',
+                        color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
+                        border: '1px solid var(--pedidos-border-default, #cbd5e1)',
                         padding: '0.45rem 0.85rem',
                         borderRadius: '0.375rem',
                         fontSize: '0.8125rem',
@@ -1080,9 +1080,9 @@ export const PedidoDetallePage: React.FC = () => {
                       disabled={actionLoading || !pedido.responsable_user_id}
                       title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En proceso' : 'Pasar a En proceso'}
                       style={{
-                        background: '#f8fafc',
-                        color: !pedido.responsable_user_id ? '#94a3b8' : '#334155',
-                        border: '1px solid #cbd5e1',
+                        background: 'var(--pedidos-control-bg, #f8fafc)',
+                        color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
+                        border: '1px solid var(--pedidos-border-default, #cbd5e1)',
                         padding: '0.45rem 0.85rem',
                         borderRadius: '0.375rem',
                         fontSize: '0.8125rem',
@@ -1106,9 +1106,9 @@ export const PedidoDetallePage: React.FC = () => {
                     }}
                     disabled={actionLoading}
                     style={{
-                      background: '#fef3c7',
-                      color: '#b45309',
-                      border: '1px solid #fcd34d',
+                      background: 'var(--pedidos-status-revision-bg, #fef3c7)',
+                      color: 'var(--pedidos-status-revision-text, #b45309)',
+                      border: '1px solid var(--pedidos-status-revision-border, #fcd34d)',
                       padding: '0.45rem 0.85rem',
                       borderRadius: '0.375rem',
                       fontSize: '0.8125rem',
@@ -1138,9 +1138,9 @@ export const PedidoDetallePage: React.FC = () => {
                     disabled={actionLoading || !pedido.responsable_user_id}
                     title={!pedido.responsable_user_id ? 'Debe haber un responsable asignado para finalizar el pedido' : 'Finalizar pedido'}
                     style={{
-                      background: '#dcfce7',
-                      color: !pedido.responsable_user_id ? '#94a3b8' : '#15803d',
-                      border: '1px solid #86efac',
+                      background: 'var(--pedidos-status-finalizado-bg, #dcfce7)',
+                      color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-status-finalizado-text, #15803d)',
+                      border: '1px solid var(--pedidos-status-finalizado-border, #86efac)',
                       padding: '0.45rem 0.85rem',
                       borderRadius: '0.375rem',
                       fontSize: '0.8125rem',
@@ -1163,9 +1163,9 @@ export const PedidoDetallePage: React.FC = () => {
                     }}
                     disabled={actionLoading}
                     style={{
-                      background: '#fee2e2',
-                      color: '#b91c1c',
-                      border: '1px solid #fca5a5',
+                      background: 'var(--pedidos-status-cancelado-bg, #fee2e2)',
+                      color: 'var(--pedidos-status-cancelado-text, #b91c1c)',
+                      border: '1px solid var(--pedidos-status-cancelado-border, #fca5a5)',
                       padding: '0.45rem 0.85rem',
                       borderRadius: '0.375rem',
                       fontSize: '0.8125rem',
@@ -1187,9 +1187,9 @@ export const PedidoDetallePage: React.FC = () => {
                     }}
                     disabled={actionLoading}
                     style={{
-                      background: '#e0e7ff',
-                      color: '#4338ca',
-                      border: '1px solid #c7d2fe',
+                      background: 'var(--pedidos-status-proceso-bg, #e0e7ff)',
+                      color: 'var(--pedidos-status-proceso-text, #4338ca)',
+                      border: '1px solid var(--pedidos-status-proceso-border, #c7d2fe)',
                       padding: '0.45rem 0.85rem',
                       borderRadius: '0.375rem',
                       fontSize: '0.8125rem',
@@ -1208,9 +1208,9 @@ export const PedidoDetallePage: React.FC = () => {
                     onClick={handleArchiveToggle}
                     disabled={actionLoading}
                     style={{
-                      background: '#f1f5f9',
-                      color: '#475569',
-                      border: '1px solid #cbd5e1',
+                      background: 'var(--pedidos-control-bg, #f1f5f9)',
+                      color: 'var(--pedidos-control-text, #475569)',
+                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
                       padding: '0.45rem 0.85rem',
                       borderRadius: '0.375rem',
                       fontSize: '0.8125rem',
@@ -1232,15 +1232,15 @@ export const PedidoDetallePage: React.FC = () => {
         <div
           role="alert"
           style={{
-            backgroundColor: '#fffbeb',
-            border: '1px solid #fde68a',
+            backgroundColor: 'var(--pedidos-status-revision-bg, #fffbeb)',
+            border: '1px solid var(--pedidos-status-revision-border, #fde68a)',
             borderRadius: '0.5rem',
             padding: '0.75rem 1rem',
             marginBottom: '1.25rem',
             display: 'flex',
             alignItems: 'center',
             gap: '0.75rem',
-            color: '#92400e',
+            color: 'var(--pedidos-status-revision-text, #92400e)',
             fontSize: '0.875rem',
             fontWeight: 500,
           }}
@@ -1256,15 +1256,15 @@ export const PedidoDetallePage: React.FC = () => {
         <div
           role="alert"
           style={{
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
+            backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)',
+            border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)',
             borderRadius: '0.5rem',
             padding: '0.75rem 1rem',
             marginBottom: '1.25rem',
             display: 'flex',
             alignItems: 'center',
             gap: '0.75rem',
-            color: '#991b1b',
+            color: 'var(--pedidos-status-cancelado-text, #991b1b)',
             fontSize: '0.875rem',
             fontWeight: 500,
           }}
@@ -1282,8 +1282,8 @@ export const PedidoDetallePage: React.FC = () => {
         return (
           <div
             style={{
-              backgroundColor: '#fffbeb',
-              border: '1.5px solid #f59e0b',
+              backgroundColor: 'var(--pedidos-rework-bg, #fffbeb)',
+              border: '1.5px solid var(--pedidos-rework-accent, #f59e0b)',
               borderRadius: '0.5rem',
               padding: '1.25rem',
               marginBottom: '1.25rem',
@@ -1291,25 +1291,25 @@ export const PedidoDetallePage: React.FC = () => {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#b45309', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--pedidos-rework-text, #b45309)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 🔄 SOLICITUD DE REVISIÓN ACTIVA {activeRev ? `· Revisión #${activeRev.revision_number}` : ''}
               </h3>
               {activeRev?.requested_at && (
-                <span style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: 600 }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-rework-text, #92400e)', fontWeight: 600 }}>
                   Solicitada: {new Date(activeRev.requested_at).toLocaleString('es-AR')}
                 </span>
               )}
             </div>
 
-            <div style={{ backgroundColor: '#ffffff', border: '1px solid #fde68a', borderRadius: '0.375rem', padding: '0.85rem 1rem', marginTop: '0.5rem' }}>
-              <p style={{ margin: 0, color: '#1e293b', fontSize: '0.9rem', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+            <div style={{ backgroundColor: 'var(--pedidos-surface-sunken, #ffffff)', border: '1px solid var(--pedidos-rework-border, #fde68a)', borderRadius: '0.375rem', padding: '0.85rem 1rem', marginTop: '0.5rem' }}>
+              <p style={{ margin: 0, color: 'var(--pedidos-text-primary, #1e293b)', fontSize: '0.9rem', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                 <strong>Motivo de devolución / retrabajo:</strong> {activeRev?.motivo || 'El solicitante solicitó revisión de la entrega previa.'}
               </p>
             </div>
 
             {activeRev?.archivos && activeRev.archivos.length > 0 && (
               <div style={{ marginTop: '0.75rem' }}>
-                <strong style={{ fontSize: '0.8125rem', color: '#92400e', display: 'block', marginBottom: '0.35rem' }}>
+                <strong style={{ fontSize: '0.8125rem', color: 'var(--pedidos-rework-text, #92400e)', display: 'block', marginBottom: '0.35rem' }}>
                   Archivos de referencia adjuntos ({activeRev.archivos.length}):
                 </strong>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -1321,23 +1321,23 @@ export const PedidoDetallePage: React.FC = () => {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '0.45rem 0.75rem',
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #fde68a',
+                        backgroundColor: 'var(--pedidos-surface-raised, #ffffff)',
+                        border: '1px solid var(--pedidos-rework-border, #fde68a)',
                         borderRadius: '0.375rem',
                         fontSize: '0.8125rem',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <span>📎</span>
-                        <span style={{ fontWeight: 600, color: '#1e293b' }}>{fa.nombre_original}</span>
-                        {fa.size_bytes && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({formatFileSize(fa.size_bytes)})</span>}
+                        <span style={{ fontWeight: 600, color: 'var(--pedidos-text-primary, #1e293b)' }}>{fa.nombre_original}</span>
+                        {fa.size_bytes && <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.75rem' }}>({formatFileSize(fa.size_bytes)})</span>}
                       </div>
                       <button
                         type="button"
                         onClick={() => handleDownload(fa.id, fa.nombre_original)}
                         disabled={downloadingFileId === fa.id}
                         style={{
-                          backgroundColor: '#d97706',
+                          backgroundColor: 'var(--pedidos-rework-accent, #d97706)',
                           color: '#ffffff',
                           border: 'none',
                           padding: '0.25rem 0.65rem',
@@ -1374,34 +1374,34 @@ export const PedidoDetallePage: React.FC = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--pedidos-text-muted, #64748b)', textTransform: 'uppercase' }}>
                   Nombre y apellido
                 </span>
-                <p style={{ margin: '0.15rem 0 0 0', fontWeight: 600, color: '#0f172a' }}>
+                <p style={{ margin: '0.15rem 0 0 0', fontWeight: 600, color: 'var(--pedidos-text-primary, #0f172a)' }}>
                   {pedido.envio?.nombre_apellido || (pedido as any).solicitante_nombre || 'No especificado'}
                 </p>
               </div>
 
               <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--pedidos-text-muted, #64748b)', textTransform: 'uppercase' }}>
                   Área o dependencia
                 </span>
-                <p style={{ margin: '0.15rem 0 0 0', color: '#334155' }}>
+                <p style={{ margin: '0.15rem 0 0 0', color: 'var(--pedidos-text-secondary, #334155)' }}>
                   {pedido.envio?.area_solicitante || (pedido as any).solicitante_area || 'No especificada'}
                 </p>
               </div>
 
               <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--pedidos-text-muted, #64748b)', textTransform: 'uppercase' }}>
                   Correo electrónico
                 </span>
-                <p style={{ margin: '0.15rem 0 0 0', color: '#0369a1', wordBreak: 'break-all' }}>
+                <p style={{ margin: '0.15rem 0 0 0', color: 'var(--pedidos-brand-accent, #0369a1)', wordBreak: 'break-all' }}>
                   {pedido.envio?.correo || (pedido as any).solicitante_correo || 'No especificado'}
                 </p>
               </div>
 
               <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--pedidos-text-muted, #64748b)', textTransform: 'uppercase' }}>
                   WhatsApp / Teléfono
                 </span>
                 <div style={{ marginTop: '0.2rem' }}>
@@ -1421,14 +1421,14 @@ export const PedidoDetallePage: React.FC = () => {
             return (
               <div
                 className="pedidos-detalle-card"
-                style={isUnassigned ? { border: '2px solid #f59e0b', backgroundColor: '#fffdf5' } : undefined}
+                style={isUnassigned ? { border: '2px solid var(--pedidos-rework-accent, #f59e0b)', backgroundColor: 'var(--pedidos-rework-bg, #fffdf5)' } : undefined}
               >
                 <div className="pedidos-detalle-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h2 className="pedidos-detalle-card-title">
                     Responsable
                   </h2>
                   {isUnassigned && (
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#b45309', backgroundColor: '#fef3c7', padding: '0.15rem 0.5rem', borderRadius: '9999px', border: '1px solid #fde68a' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--pedidos-rework-text, #b45309)', backgroundColor: 'var(--pedidos-rework-bg, #fef3c7)', padding: '0.15rem 0.5rem', borderRadius: '9999px', border: '1px solid var(--pedidos-rework-border, #fde68a)' }}>
                       Obligatorio
                     </span>
                   )}
@@ -1436,7 +1436,7 @@ export const PedidoDetallePage: React.FC = () => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div>
-                    <label htmlFor="select-responsable" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                    <label htmlFor="select-responsable" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--pedidos-text-muted, #64748b)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
                       Usuario
                     </label>
                     <select
@@ -1447,9 +1447,10 @@ export const PedidoDetallePage: React.FC = () => {
                         width: '100%',
                         padding: '0.5rem',
                         borderRadius: '0.375rem',
-                        border: isUnassigned ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                        border: isUnassigned ? '1px solid var(--pedidos-rework-accent, #f59e0b)' : '1px solid var(--pedidos-border-default, #cbd5e1)',
                         fontSize: '0.875rem',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+                        color: 'var(--pedidos-control-text, #334155)',
                         boxSizing: 'border-box',
                       }}
                     >
@@ -1472,7 +1473,7 @@ export const PedidoDetallePage: React.FC = () => {
                     onClick={handleAssign}
                     disabled={actionLoading || selectedResponsable === (pedido.responsable_user_id || '')}
                     style={{
-                      backgroundColor: '#0284c7',
+                      backgroundColor: 'var(--pedidos-brand-accent, #0284c7)',
                       color: '#ffffff',
                       border: 'none',
                       padding: '0.5rem 1rem',
@@ -1538,7 +1539,7 @@ export const PedidoDetallePage: React.FC = () => {
 
               if (allFiles.length === 0) {
                 return (
-                  <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
+                  <p style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
                     No hay archivos adjuntos.
                   </p>
                 );
@@ -1548,11 +1549,11 @@ export const PedidoDetallePage: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   {/* 1. Solicitud Original */}
                   <div>
-                    <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
+                    <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--pedidos-text-secondary, #475569)', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
                       Archivos de la Solicitud Original ({originalFiles.length})
                     </h4>
                     {originalFiles.length === 0 ? (
-                      <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: 0, fontStyle: 'italic' }}>
+                      <p style={{ color: 'var(--pedidos-text-muted, #94a3b8)', fontSize: '0.8rem', margin: 0, fontStyle: 'italic' }}>
                         No se adjuntaron archivos en la solicitud inicial.
                       </p>
                     ) : (
@@ -1562,8 +1563,8 @@ export const PedidoDetallePage: React.FC = () => {
                             <div className="pedidos-file-info">
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                 <span style={{
-                                  background: '#e0f2fe',
-                                  color: '#0369a1',
+                                  background: 'var(--pedidos-status-nuevo-bg, #e0f2fe)',
+                                  color: 'var(--pedidos-status-nuevo-text, #0369a1)',
                                   fontSize: '0.65rem',
                                   fontWeight: 700,
                                   padding: '0.1rem 0.35rem',
@@ -1578,7 +1579,7 @@ export const PedidoDetallePage: React.FC = () => {
                               <div className="pedidos-file-meta">
                                 <span>{formatFileSize(a.size_bytes)}</span>
                                 <span>•</span>
-                                <span style={{ color: a.estado === 'verified' ? '#15803d' : '#64748b', fontWeight: a.estado === 'verified' ? 600 : 400 }}>
+                                <span style={{ color: a.estado === 'verified' ? 'var(--pedidos-status-finalizado-text, #15803d)' : 'var(--pedidos-text-muted, #64748b)', fontWeight: a.estado === 'verified' ? 600 : 400 }}>
                                   {formatArchivoEstado(a.estado)}
                                 </span>
                                 {a.mime_type && (
@@ -1615,17 +1616,17 @@ export const PedidoDetallePage: React.FC = () => {
                   {/* 2. Revisiones / Retrabajo */}
                   {revisionFiles.length > 0 && (
                     <div>
-                      <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#b45309', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
+                      <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--pedidos-rework-text, #b45309)', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
                         Archivos de Revisión / Retrabajo ({revisionFiles.length})
                       </h4>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         {revisionFiles.map((a: any) => (
-                          <div key={a.id} className="pedidos-file-item" style={{ borderLeft: '3px solid #f59e0b' }}>
+                          <div key={a.id} className="pedidos-file-item" style={{ borderLeft: '3px solid var(--pedidos-rework-accent, #f59e0b)' }}>
                             <div className="pedidos-file-info">
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                 <span style={{
-                                  background: '#fef3c7',
-                                  color: '#92400e',
+                                  background: 'var(--pedidos-rework-bg, #fef3c7)',
+                                  color: 'var(--pedidos-rework-text, #92400e)',
                                   fontSize: '0.65rem',
                                   fontWeight: 700,
                                   padding: '0.1rem 0.35rem',
@@ -1642,7 +1643,7 @@ export const PedidoDetallePage: React.FC = () => {
                                 {a.revision_motivo && (
                                   <>
                                     <span>•</span>
-                                    <span style={{ color: '#78350f', fontStyle: 'italic' }}>
+                                    <span style={{ color: 'var(--pedidos-rework-text, #78350f)', fontStyle: 'italic' }}>
                                       Motivo: "{a.revision_motivo}"
                                     </span>
                                   </>
@@ -1675,7 +1676,7 @@ export const PedidoDetallePage: React.FC = () => {
                   {/* 3. Información Complementaria */}
                   {infoFiles.length > 0 && (
                     <div>
-                      <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#15803d', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
+                      <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--pedidos-status-finalizado-text, #15803d)', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
                         Información Complementaria ({infoFiles.length})
                       </h4>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -1684,8 +1685,8 @@ export const PedidoDetallePage: React.FC = () => {
                             <div className="pedidos-file-info">
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                 <span style={{
-                                  background: '#dcfce7',
-                                  color: '#166534',
+                                  background: 'var(--pedidos-status-finalizado-bg, #dcfce7)',
+                                  color: 'var(--pedidos-status-finalizado-text, #166534)',
                                   fontSize: '0.65rem',
                                   fontWeight: 700,
                                   padding: '0.1rem 0.35rem',
@@ -1727,7 +1728,7 @@ export const PedidoDetallePage: React.FC = () => {
                   {/* 4. Archivos Históricos / Otros */}
                   {legacyFiles.length > 0 && (
                     <div>
-                      <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
+                      <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--pedidos-text-muted, #64748b)', margin: '0 0 0.5rem 0', fontWeight: 700 }}>
                         Archivos Históricos ({legacyFiles.length})
                       </h4>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -1736,8 +1737,8 @@ export const PedidoDetallePage: React.FC = () => {
                             <div className="pedidos-file-info">
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                 <span style={{
-                                  background: '#f1f5f9',
-                                  color: '#475569',
+                                  background: 'var(--pedidos-surface-sunken, #f1f5f9)',
+                                  color: 'var(--pedidos-text-secondary, #475569)',
                                   fontSize: '0.65rem',
                                   fontWeight: 700,
                                   padding: '0.1rem 0.35rem',
@@ -1789,23 +1790,23 @@ export const PedidoDetallePage: React.FC = () => {
             </div>
 
             {(pedido.enlaces || []).length === 0 ? (
-              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
+              <p style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
                 No hay enlaces externos.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {(pedido.enlaces || []).map((e: any) => (
-                  <div key={e.id} style={{ padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '0.375rem', border: '1px solid #e2e8f0' }}>
+                  <div key={e.id} style={{ padding: '0.5rem 0.75rem', background: 'var(--pedidos-surface-sunken, #f8fafc)', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #e2e8f0)' }}>
                     <a
                       href={e.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ color: '#0284c7', fontSize: '0.875rem', wordBreak: 'break-all', fontWeight: 600 }}
+                      style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontSize: '0.875rem', wordBreak: 'break-all', fontWeight: 600 }}
                     >
                       {e.url}
                     </a>
                     {e.descripcion && (
-                      <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                      <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
                         {e.descripcion}
                       </p>
                     )}
@@ -1824,7 +1825,7 @@ export const PedidoDetallePage: React.FC = () => {
             </div>
 
             {(pedido.entregas || []).length === 0 ? (
-              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
+              <p style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
                 No hay entregas registradas.
               </p>
             ) : (
@@ -1833,17 +1834,17 @@ export const PedidoDetallePage: React.FC = () => {
                   <div
                     key={ent.id}
                     style={{
-                      background: ent.es_vigente ? '#f0fdf4' : '#f8fafc',
-                      border: `1px solid ${ent.es_vigente ? '#86efac' : '#e2e8f0'}`,
+                      background: ent.es_vigente ? 'var(--pedidos-status-finalizado-bg, #f0fdf4)' : 'var(--pedidos-surface-sunken, #f8fafc)',
+                      border: `1px solid ${ent.es_vigente ? 'var(--pedidos-status-finalizado-border, #86efac)' : 'var(--pedidos-border-default, #e2e8f0)'}`,
                       borderRadius: '0.5rem',
                       padding: '0.75rem',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: ent.es_vigente ? '#15803d' : '#64748b' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: ent.es_vigente ? 'var(--pedidos-status-finalizado-text, #15803d)' : 'var(--pedidos-text-muted, #64748b)' }}>
                         Entrega v{ent.version} {ent.es_vigente && '(Vigente)'}
                       </span>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
                         {new Date(ent.created_at).toLocaleDateString('es-AR')}
                       </span>
                     </div>
@@ -1853,14 +1854,14 @@ export const PedidoDetallePage: React.FC = () => {
                           href={ent.enlace_externo}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ color: '#0369a1', fontSize: '0.8125rem', wordBreak: 'break-all', fontWeight: 600 }}
+                          style={{ color: 'var(--pedidos-brand-accent, #0369a1)', fontSize: '0.8125rem', wordBreak: 'break-all', fontWeight: 600 }}
                         >
                           🔗 {ent.enlace_externo}
                         </a>
                       </div>
                     )}
                     {ent.nota && (
-                      <p style={{ margin: 0, fontSize: '0.8125rem', color: '#334155', whiteSpace: 'pre-wrap' }}>
+                      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--pedidos-text-secondary, #334155)', whiteSpace: 'pre-wrap' }}>
                         {ent.nota}
                       </p>
                     )}
@@ -1887,7 +1888,7 @@ export const PedidoDetallePage: React.FC = () => {
           </div>
 
           {(pedido.solicitudes || (pedido as any).solicitudes_informacion || []).length === 0 ? (
-            <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
+            <p style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
               No hay solicitudes de información.
             </p>
           ) : (
@@ -1896,39 +1897,62 @@ export const PedidoDetallePage: React.FC = () => {
                 <div
                   key={si.id}
                   style={{
-                    background: si.estado === 'respondida' ? '#f0fdf4' : si.estado === 'expirada' ? '#fef2f2' : '#fffbeb',
-                    border: `1px solid ${si.estado === 'respondida' ? '#86efac' : si.estado === 'expirada' ? '#fca5a5' : '#fde68a'}`,
+                    background:
+                      si.estado === 'respondida'
+                        ? 'var(--pedidos-status-completed-bg, #f0fdf4)'
+                        : si.estado === 'expirada'
+                        ? 'var(--pedidos-status-rejected-bg, #fef2f2)'
+                        : 'var(--pedidos-status-pending-bg, #fffbeb)',
+                    border: `1px solid ${
+                      si.estado === 'respondida'
+                        ? 'var(--pedidos-status-completed-border, #86efac)'
+                        : si.estado === 'expirada'
+                        ? 'var(--pedidos-status-rejected-border, #fca5a5)'
+                        : 'var(--pedidos-status-pending-border, #fde68a)'
+                    }`,
                     borderRadius: '0.5rem',
                     padding: '0.85rem 1rem',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: si.estado === 'respondida' ? '#15803d' : si.estado === 'expirada' ? '#b91c1c' : '#b45309', textTransform: 'uppercase' }}>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        fontSize: '0.8125rem',
+                        color:
+                          si.estado === 'respondida'
+                            ? 'var(--pedidos-status-completed-text, #15803d)'
+                            : si.estado === 'expirada'
+                            ? 'var(--pedidos-status-rejected-text, #b91c1c)'
+                            : 'var(--pedidos-status-pending-text, #b45309)',
+                        textTransform: 'uppercase',
+                      }}
+                    >
                       Estado: {si.estado}
                     </span>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
                       Emitida: {new Date(si.created_at).toLocaleString('es-AR')} · Vence: {new Date(si.expires_at).toLocaleString('es-AR')}
                     </span>
                   </div>
-                  <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#1e293b', whiteSpace: 'pre-wrap' }}>
-                    <strong>Requerimiento:</strong> {si.mensaje}
+                  <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #1e293b)', whiteSpace: 'pre-wrap' }}>
+                    <strong style={{ color: 'var(--pedidos-text-primary, #1e293b)' }}>Requerimiento:</strong> {si.mensaje}
                   </p>
                   {(si.respuesta_texto || si.estado === 'respondida') && (
-                    <div style={{ background: '#ffffff', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0', marginTop: '0.5rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase' }}>Respuesta del Solicitante:</span>
+                    <div style={{ background: 'var(--pedidos-surface-default, #ffffff)', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)', marginTop: '0.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--pedidos-status-completed-text, #15803d)', textTransform: 'uppercase' }}>Respuesta del Solicitante:</span>
                       {si.respuesta_texto && (
-                        <p style={{ margin: '0.25rem 0 0.5rem 0', fontSize: '0.875rem', color: '#1e293b', whiteSpace: 'pre-wrap' }}>
+                        <p style={{ margin: '0.25rem 0 0.5rem 0', fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #1e293b)', whiteSpace: 'pre-wrap' }}>
                           {si.respuesta_texto}
                         </p>
                       )}
                       {si.archivos_respuesta && si.archivos_respuesta.length > 0 && (
-                        <div style={{ marginTop: '0.5rem', borderTop: '1px dashed #e2e8f0', paddingTop: '0.5rem' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Archivos aportados en respuesta:</span>
+                        <div style={{ marginTop: '0.5rem', borderTop: '1px dashed var(--pedidos-border-subtle, #e2e8f0)', paddingTop: '0.5rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--pedidos-text-secondary, #475569)' }}>Archivos aportados en respuesta:</span>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.35rem' }}>
                             {si.archivos_respuesta.map((a: any) => (
-                              <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.4rem 0.6rem', borderRadius: '0.25rem', border: '1px solid #e2e8f0' }}>
-                                <span style={{ fontSize: '0.8125rem', color: '#0f172a', wordBreak: 'break-all' }}>
-                                  📄 {a.nombre_original} <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({formatFileSize(a.size_bytes)})</span>
+                              <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--pedidos-surface-sunken, #f8fafc)', padding: '0.4rem 0.6rem', borderRadius: '0.25rem', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)' }}>
+                                <span style={{ fontSize: '0.8125rem', color: 'var(--pedidos-text-primary, #0f172a)', wordBreak: 'break-all' }}>
+                                  📄 {a.nombre_original} <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.75rem' }}>({formatFileSize(a.size_bytes)})</span>
                                 </span>
                                 <button
                                   type="button"
@@ -1945,17 +1969,17 @@ export const PedidoDetallePage: React.FC = () => {
                         </div>
                       )}
                       {si.enlaces_respuesta && si.enlaces_respuesta.length > 0 && (
-                        <div style={{ marginTop: '0.5rem', borderTop: '1px dashed #e2e8f0', paddingTop: '0.5rem' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Enlaces aportados en respuesta:</span>
+                        <div style={{ marginTop: '0.5rem', borderTop: '1px dashed var(--pedidos-border-subtle, #e2e8f0)', paddingTop: '0.5rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--pedidos-text-secondary, #475569)' }}>Enlaces aportados en respuesta:</span>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.35rem' }}>
                             {si.enlaces_respuesta.map((e: any) => (
-                              <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.4rem 0.6rem', borderRadius: '0.25rem', border: '1px solid #e2e8f0' }}>
-                                <span style={{ fontSize: '0.8125rem', color: '#0f172a', wordBreak: 'break-all', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--pedidos-surface-sunken, #f8fafc)', padding: '0.4rem 0.6rem', borderRadius: '0.25rem', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)' }}>
+                                <span style={{ fontSize: '0.8125rem', color: 'var(--pedidos-text-primary, #0f172a)', wordBreak: 'break-all', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                   🔗 <a
                                     href={e.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    style={{ color: '#0284c7', textDecoration: 'none', fontWeight: 600 }}
+                                    style={{ color: 'var(--pedidos-brand-accent, #0284c7)', textDecoration: 'none', fontWeight: 600 }}
                                   >
                                     {e.url}
                                   </a>
@@ -1968,8 +1992,8 @@ export const PedidoDetallePage: React.FC = () => {
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '0.25rem',
-                                    background: '#e0f2fe',
-                                    color: '#0369a1',
+                                    background: 'var(--pedidos-surface-raised, #e0f2fe)',
+                                    color: 'var(--pedidos-brand-accent, #0369a1)',
                                     padding: '0.25rem 0.6rem',
                                     borderRadius: '0.25rem',
                                     fontSize: '0.75rem',
@@ -1977,7 +2001,7 @@ export const PedidoDetallePage: React.FC = () => {
                                     textDecoration: 'none',
                                     whiteSpace: 'nowrap',
                                     marginLeft: '0.5rem',
-                                    border: '1px solid #bae6fd',
+                                    border: '1px solid var(--pedidos-border-subtle, #bae6fd)',
                                   }}
                                 >
                                   Abrir enlace ↗
@@ -2006,8 +2030,8 @@ export const PedidoDetallePage: React.FC = () => {
           </div>
 
           {!isObserver && (
-            <form onSubmit={handleCreateNota} style={{ marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
-              <label htmlFor="input-nota-texto" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+            <form onSubmit={handleCreateNota} style={{ marginBottom: '1.5rem', background: 'var(--pedidos-surface-sunken, #f8fafc)', padding: '1rem', borderRadius: '0.5rem', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)' }}>
+              <label htmlFor="input-nota-texto" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--pedidos-text-secondary, #334155)', marginBottom: '0.35rem' }}>
                 Nueva nota interna
               </label>
               <textarea
@@ -2016,7 +2040,7 @@ export const PedidoDetallePage: React.FC = () => {
                 placeholder="Escribí una nota interna..."
                 value={notaTexto}
                 onChange={(e) => setNotaTexto(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.875rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #1e293b)', borderRadius: '0.375rem', fontSize: '0.875rem', marginBottom: '0.75rem', boxSizing: 'border-box' }}
               />
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -2024,7 +2048,7 @@ export const PedidoDetallePage: React.FC = () => {
                   type="submit"
                   disabled={actionLoading || !notaTexto.trim()}
                   style={{
-                    background: '#0284c7',
+                    background: 'var(--pedidos-brand-accent, #0284c7)',
                     color: '#ffffff',
                     border: 'none',
                     padding: '0.45rem 1rem',
@@ -2042,7 +2066,7 @@ export const PedidoDetallePage: React.FC = () => {
           )}
 
           {(pedido.notas || []).length === 0 ? (
-            <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
+            <p style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
               No hay notas registradas.
             </p>
           ) : (
@@ -2051,21 +2075,22 @@ export const PedidoDetallePage: React.FC = () => {
                 <div
                   key={n.id}
                   style={{
-                    background: n.visibilidad === 'solicitante' ? '#f0fdf4' : '#f8fafc',
-                    border: `1px solid ${n.visibilidad === 'solicitante' ? '#bae6fd' : '#e2e8f0'}`,
+                    background: n.visibilidad === 'solicitante' ? 'var(--pedidos-status-completed-bg, #f0fdf4)' : 'var(--pedidos-surface-sunken, #f8fafc)',
+                    border: `1px solid ${n.visibilidad === 'solicitante' ? 'var(--pedidos-brand-accent, #bae6fd)' : 'var(--pedidos-border-subtle, #e2e8f0)'}`,
                     padding: '0.85rem 1rem',
                     borderRadius: '0.5rem',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.35rem' }}>
-                    <span style={{ fontWeight: 600 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)', marginBottom: '0.35rem' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--pedidos-text-secondary, #475569)' }}>
                       {n.autor_nombre || 'Usuario'} · {new Date(n.created_at).toLocaleString('es-AR')}
                     </span>
                     <span
                       style={{
                         fontWeight: 700,
-                        color: n.visibilidad === 'solicitante' ? '#0369a1' : '#475569',
-                        background: n.visibilidad === 'solicitante' ? '#e0f2fe' : '#e2e8f0',
+                        color: n.visibilidad === 'solicitante' ? 'var(--pedidos-brand-accent, #0369a1)' : 'var(--pedidos-text-secondary, #475569)',
+                        background: n.visibilidad === 'solicitante' ? 'var(--pedidos-surface-raised, #e0f2fe)' : 'var(--pedidos-surface-default, #e2e8f0)',
+                        border: '1px solid var(--pedidos-border-subtle, transparent)',
                         padding: '0.15rem 0.5rem',
                         borderRadius: '0.25rem',
                       }}
@@ -2073,7 +2098,7 @@ export const PedidoDetallePage: React.FC = () => {
                       {n.visibilidad === 'solicitante' ? 'MENSAJE PÚBLICO' : 'NOTA INTERNA'}
                     </span>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#1e293b', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #1e293b)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                     {n.texto}
                   </p>
                 </div>
@@ -2093,7 +2118,7 @@ export const PedidoDetallePage: React.FC = () => {
           </div>
 
           {historial.length === 0 ? (
-            <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
+            <p style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
               No hay registros en el historial.
             </p>
           ) : (
@@ -2105,12 +2130,12 @@ export const PedidoDetallePage: React.FC = () => {
                     key={idx}
                     style={{
                       borderLeft: `3px solid ${eventInfo.color}`,
-                      background: '#f8fafc',
+                      background: 'var(--pedidos-surface-sunken, #f8fafc)',
                       padding: '0.85rem 1rem',
                       borderRadius: '0 0.375rem 0.375rem 0',
-                      borderTop: '1px solid #f1f5f9',
-                      borderRight: '1px solid #f1f5f9',
-                      borderBottom: '1px solid #f1f5f9',
+                      borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
+                      borderRight: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
+                      borderBottom: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -2118,27 +2143,27 @@ export const PedidoDetallePage: React.FC = () => {
                         <span>{eventInfo.icon}</span>
                         <span>{eventInfo.title}</span>
                       </span>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
                         {formatHistoryDate(h.created_at)}
                       </span>
                     </div>
 
                     {eventInfo.desc && (
-                      <p style={{ margin: '0 0 0.35rem 0', fontSize: '0.85rem', color: '#1e293b', fontWeight: 500, lineHeight: 1.4 }}>
+                      <p style={{ margin: '0 0 0.35rem 0', fontSize: '0.85rem', color: 'var(--pedidos-text-primary, #1e293b)', fontWeight: 500, lineHeight: 1.4 }}>
                         {eventInfo.desc}
                       </p>
                     )}
 
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                      <span><strong>Actor:</strong> {h.actor_nombre || 'Sistema'}</span>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      <span><strong style={{ color: 'var(--pedidos-text-secondary, #475569)' }}>Actor:</strong> {h.actor_nombre || 'Sistema'}</span>
                     </div>
 
                     {h.payload && Object.keys(h.payload).length > 0 && (
-                      <details className="pedidos-historial-details" style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#64748b' }}>
-                        <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#475569', userSelect: 'none' }}>
+                      <details className="pedidos-historial-details" style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--pedidos-text-secondary, #475569)', userSelect: 'none' }}>
                           Ver detalles técnicos (JSON)
                         </summary>
-                        <pre style={{ margin: '0.35rem 0 0 0', padding: '0.5rem', background: '#e2e8f0', borderRadius: '0.25rem', fontSize: '0.7rem', overflowX: 'auto', maxHeight: '150px' }}>
+                        <pre style={{ margin: '0.35rem 0 0 0', padding: '0.5rem', background: 'var(--pedidos-surface-sunken, #e2e8f0)', border: '1px solid var(--pedidos-border-subtle, transparent)', color: 'var(--pedidos-text-primary, #1e293b)', borderRadius: '0.25rem', fontSize: '0.7rem', overflowX: 'auto', maxHeight: '150px' }}>
                           {JSON.stringify(h.payload, null, 2)}
                         </pre>
                       </details>
@@ -2156,28 +2181,28 @@ export const PedidoDetallePage: React.FC = () => {
          ===================================================================== */}
       {/* Modal Cambio de Estado */}
       {showStateModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '440px', width: '100%', padding: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--pedidos-surface-backdrop, rgba(0,0,0,0.6))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div style={{ background: 'var(--pedidos-surface-overlay, #ffffff)', color: 'var(--pedidos-text-primary, #1e293b)', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)', borderRadius: '0.75rem', maxWidth: '440px', width: '100%', padding: '1.5rem', boxShadow: 'var(--pedidos-shadow-lg, 0 10px 25px rgba(0,0,0,0.2))' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: 'var(--pedidos-text-primary, #1e293b)' }}>
               {targetState === 'En revisión' && pedido?.estado === 'En proceso'
                 ? '¿Volver a En revisión?'
                 : `Cambiar estado a: ${targetState}`}
             </h3>
             
             {modalError && (
-              <div style={{ background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
+              <div style={{ background: 'var(--pedidos-status-rejected-bg, #fef2f2)', border: '1px solid var(--pedidos-status-rejected-border, #f87171)', color: 'var(--pedidos-status-rejected-text, #991b1b)', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
                 ⚠️ {modalError}
               </div>
             )}
 
             <form onSubmit={handleStateChange}>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Motivo (opcional)</label>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>Motivo (opcional)</label>
                 <textarea
                   rows={2}
                   value={stateMotivo}
                   onChange={(e) => setStateMotivo(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #1e293b)', borderRadius: '0.375rem', boxSizing: 'border-box' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -2188,14 +2213,14 @@ export const PedidoDetallePage: React.FC = () => {
                     setModalError(null);
                   }}
                   disabled={actionLoading}
-                  style={{ background: '#f1f5f9', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                  style={{ background: 'var(--pedidos-surface-sunken, #f1f5f9)', color: 'var(--pedidos-text-primary, #334155)', border: '1px solid var(--pedidos-border-default, #cbd5e1)', padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  style={{ background: '#0284c7', color: '#ffffff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                  style={{ background: 'var(--pedidos-brand-accent, #0284c7)', color: '#ffffff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer' }}
                 >
                   {actionLoading ? 'Guardando...' : 'Confirmar'}
                 </button>
@@ -2207,12 +2232,12 @@ export const PedidoDetallePage: React.FC = () => {
 
       {/* Modal Finalizar */}
       {showFinalizeModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '480px', width: '100%', padding: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#15803d' }}>Finalizar pedido</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--pedidos-surface-backdrop, rgba(0,0,0,0.6))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div style={{ background: 'var(--pedidos-surface-overlay, #ffffff)', color: 'var(--pedidos-text-primary, #1e293b)', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)', borderRadius: '0.75rem', maxWidth: '480px', width: '100%', padding: '1.5rem', boxShadow: 'var(--pedidos-shadow-lg, 0 10px 25px rgba(0,0,0,0.2))' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: 'var(--pedidos-status-completed-text, #15803d)' }}>Finalizar pedido</h3>
 
             {modalError && (
-              <div style={{ background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
+              <div style={{ background: 'var(--pedidos-status-rejected-bg, #fef2f2)', border: '1px solid var(--pedidos-status-rejected-border, #f87171)', color: 'var(--pedidos-status-rejected-text, #991b1b)', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
                 ⚠️ {modalError}
               </div>
             )}
@@ -2220,10 +2245,10 @@ export const PedidoDetallePage: React.FC = () => {
             <form onSubmit={handleFinalize}>
               {/* Archivos de entrega */}
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.35rem', color: '#1e293b' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>
                   Archivos de entrega (opcional si hay enlace)
                 </label>
-                <div style={{ border: '2px dashed #cbd5e1', borderRadius: '0.5rem', padding: '1rem', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                <div style={{ border: '2px dashed var(--pedidos-border-default, #cbd5e1)', borderRadius: '0.5rem', padding: '1rem', textAlign: 'center', backgroundColor: 'var(--pedidos-surface-sunken, #f8fafc)' }}>
                   <input
                     type="file"
                     id="delivery-file-input"
@@ -2236,9 +2261,9 @@ export const PedidoDetallePage: React.FC = () => {
                     htmlFor="delivery-file-input"
                     style={{
                       display: 'inline-block',
-                      backgroundColor: '#ffffff',
-                      color: '#0284c7',
-                      border: '1px solid #0284c7',
+                      backgroundColor: 'var(--pedidos-surface-default, #ffffff)',
+                      color: 'var(--pedidos-brand-accent, #0284c7)',
+                      border: '1px solid var(--pedidos-brand-accent, #0284c7)',
                       padding: '0.45rem 1rem',
                       borderRadius: '0.375rem',
                       fontSize: '0.8125rem',
@@ -2248,7 +2273,7 @@ export const PedidoDetallePage: React.FC = () => {
                   >
                     Seleccionar archivos
                   </label>
-                  <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                  <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
                     PDF, PNG, JPG, DOCX, ZIP · Hasta 10 MB por archivo
                   </p>
                 </div>
@@ -2263,31 +2288,32 @@ export const PedidoDetallePage: React.FC = () => {
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           padding: '0.4rem 0.6rem',
-                          backgroundColor: '#f1f5f9',
+                          backgroundColor: 'var(--pedidos-surface-sunken, #f1f5f9)',
+                          border: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
                           borderRadius: '0.375rem',
                           fontSize: '0.8125rem',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
-                          <span style={{ fontWeight: 600, color: '#334155', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--pedidos-text-primary, #334155)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '200px' }}>
                             {df.name}
                           </span>
-                          <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({formatFileSize(df.size)})</span>
+                          <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.75rem' }}>({formatFileSize(df.size)})</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {df.status === 'completed' && <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.75rem' }}>✓ Listo</span>}
+                          {df.status === 'completed' && <span style={{ color: 'var(--pedidos-status-completed-text, #16a34a)', fontWeight: 700, fontSize: '0.75rem' }}>✓ Listo</span>}
                           {df.status === 'uploading' && (
-                            <span style={{ color: '#0284c7', fontSize: '0.75rem', fontWeight: 600 }}>
+                            <span style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontSize: '0.75rem', fontWeight: 600 }}>
                               {df.progress ? `Subiendo (${df.progress}%)...` : 'Subiendo...'}
                             </span>
                           )}
                           {df.status === 'error' && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>⚠️ Error</span>
+                              <span style={{ color: 'var(--pedidos-status-rejected-text, #dc2626)', fontSize: '0.75rem' }}>⚠️ Error</span>
                               <button
                                 type="button"
                                 onClick={() => handleRetryDeliveryFile(df)}
-                                style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+                                style={{ background: 'none', border: 'none', color: 'var(--pedidos-brand-accent, #0284c7)', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
                               >
                                 Reintentar
                               </button>
@@ -2297,7 +2323,7 @@ export const PedidoDetallePage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => removeDeliveryFile(df.id)}
-                              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.875rem', padding: '0 0.2rem' }}
+                              style={{ background: 'none', border: 'none', color: 'var(--pedidos-text-muted, #94a3b8)', cursor: 'pointer', fontSize: '0.875rem', padding: '0 0.2rem' }}
                               title="Quitar archivo"
                             >
                               ✕
@@ -2312,7 +2338,7 @@ export const PedidoDetallePage: React.FC = () => {
 
               {/* Enlace externo */}
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: '#1e293b' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>
                   Enlace externo (opcional)
                 </label>
                 <input
@@ -2321,13 +2347,13 @@ export const PedidoDetallePage: React.FC = () => {
                   value={entregaUrl}
                   disabled={actionLoading}
                   onChange={(e) => setEntregaUrl(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #1e293b)', borderRadius: '0.375rem', boxSizing: 'border-box' }}
                 />
               </div>
 
               {/* Nota de entrega */}
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: '#1e293b' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>
                   Nota de entrega (opcional)
                 </label>
                 <textarea
@@ -2336,7 +2362,7 @@ export const PedidoDetallePage: React.FC = () => {
                   value={entregaNota}
                   disabled={actionLoading}
                   onChange={(e) => setEntregaNota(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #1e293b)', borderRadius: '0.375rem', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -2348,7 +2374,7 @@ export const PedidoDetallePage: React.FC = () => {
                     setModalError(null);
                   }}
                   disabled={actionLoading}
-                  style={{ background: '#f1f5f9', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                  style={{ background: 'var(--pedidos-surface-sunken, #f1f5f9)', color: 'var(--pedidos-text-primary, #334155)', border: '1px solid var(--pedidos-border-default, #cbd5e1)', padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
                 >
                   Cancelar
                 </button>
@@ -2362,7 +2388,7 @@ export const PedidoDetallePage: React.FC = () => {
                       !deliveryFiles.some((f) => f.status === 'error') &&
                       (Boolean(entregaUrl.trim()) || deliveryFiles.some((f) => f.status === 'completed'))
                         ? '#16a34a'
-                        : '#cbd5e1',
+                        : 'var(--pedidos-border-default, #cbd5e1)',
                     color: '#ffffff',
                     border: 'none',
                     padding: '0.5rem 1rem',
@@ -2391,26 +2417,26 @@ export const PedidoDetallePage: React.FC = () => {
 
       {/* Modal Cancelar */}
       {showCancelModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '440px', width: '100%', padding: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#b91c1c' }}>Cancelar pedido</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--pedidos-surface-backdrop, rgba(0,0,0,0.6))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div style={{ background: 'var(--pedidos-surface-overlay, #ffffff)', color: 'var(--pedidos-text-primary, #1e293b)', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)', borderRadius: '0.75rem', maxWidth: '440px', width: '100%', padding: '1.5rem', boxShadow: 'var(--pedidos-shadow-lg, 0 10px 25px rgba(0,0,0,0.2))' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: 'var(--pedidos-status-rejected-text, #b91c1c)' }}>Cancelar pedido</h3>
 
             {modalError && (
-              <div style={{ background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
+              <div style={{ background: 'var(--pedidos-status-rejected-bg, #fef2f2)', border: '1px solid var(--pedidos-status-rejected-border, #f87171)', color: 'var(--pedidos-status-rejected-text, #991b1b)', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
                 ⚠️ {modalError}
               </div>
             )}
 
             <form onSubmit={handleCancel}>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Motivo (requerido)</label>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>Motivo (requerido)</label>
                 <textarea
                   rows={3}
                   required
                   placeholder="Motivo de la cancelación..."
                   value={cancelMotivo}
                   onChange={(e) => setCancelMotivo(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #1e293b)', borderRadius: '0.375rem', boxSizing: 'border-box' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -2421,7 +2447,7 @@ export const PedidoDetallePage: React.FC = () => {
                     setModalError(null);
                   }}
                   disabled={actionLoading}
-                  style={{ background: '#f1f5f9', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                  style={{ background: 'var(--pedidos-surface-sunken, #f1f5f9)', color: 'var(--pedidos-text-primary, #334155)', border: '1px solid var(--pedidos-border-default, #cbd5e1)', padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
                 >
                   Cerrar
                 </button>
@@ -2440,26 +2466,26 @@ export const PedidoDetallePage: React.FC = () => {
 
       {/* Modal Reabrir */}
       {showReopenModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '440px', width: '100%', padding: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#4338ca' }}>Reabrir pedido</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--pedidos-surface-backdrop, rgba(0,0,0,0.6))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div style={{ background: 'var(--pedidos-surface-overlay, #ffffff)', color: 'var(--pedidos-text-primary, #1e293b)', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)', borderRadius: '0.75rem', maxWidth: '440px', width: '100%', padding: '1.5rem', boxShadow: 'var(--pedidos-shadow-lg, 0 10px 25px rgba(0,0,0,0.2))' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: 'var(--pedidos-brand-accent, #4338ca)' }}>Reabrir pedido</h3>
 
             {modalError && (
-              <div style={{ background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
+              <div style={{ background: 'var(--pedidos-status-rejected-bg, #fef2f2)', border: '1px solid var(--pedidos-status-rejected-border, #f87171)', color: 'var(--pedidos-status-rejected-text, #991b1b)', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
                 ⚠️ {modalError}
               </div>
             )}
 
             <form onSubmit={handleReopen}>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Motivo (requerido)</label>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>Motivo (requerido)</label>
                 <textarea
                   rows={3}
                   required
                   placeholder="Motivo de la reapertura..."
                   value={reopenMotivo}
                   onChange={(e) => setReopenMotivo(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #1e293b)', borderRadius: '0.375rem', boxSizing: 'border-box' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -2470,7 +2496,7 @@ export const PedidoDetallePage: React.FC = () => {
                     setModalError(null);
                   }}
                   disabled={actionLoading}
-                  style={{ background: '#f1f5f9', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                  style={{ background: 'var(--pedidos-surface-sunken, #f1f5f9)', color: 'var(--pedidos-text-primary, #334155)', border: '1px solid var(--pedidos-border-default, #cbd5e1)', padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
                 >
                   Cerrar
                 </button>
@@ -2489,26 +2515,26 @@ export const PedidoDetallePage: React.FC = () => {
 
       {/* Modal Solicitud de Información (48h) */}
       {showInfoReqModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div style={{ background: '#ffffff', borderRadius: '0.75rem', maxWidth: '480px', width: '100%', padding: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#b45309' }}>Pedir información · 48 h</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--pedidos-surface-backdrop, rgba(0,0,0,0.6))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div style={{ background: 'var(--pedidos-surface-overlay, #ffffff)', color: 'var(--pedidos-text-primary, #1e293b)', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)', borderRadius: '0.75rem', maxWidth: '480px', width: '100%', padding: '1.5rem', boxShadow: 'var(--pedidos-shadow-lg, 0 10px 25px rgba(0,0,0,0.2))' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: 'var(--pedidos-status-pending-text, #b45309)' }}>Pedir información · 48 h</h3>
 
             {modalError && (
-              <div style={{ background: '#fef2f2', border: '1px solid #f87171', color: '#991b1b', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
+              <div style={{ background: 'var(--pedidos-status-rejected-bg, #fef2f2)', border: '1px solid var(--pedidos-status-rejected-border, #f87171)', color: 'var(--pedidos-status-rejected-text, #991b1b)', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
                 ⚠️ {modalError}
               </div>
             )}
 
             <form onSubmit={handleCreateInfoRequest}>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>Detalle de la solicitud</label>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>Detalle de la solicitud</label>
                 <textarea
                   rows={4}
                   required
                   placeholder="Detallá los datos, archivos o aclaraciones necesarias..."
                   value={infoReqMensaje}
                   onChange={(e) => setInfoReqMensaje(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #1e293b)', borderRadius: '0.375rem', boxSizing: 'border-box' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -2519,7 +2545,7 @@ export const PedidoDetallePage: React.FC = () => {
                     setModalError(null);
                   }}
                   disabled={actionLoading}
-                  style={{ background: '#f1f5f9', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                  style={{ background: 'var(--pedidos-surface-sunken, #f1f5f9)', color: 'var(--pedidos-text-primary, #334155)', border: '1px solid var(--pedidos-border-default, #cbd5e1)', padding: '0.5rem 1rem', borderRadius: '0.375rem', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
                 >
                   Cancelar
                 </button>

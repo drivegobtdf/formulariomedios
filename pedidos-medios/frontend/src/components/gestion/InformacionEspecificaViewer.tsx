@@ -67,12 +67,12 @@ const IGNORED_KEYS = new Set([
 
 function formatFieldValue(key: string, val: any): React.ReactNode {
   if (val === null || val === undefined || val === '') {
-    return <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No especificado</span>;
+    return <span style={{ color: 'var(--pedidos-text-muted, #94a3b8)', fontStyle: 'italic' }}>No especificado</span>;
   }
 
   if (typeof val === 'boolean') {
     return (
-      <span style={{ fontWeight: 600, color: val ? '#15803d' : '#475569' }}>
+      <span style={{ fontWeight: 600, color: val ? 'var(--pedidos-status-finalizado-text, #15803d)' : 'var(--pedidos-text-secondary, #475569)' }}>
         {val ? 'Sí' : 'No'}
       </span>
     );
@@ -90,7 +90,7 @@ function formatFieldValue(key: string, val: any): React.ReactNode {
           href={val.trim()}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: '#0284c7', textDecoration: 'underline', wordBreak: 'break-all' }}
+          style={{ color: 'var(--pedidos-brand-accent, #0284c7)', textDecoration: 'underline', wordBreak: 'break-all' }}
         >
           {val.trim()}
         </a>
@@ -98,7 +98,7 @@ function formatFieldValue(key: string, val: any): React.ReactNode {
     }
 
     return (
-      <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#1e293b' }}>
+      <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--pedidos-text-primary, #1e293b)' }}>
         {val}
       </div>
     );
@@ -106,10 +106,10 @@ function formatFieldValue(key: string, val: any): React.ReactNode {
 
   if (Array.isArray(val)) {
     if (val.length === 0) {
-      return <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Lista vacía</span>;
+      return <span style={{ color: 'var(--pedidos-text-muted, #94a3b8)', fontStyle: 'italic' }}>Lista vacía</span>;
     }
     return (
-      <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, color: '#1e293b' }}>
+      <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, color: 'var(--pedidos-text-primary, #1e293b)' }}>
         {val.map((item, idx) => (
           <li key={idx} style={{ marginBottom: '0.25rem' }}>
             {typeof item === 'object' ? JSON.stringify(item) : String(item)}
@@ -121,10 +121,10 @@ function formatFieldValue(key: string, val: any): React.ReactNode {
 
   if (typeof val === 'object') {
     return (
-      <div style={{ background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0', marginTop: '0.25rem' }}>
+      <div style={{ background: 'var(--pedidos-surface-sunken, #f8fafc)', padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-border-default, #e2e8f0)', marginTop: '0.25rem' }}>
         {Object.entries(val).map(([nestedKey, nestedVal]) => (
           <div key={nestedKey} style={{ marginBottom: '0.35rem', fontSize: '0.85rem' }}>
-            <strong style={{ color: '#475569' }}>{FIELD_LABELS[nestedKey] || nestedKey.replace(/_/g, ' ')}:</strong>{' '}
+            <strong style={{ color: 'var(--pedidos-text-secondary, #475569)' }}>{FIELD_LABELS[nestedKey] || nestedKey.replace(/_/g, ' ')}:</strong>{' '}
             {formatFieldValue(nestedKey, nestedVal)}
           </div>
         ))}
@@ -218,7 +218,7 @@ export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerPr
   const info = informacion || informacionEspecifica;
   if (!info || Object.keys(info).length === 0) {
     return (
-      <div style={{ color: '#64748b', fontSize: '0.875rem', fontStyle: 'italic', padding: '0.5rem 0' }}>
+      <div style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.875rem', fontStyle: 'italic', padding: '0.5rem 0' }}>
         No se registraron especificaciones adicionales para esta solicitud.
       </div>
     );
@@ -246,8 +246,8 @@ export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerPr
       {requiereAsesoramiento && (
         <div
           style={{
-            background: '#fffbeb',
-            border: '1px solid #fde68a',
+            background: 'var(--pedidos-rework-bg, #fffbeb)',
+            border: '1px solid var(--pedidos-rework-border, #fde68a)',
             borderRadius: '0.5rem',
             padding: '1rem',
             boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
@@ -256,9 +256,9 @@ export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerPr
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <span
               style={{
-                background: '#fef3c7',
-                color: '#92400e',
-                border: '1px solid #fcd34d',
+                background: 'var(--pedidos-rework-bg, #fef3c7)',
+                color: 'var(--pedidos-rework-text, #92400e)',
+                border: '1px solid var(--pedidos-rework-border, #fcd34d)',
                 padding: '0.25rem 0.6rem',
                 borderRadius: '9999px',
                 fontSize: '0.75rem',
@@ -272,14 +272,14 @@ export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerPr
 
           {objetivoAsesoramiento && (
             <div style={{ marginTop: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#78350f', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--pedidos-rework-text, #78350f)', textTransform: 'uppercase' }}>
                 Objetivo o requerimiento inicial
               </span>
               <p
                 style={{
                   margin: '0.2rem 0 0 0',
                   fontSize: '0.9rem',
-                  color: '#1e293b',
+                  color: 'var(--pedidos-text-primary, #1e293b)',
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
                   lineHeight: 1.5,
@@ -290,7 +290,7 @@ export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerPr
             </div>
           )}
 
-          <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#92400e' }}>
+          <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--pedidos-rework-text, #92400e)' }}>
             <strong>Canal de contacto preferido:</strong>{' '}
             {contactoPreferido === 'email' ? 'Correo electrónico' : 'WhatsApp'}
           </div>
@@ -317,8 +317,8 @@ export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerPr
                 key={key}
                 style={{
                   gridColumn: isFullWidth ? '1 / -1' : undefined,
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--pedidos-surface-sunken, #f8fafc)',
+                  border: '1px solid var(--pedidos-border-default, #e2e8f0)',
                   borderRadius: '0.5rem',
                   padding: '0.75rem 1rem',
                 }}
@@ -327,7 +327,7 @@ export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerPr
                   style={{
                     fontSize: '0.75rem',
                     fontWeight: 700,
-                    color: '#64748b',
+                    color: 'var(--pedidos-text-muted, #64748b)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.025em',
                     marginBottom: '0.25rem',
@@ -335,7 +335,7 @@ export const InformacionEspecificaViewer: React.FC<InformacionEspecificaViewerPr
                 >
                   {label}
                 </div>
-                <div style={{ fontSize: '0.875rem', color: '#1e293b', lineHeight: 1.5 }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #1e293b)', lineHeight: 1.5 }}>
                   {formatFieldValue(key, val)}
                 </div>
               </div>

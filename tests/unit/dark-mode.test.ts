@@ -108,4 +108,49 @@ describe('Modo Oscuro (Dark Mode)', () => {
     expect(viewGestionReturn.dataThemeAttr).toBe('dark');
     expect(viewGestionReturn.storagePreserved).toBe('dark');
   });
+
+  it('6. Debe contener todos los design tokens semánticos en app.css para superficie, texto, bordes y controles', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const cssPath = path.resolve(__dirname, '../../pedidos-medios/frontend/src/styles/app.css');
+    const cssContent = fs.readFileSync(cssPath, 'utf-8');
+
+    // Tokens semánticos indispensables
+    const requiredTokens = [
+      '--pedidos-surface-canvas',
+      '--pedidos-surface-sunken',
+      '--pedidos-surface-default',
+      '--pedidos-surface-raised',
+      '--pedidos-surface-overlay',
+      '--pedidos-text-primary',
+      '--pedidos-text-secondary',
+      '--pedidos-text-muted',
+      '--pedidos-border-subtle',
+      '--pedidos-border-default',
+      '--pedidos-border-strong',
+      '--pedidos-control-bg',
+      '--pedidos-control-border',
+      '--pedidos-control-text',
+      '--pedidos-status-pending-bg',
+      '--pedidos-status-completed-bg',
+      '--pedidos-status-rejected-bg',
+    ];
+
+    for (const token of requiredTokens) {
+      expect(cssContent).toContain(token);
+    }
+  });
+
+  it('7. La regla [data-theme="dark"] debe redefinir paleta de modo oscuro sin usar filter: invert() ni hacks destructivos', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const cssPath = path.resolve(__dirname, '../../pedidos-medios/frontend/src/styles/app.css');
+    const cssContent = fs.readFileSync(cssPath, 'utf-8');
+
+    expect(cssContent).toContain('.pedidos-app[data-theme="dark"]');
+    expect(cssContent).toContain('color-scheme: dark;');
+    // No debe usar filter: invert
+    expect(cssContent).not.toContain('filter: invert');
+  });
 });
+
