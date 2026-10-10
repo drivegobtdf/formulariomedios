@@ -64,7 +64,8 @@ const TABLES = [
   'categorias_servicio',
   'tipos_servicio',
   'configuracion_sistema',
-  'pedido_sequences'
+  'pedido_sequences',
+  'notificaciones_usuario'
 ];
 
 export async function runLogicalBackup(options = {}) {
