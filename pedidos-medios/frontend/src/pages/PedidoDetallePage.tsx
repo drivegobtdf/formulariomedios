@@ -365,6 +365,31 @@ export const PedidoDetallePage: React.FC = () => {
     return () => clearInterval(interval);
   }, [id, pedido?.solicitudes]);
 
+  // FASE B.2: Deep-link scroll a la sección solicitada (?section=header | info_solicitada | revision | notas)
+  useEffect(() => {
+    if (!pedido || loading) return;
+
+    const params = new URLSearchParams(location.search);
+    const sectionParam = params.get('section');
+    if (!sectionParam) return;
+
+    const targetId = `section-${sectionParam}`;
+
+    const timer = setTimeout(() => {
+      const el = document.getElementById(targetId) || document.getElementById('section-header');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add('pedidos-section-highlight');
+        const removeTimer = setTimeout(() => {
+          el.classList.remove('pedidos-section-highlight');
+        }, 2500);
+        return () => clearTimeout(removeTimer);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [pedido, loading, location.search]);
+
   const handleDownload = async (archivoId: string, nombreOriginal: string) => {
     setDownloadingFileId(archivoId);
     setDownloadError(null);
@@ -844,7 +869,7 @@ export const PedidoDetallePage: React.FC = () => {
       )}
 
       {/* Header Card */}
-      <div className="pedidos-detalle-header">
+      <div className="pedidos-detalle-header" id="section-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -1325,6 +1350,7 @@ export const PedidoDetallePage: React.FC = () => {
         const activeRev = pedido.revisiones?.find(r => r.estado === 'abierta' || r.estado === 'en_tratamiento') || pedido.revisiones?.[0];
         return (
           <div
+            id="section-revision"
             style={{
               backgroundColor: 'var(--pedidos-rework-bg, #fffbeb)',
               border: '1.5px solid var(--pedidos-rework-accent, #f59e0b)',
@@ -1922,7 +1948,7 @@ export const PedidoDetallePage: React.FC = () => {
          ===================================================================== */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
         {/* Solicitudes de Información al Solicitante */}
-        <div className="pedidos-detalle-card">
+        <div className="pedidos-detalle-card" id="section-info_solicitada">
           <div className="pedidos-detalle-card-header">
             <div>
               <h2 className="pedidos-detalle-card-title">
@@ -2064,7 +2090,7 @@ export const PedidoDetallePage: React.FC = () => {
         </div>
 
         {/* Notas internas — Solo personal autorizado */}
-        <div className="pedidos-detalle-card">
+        <div className="pedidos-detalle-card" id="section-notas">
           <div className="pedidos-detalle-card-header">
             <div>
               <h2 className="pedidos-detalle-card-title">

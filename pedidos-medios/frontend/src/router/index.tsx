@@ -11,6 +11,7 @@ import { SolicitarAccesoPage } from '../pages/SolicitarAccesoPage';
 import { GestionDashboardPage } from '../pages/GestionDashboardPage';
 import { PedidoDetallePage } from '../pages/PedidoDetallePage';
 import { UsuariosAdminPage } from '../pages/UsuariosAdminPage';
+import { NotificacionesPage } from '../pages/NotificacionesPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { PrivacyPage } from '../pages/PrivacyPage';
 import { ConfirmarEmailPage, readAuthReturn } from '../pages/ConfirmarEmailPage';
@@ -41,6 +42,8 @@ const RouterContent: React.FC = () => {
         <Route path="solicitar-acceso" element={<SolicitarAccesoPage />} />
         <Route path="confirmar-email" element={<ConfirmarEmailPage />} />
         <Route path="gestion" element={<GestionDashboardPage />} />
+        <Route path="gestion/notificaciones" element={<NotificacionesPage />} />
+        <Route path="notificaciones" element={<NotificacionesPage />} />
         <Route path="gestion/pedidos/:id" element={<PedidoDetallePage />} />
         <Route path="gestion/pedido/:id" element={<PedidoDetallePage />} />
         <Route path="pedido/:id" element={<PedidoDetallePage />} />

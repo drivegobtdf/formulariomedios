@@ -653,6 +653,62 @@ describe('GestionDashboardPage Unit Tests', () => {
       expect(screen.getByTitle('Solicitante: María Gómez')).toBeInTheDocument();
       expect(screen.getByTitle('Área: Secretaría de Deportes')).toBeInTheDocument();
     });
+
+    it('14. Interacción en Cards Kanban: controles interactivos aíslan eventos y no navegan accidentalmente', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockApprovedProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        refreshUser: vi.fn(),
+        signOut: vi.fn(),
+      });
+
+      const updateMetaSpy = vi.spyOn(gestionApi, 'updatePedidoMetadata').mockResolvedValue({
+        success: true,
+        pedido_id: 'ped-1',
+        prioridad: 'alta',
+        etiqueta_interna: null,
+        version: 2,
+        updated: true,
+      });
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
+      });
+
+      // Localizar select de prioridad dentro de la card
+      const prioridadSelect = screen.getByLabelText('Cambiar prioridad');
+      expect(prioridadSelect).toBeInTheDocument();
+
+      // Cambiar prioridad a 'alta'
+      fireEvent.change(prioridadSelect, { target: { value: 'alta' } });
+
+      await waitFor(() => {
+        expect(updateMetaSpy).toHaveBeenCalledWith('ped-1', 1, {
+          prioridad: 'alta',
+          update_prioridad: true,
+        });
+      });
+
+      // Localizar botón + Etiqueta y hacer clic
+      const btnEtiqueta = screen.getByTitle('Agregar etiqueta interna');
+      expect(btnEtiqueta).toBeInTheDocument();
+      fireEvent.click(btnEtiqueta);
+
+      // Debe abrir el modal de etiqueta sin error de navegación
+      await waitFor(() => {
+        expect(screen.getByText('Etiqueta interna')).toBeInTheDocument();
+      });
+    });
   });
 });
 

@@ -99,3 +99,45 @@ export function formatHistoryDate(rawDate?: string | null): string {
   }
 }
 
+/**
+ * Formatea una fecha ISO a tiempo relativo legible en español (es-AR).
+ * Ejemplos: "Hace un momento", "Hace 5 min", "Hace 2 h", "Hace 3 d", o "DD/MM/AAAA".
+ */
+export function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr || typeof dateStr !== 'string') return '';
+  const trimmed = dateStr.trim();
+  if (!trimmed) return '';
+
+  try {
+    const date = new Date(trimmed);
+    const time = date.getTime();
+    if (isNaN(time)) return '';
+
+    const now = Date.now();
+    const diffSec = Math.floor((now - time) / 1000);
+
+    if (diffSec < 60) {
+      return 'Hace un momento';
+    }
+
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) {
+      return `Hace ${diffMin} min`;
+    }
+
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) {
+      return `Hace ${diffHours} h`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) {
+      return diffDays === 1 ? 'Ayer' : `Hace ${diffDays} d`;
+    }
+
+    return formatLocalDate(trimmed);
+  } catch {
+    return '';
+  }
+}
+

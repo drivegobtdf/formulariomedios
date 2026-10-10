@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { getPublicConfig } from '../services/config';
 import { useAuth } from '../auth/AuthContext';
+import { NotificationBell } from './notifications/NotificationBell';
+import { UserProfileMenu } from './profile/UserProfileMenu';
 import logoGobTdf from '../assets/logo-gob-tdf.png';
 
 export const Layout: React.FC = () => {
   const config = getPublicConfig();
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, isObserver } = useAuth();
   const isProductionPreview = config.uiMode === 'production-preview' || config.environment === 'production';
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -26,6 +27,7 @@ export const Layout: React.FC = () => {
 
   const isInternalManagementPath =
     location.pathname.startsWith('/gestion') ||
+    location.pathname.startsWith('/notificaciones') ||
     location.pathname.startsWith('/usuarios') ||
     location.pathname.startsWith('/pedido/');
 
@@ -53,11 +55,6 @@ export const Layout: React.FC = () => {
     : isMisSolicitudes
     ? 'pedidos-app pedidos-app-tracking'
     : 'pedidos-app pedidos-app-public';
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
   return (
     <div className={containerClass} data-theme={isInternalManagementPath ? theme : undefined}>
@@ -87,24 +84,9 @@ export const Layout: React.FC = () => {
                   </button>
                 )}
                 {isInternalPath && user ? (
-                  <div className="pedidos-user-badge-group">
-                    <span className="pedidos-user-name">
-                      👤 {user.nombre} {user.apellido}
-                    </span>
-                    <span
-                      className={`pedidos-role-badge ${
-                        isAdmin ? 'pedidos-role-admin' : user.appRole === 'equipo' ? 'pedidos-role-equipo' : 'pedidos-role-obs'
-                      }`}
-                    >
-                      {user.appRole}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="pedidos-btn-logout"
-                    >
-                      Cerrar Sesión
-                    </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    {!isObserver && <NotificationBell />}
+                    <UserProfileMenu />
                   </div>
                 ) : isPublicFormPage ? null : (
                   <NavLink
@@ -163,39 +145,9 @@ export const Layout: React.FC = () => {
                   </button>
                 )}
                 {user && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
-                    <span style={{ color: '#334155', fontWeight: 500 }}>
-                      👤 {user.nombre} {user.apellido}
-                    </span>
-                    <span
-                      style={{
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        backgroundColor: isAdmin ? '#fef3c7' : user.appRole === 'equipo' ? '#e0e7ff' : '#f1f5f9',
-                        color: isAdmin ? '#b45309' : user.appRole === 'equipo' ? '#4338ca' : '#475569',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {user.appRole}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      style={{
-                        padding: '0.3rem 0.6rem',
-                        fontSize: '0.8rem',
-                        borderRadius: '0.375rem',
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
-                        color: '#64748b',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                      }}
-                    >
-                      Cerrar Sesión
-                    </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    {!isObserver && <NotificationBell />}
+                    <UserProfileMenu />
                   </div>
                 )}
               </div>

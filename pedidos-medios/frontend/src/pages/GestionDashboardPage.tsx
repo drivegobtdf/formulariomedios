@@ -1095,20 +1095,37 @@ export const GestionDashboardPage: React.FC = () => {
                     {columnPedidos.map((ped) => {
                       const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
                       return (
-                        <Link
+                        <div
                           key={ped.id}
-                          to={`/gestion/pedidos/${ped.id}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            const target = e.target as HTMLElement;
+                            if (target.closest('input, select, button, .etiqueta-interna-pill, a, label')) {
+                              return;
+                            }
+                            navigate(`/gestion/pedidos/${ped.id}`);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const target = e.target as HTMLElement;
+                              if (target.closest('input, select, button, .etiqueta-interna-pill, a, label')) {
+                                return;
+                              }
+                              navigate(`/gestion/pedidos/${ped.id}`);
+                            }
+                          }}
                           style={{
                             backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : 'var(--pedidos-surface-raised, #ffffff)',
                             border: ped.retrabajo_activo ? '1px solid var(--pedidos-rework-border, #fde68a)' : '1px solid var(--pedidos-border-default, #cbd5e1)',
                             borderLeft: ped.retrabajo_activo ? '4px solid var(--pedidos-rework-accent, #d97706)' : undefined,
                             borderRadius: '0.5rem',
                             padding: '0.85rem',
-                            textDecoration: 'none',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '0.45rem',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            cursor: 'pointer',
                             transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
                           }}
                           onMouseEnter={(e) => {
@@ -1128,6 +1145,7 @@ export const GestionDashboardPage: React.FC = () => {
                                   type="checkbox"
                                   checked={selectedPedidoIds.has(ped.id)}
                                   onChange={() => toggleSelectPedido(ped.id)}
+                                  onPointerDown={(e) => e.stopPropagation()}
                                   onClick={(e) => e.stopPropagation()}
                                   style={{ cursor: 'pointer', width: '15px', height: '15px' }}
                                 />
@@ -1204,12 +1222,14 @@ export const GestionDashboardPage: React.FC = () => {
                             {canEditMetadata && !isTerminal ? (
                               <select
                                 value={ped.prioridad || ''}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
                                 onChange={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   handlePrioridadChange(ped, e.target.value);
                                 }}
-                                onClick={(e) => e.stopPropagation()}
                                 className={`prioridad-badge-select prioridad-${ped.prioridad || 'sin-prioridad'}`}
                                 aria-label="Cambiar prioridad"
                               >
@@ -1231,6 +1251,7 @@ export const GestionDashboardPage: React.FC = () => {
                               <span
                                 className="etiqueta-interna-pill"
                                 title={canEditMetadata && !isTerminal ? 'Clic para editar etiqueta' : undefined}
+                                onPointerDown={(e) => e.stopPropagation()}
                                 onClick={(e) => {
                                   if (canEditMetadata && !isTerminal) {
                                     e.preventDefault();
@@ -1245,6 +1266,7 @@ export const GestionDashboardPage: React.FC = () => {
                               <button
                                 type="button"
                                 className="btn-add-etiqueta"
+                                onPointerDown={(e) => e.stopPropagation()}
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1285,7 +1307,7 @@ export const GestionDashboardPage: React.FC = () => {
                             </span>
                             <span style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600 }}>Ver detalle &rarr;</span>
                           </div>
-                        </Link>
+                        </div>
                       );
                     })}
 

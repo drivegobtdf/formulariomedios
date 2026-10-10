@@ -242,3 +242,46 @@ export function isObserver(profile: UserProfile | null): boolean {
   return isApproved(profile) && profile?.appRole === 'observador';
 }
 
+/**
+ * Actualiza el nombre y apellido del usuario autenticado en public.usuarios_acceso
+ * mediante la RPC segura 'profile_update_self'.
+ */
+export async function updateMyProfile(
+  nombre: string,
+  apellido: string
+): Promise<AuthResult<{ nombre: string; apellido: string }>> {
+  const cleanNombre = (nombre || '').trim();
+  const cleanApellido = (apellido || '').trim();
+
+  if (!cleanNombre) {
+    return { success: false, error: 'El nombre es obligatorio y no puede estar vacío.' };
+  }
+  if (!cleanApellido) {
+    return { success: false, error: 'El apellido es obligatorio y no puede estar vacío.' };
+  }
+  if (cleanNombre.length > 100) {
+    return { success: false, error: 'El nombre no puede exceder los 100 caracteres.' };
+  }
+  if (cleanApellido.length > 100) {
+    return { success: false, error: 'El apellido no puede exceder los 100 caracteres.' };
+  }
+
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('profile_update_self', {
+    p_nombre: cleanNombre,
+    p_apellido: cleanApellido,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return {
+    success: true,
+    data: {
+      nombre: data?.nombre || cleanNombre,
+      apellido: data?.apellido || cleanApellido,
+    },
+  };
+}
+
