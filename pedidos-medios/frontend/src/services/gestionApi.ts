@@ -762,7 +762,11 @@ export async function updatePedidoMetadata(
     p_update_prioridad: Boolean(options.update_prioridad),
     p_update_etiqueta: Boolean(options.update_etiqueta),
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const err: any = new Error(error.message);
+    err.code = error.code;
+    throw err;
+  }
   return data;
 }
 

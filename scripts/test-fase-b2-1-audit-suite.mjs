@@ -377,7 +377,13 @@ async function main() {
     currentVersion = pNull.version;
     console.log(`✓ 4.1d: Prioridad removida (null), version incrementada a ${currentVersion}`);
 
-    // 4.2 Error de VERSION_CONFLICT
+    // 4.2 Error de VERSION_CONFLICT (debe retornar 22000 rápido, NUNCA 40001)
+    const { count: auditBefore } = await serviceClient
+      .from('audit_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('recurso_id', pedidoId);
+
+    const conflictStart = performance.now();
     const { error: conflictErr } = await clientA1.rpc('pedido_update_metadata', {
       p_pedido_id: pedidoId,
       p_expected_version: 1, // versión vieja obsoleta
@@ -386,10 +392,31 @@ async function main() {
       p_update_prioridad: true,
       p_update_etiqueta: false
     });
+    const conflictDurationMs = performance.now() - conflictStart;
+
     if (!conflictErr || !conflictErr.message.includes('VERSION_CONFLICT')) {
       throw new Error('[FAIL 4.2] VERSION_CONFLICT no fue retornado');
     }
-    console.log('✓ 4.2: VERSION_CONFLICT detectado y rechazado correctamente');
+    if (conflictErr.code === '40001') {
+      throw new Error('[FAIL 4.2] VERSION_CONFLICT retornó código 40001 (riesgo de retry loop/timeout)');
+    }
+    if (conflictErr.code !== '22000') {
+      throw new Error(`[FAIL 4.2] VERSION_CONFLICT retornó código inesperado ${conflictErr.code}, esperado 22000`);
+    }
+    if (conflictDurationMs > 2000) {
+      throw new Error(`[FAIL 4.2] Latencia de conflicto excesiva: ${conflictDurationMs.toFixed(0)} ms > 2000 ms`);
+    }
+
+    const { count: auditAfter } = await serviceClient
+      .from('audit_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('recurso_id', pedidoId);
+
+    if (auditAfter !== auditBefore) {
+      throw new Error(`[FAIL 4.2] El conflicto de versión generó registros indebidos en audit_log (${auditBefore} -> ${auditAfter})`);
+    }
+
+    console.log(`✓ 4.2: VERSION_CONFLICT detectado con SQLSTATE ${conflictErr.code} (NO 40001) en ${conflictDurationMs.toFixed(1)} ms, 0 filas de auditoría añadidas`);
 
     // 4.3 Etiqueta interna: Agregar -> Editar -> Eliminar
     // Agregar

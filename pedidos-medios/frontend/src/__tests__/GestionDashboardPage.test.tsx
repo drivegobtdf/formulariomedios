@@ -709,6 +709,77 @@ describe('GestionDashboardPage Unit Tests', () => {
         expect(screen.getByText('Etiqueta interna')).toBeInTheDocument();
       });
     });
+
+    it('Enlace "Ver detalle →" utiliza la ruta canónica plural /gestion/pedidos/:id', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockApprovedProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        refreshUser: vi.fn(),
+        signOut: vi.fn(),
+      });
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
+      });
+
+      const detailLinks = screen.getAllByRole('link', { name: /Ver detalle/i });
+      expect(detailLinks.length).toBeGreaterThan(0);
+      expect(detailLinks[0]).toHaveAttribute('href', '/gestion/pedidos/ped-1');
+    });
+
+    it('Manejo de VERSION_CONFLICT con SQLSTATE 22000: muestra alerta explicativa, reconcilia datos y no navega', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockApprovedProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        refreshUser: vi.fn(),
+        signOut: vi.fn(),
+      });
+
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+      const conflictErr: any = new Error('VERSION_CONFLICT: La versión esperada 1 no coincide con la versión actual 2');
+      conflictErr.code = '22000';
+
+      vi.spyOn(gestionApi, 'updatePedidoMetadata').mockRejectedValue(conflictErr);
+      const fetchSpy = vi.spyOn(gestionApi, 'fetchPedidos');
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
+      });
+
+      const prioridadSelect = screen.getByLabelText('Cambiar prioridad');
+      fireEvent.change(prioridadSelect, { target: { value: 'alta' } });
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Conflicto de versión')
+        );
+      });
+
+      // Debe reconciliar datos invocando fetchPedidos
+      expect(fetchSpy).toHaveBeenCalled();
+      alertSpy.mockRestore();
+    });
   });
 });
 

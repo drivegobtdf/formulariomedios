@@ -117,7 +117,11 @@ export const GestionDashboardPage: React.FC = () => {
         )
       );
     } catch (err: any) {
-      alert(err.message || 'Error al actualizar la prioridad');
+      if (err?.code === '22000' && err?.message?.includes('VERSION_CONFLICT')) {
+        alert('Conflicto de versión: el pedido fue modificado concurrentemente por otro usuario. Se recargarán los datos actualizados.');
+      } else {
+        alert(err.message || 'Error al actualizar la prioridad');
+      }
       loadData();
     }
   };
@@ -125,18 +129,28 @@ export const GestionDashboardPage: React.FC = () => {
   const handleSaveEtiqueta = async (newEtiqueta: string | null) => {
     if (!selectedPedidoForEtiqueta) return;
     const ped = selectedPedidoForEtiqueta;
-    const res = await updatePedidoMetadata(ped.id, ped.version, {
-      etiqueta_interna: newEtiqueta,
-      update_etiqueta: true,
-    });
-    setPedidos((prev) =>
-      prev.map((p) =>
-        p.id === ped.id
-          ? { ...p, etiqueta_interna: res.etiqueta_interna, version: res.version }
-          : p
-      )
-    );
-    setSelectedPedidoForEtiqueta(null);
+    try {
+      const res = await updatePedidoMetadata(ped.id, ped.version, {
+        etiqueta_interna: newEtiqueta,
+        update_etiqueta: true,
+      });
+      setPedidos((prev) =>
+        prev.map((p) =>
+          p.id === ped.id
+            ? { ...p, etiqueta_interna: res.etiqueta_interna, version: res.version }
+            : p
+        )
+      );
+      setSelectedPedidoForEtiqueta(null);
+    } catch (err: any) {
+      if (err?.code === '22000' && err?.message?.includes('VERSION_CONFLICT')) {
+        alert('Conflicto de versión: el pedido fue modificado concurrentemente por otro usuario. Se recargarán los datos actualizados.');
+      } else {
+        alert(err.message || 'Error al actualizar la etiqueta interna');
+      }
+      setSelectedPedidoForEtiqueta(null);
+      loadData();
+    }
   };
 
   useEffect(() => {

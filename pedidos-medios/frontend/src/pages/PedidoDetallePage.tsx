@@ -269,7 +269,7 @@ export const PedidoDetallePage: React.FC = () => {
     } catch (err: any) {
       const msg = err.message || 'Error al actualizar prioridad.';
       setError(msg);
-      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001') || err?.code === 'PT409' || msg.includes('PT409')) {
+      if (err?.code === '22000' || err?.code === 'PT409' || msg.includes('VERSION_CONFLICT') || msg.includes('40001') || msg.includes('PT409')) {
         setError('Conflicto de versión: El pedido fue modificado recientemente. Recargando datos...');
         loadData();
       }
@@ -280,12 +280,21 @@ export const PedidoDetallePage: React.FC = () => {
 
   const handleSaveEtiqueta = async (newEtiqueta: string | null) => {
     if (!pedido) return;
-    const res = await updatePedidoMetadata(pedido.id, pedido.version, {
-      etiqueta_interna: newEtiqueta,
-      update_etiqueta: true,
-    });
-    setPedido((prev) => prev ? { ...prev, etiqueta_interna: res.etiqueta_interna, version: res.version } : prev);
-    setSuccessMessage('Etiqueta interna actualizada exitosamente.');
+    try {
+      const res = await updatePedidoMetadata(pedido.id, pedido.version, {
+        etiqueta_interna: newEtiqueta,
+        update_etiqueta: true,
+      });
+      setPedido((prev) => prev ? { ...prev, etiqueta_interna: res.etiqueta_interna, version: res.version } : prev);
+      setSuccessMessage('Etiqueta interna actualizada exitosamente.');
+    } catch (err: any) {
+      const msg = err.message || 'Error al actualizar etiqueta interna.';
+      setError(msg);
+      if (err?.code === '22000' || err?.code === 'PT409' || msg.includes('VERSION_CONFLICT') || msg.includes('40001') || msg.includes('PT409')) {
+        setError('Conflicto de versión: El pedido fue modificado recientemente. Recargando datos...');
+        loadData();
+      }
+    }
   };
 
   const loadData = useCallback(async (isSilent = false) => {

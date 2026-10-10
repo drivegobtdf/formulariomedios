@@ -9,7 +9,10 @@ import { UserProfileModal } from '../../pedidos-medios/frontend/src/components/p
 import { GlobalLogoutModal } from '../../pedidos-medios/frontend/src/components/profile/GlobalLogoutModal';
 import * as authContextModule from '../../pedidos-medios/frontend/src/auth/AuthContext';
 import * as notificationsHookModule from '../../pedidos-medios/frontend/src/hooks/useNotifications';
-import { BrowserRouter } from 'react-router-dom';
+import * as supabaseClientModule from '../../pedidos-medios/frontend/src/services/supabaseClient';
+import { updatePedidoMetadata } from '../../pedidos-medios/frontend/src/services/gestionApi';
+import { NotificacionesPage } from '../../pedidos-medios/frontend/src/pages/NotificacionesPage';
+import { BrowserRouter, MemoryRouter, useLocation } from 'react-router-dom';
 
 describe('FASE B.2 — Centro de Notificaciones, Perfil de Usuario y UX', () => {
   beforeEach(() => {
@@ -460,4 +463,125 @@ describe('FASE B.2 — Centro de Notificaciones, Perfil de Usuario y UX', () => 
       expect(document.activeElement).toBe(bellBtn);
     });
   });
+
+  // ============================================================================
+  // 7. CONCURRENCIA Y RUTAS CANÓNICAS (FASE B.2.2)
+  // ============================================================================
+  describe('7. Concurrencia y Rutas Canónicas (FASE B.2.2)', () => {
+    it('updatePedidoMetadata propaga error.code=22000 en VERSION_CONFLICT y no 40001', async () => {
+      const mockRpc = vi.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: '22000',
+          message: 'VERSION_CONFLICT: La versión esperada 1 no coincide con la versión actual 2',
+        },
+      });
+      vi.spyOn(supabaseClientModule, 'getSupabaseClient').mockReturnValue({
+        rpc: mockRpc,
+      } as any);
+
+      try {
+        await updatePedidoMetadata('p-1', 1, { prioridad: 'alta', update_prioridad: true });
+        expect.unreachable('Debería haber lanzado error');
+      } catch (err: any) {
+        expect(err.code).toBe('22000');
+        expect(err.code).not.toBe('40001');
+        expect(err.message).toContain('VERSION_CONFLICT');
+      }
+    });
+
+    it('NotificationBell navega a la ruta canónica plural /gestion/pedidos/:id con deep link', async () => {
+      let trackedPath = '';
+      function LocationTracker() {
+        const loc = useLocation();
+        trackedPath = loc.pathname + loc.search;
+        return null;
+      }
+
+      vi.spyOn(notificationsHookModule, 'useNotifications').mockReturnValue({
+        notifications: [
+          {
+            id: 'n-1',
+            userId: 'u-1',
+            pedidoId: 'p-canon-100',
+            tipo: 'nota_creada',
+            actorUserId: null,
+            readAt: null,
+            metadata: { pedido_visible: 'PED-2026-000100', section: 'notas' },
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        unreadCount: 1,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+        markRead: vi.fn(),
+        markAllRead: vi.fn(),
+        isEligible: true,
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/gestion']}>
+          <NotificationBell />
+          <LocationTracker />
+        </MemoryRouter>
+      );
+
+      const bellBtn = screen.getByRole('button', { name: /Notificaciones:/i });
+      fireEvent.click(bellBtn);
+
+      const item = screen.getAllByText(/PED-2026-000100/i)[0];
+      fireEvent.click(item);
+
+      await waitFor(() => {
+        expect(trackedPath).toBe('/gestion/pedidos/p-canon-100?section=notas');
+      });
+    });
+
+    it('NotificacionesPage navega a la ruta canónica plural /gestion/pedidos/:id con deep link', async () => {
+      let trackedPath = '';
+      function LocationTracker() {
+        const loc = useLocation();
+        trackedPath = loc.pathname + loc.search;
+        return null;
+      }
+
+      vi.spyOn(notificationsHookModule, 'useNotifications').mockReturnValue({
+        notifications: [
+          {
+            id: 'n-2',
+            userId: 'u-1',
+            pedidoId: 'p-canon-200',
+            tipo: 'info_respondida',
+            actorUserId: null,
+            readAt: null,
+            metadata: { pedido_visible: 'PED-2026-000200', section: 'informacion' },
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        unreadCount: 1,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+        markRead: vi.fn(),
+        markAllRead: vi.fn(),
+        isEligible: true,
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/gestion/notificaciones']}>
+          <NotificacionesPage />
+          <LocationTracker />
+        </MemoryRouter>
+      );
+
+      const item = screen.getByRole('button', { name: /PED-2026-000200/i });
+      fireEvent.click(item);
+
+      await waitFor(() => {
+        expect(trackedPath).toBe('/gestion/pedidos/p-canon-200?section=informacion');
+      });
+    });
+  });
 });
+
