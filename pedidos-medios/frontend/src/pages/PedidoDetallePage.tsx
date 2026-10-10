@@ -269,7 +269,7 @@ export const PedidoDetallePage: React.FC = () => {
     } catch (err: any) {
       const msg = err.message || 'Error al actualizar prioridad.';
       setError(msg);
-      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001')) {
+      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001') || err?.code === 'PT409' || msg.includes('PT409')) {
         setError('Conflicto de versión: El pedido fue modificado recientemente. Recargando datos...');
         loadData();
       }
@@ -407,7 +407,7 @@ export const PedidoDetallePage: React.FC = () => {
     } catch (err: any) {
       const msg = err.message || 'Error al cambiar estado.';
       setModalError(msg);
-      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001')) {
+      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001') || err?.code === 'PT409' || msg.includes('PT409')) {
         setModalError('Conflicto de versión: El pedido fue modificado recientemente. Por favor cierre este cuadro para recargar los datos.');
         loadData();
       }
@@ -468,7 +468,7 @@ export const PedidoDetallePage: React.FC = () => {
     } catch (err: any) {
       const msg = err.message || 'Error al finalizar el pedido.';
       setModalError(msg);
-      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001')) {
+      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001') || err?.code === 'PT409' || msg.includes('PT409')) {
         setModalError('Conflicto de versión: El pedido fue modificado recientemente. Por favor cierre este cuadro para recargar los datos.');
         loadData();
       }
@@ -492,7 +492,7 @@ export const PedidoDetallePage: React.FC = () => {
     } catch (err: any) {
       const msg = err.message || 'Error al cancelar pedido.';
       setModalError(msg);
-      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001')) {
+      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001') || err?.code === 'PT409' || msg.includes('PT409')) {
         setModalError('Conflicto de versión: El pedido fue modificado recientemente. Por favor cierre este cuadro para recargar los datos.');
         loadData();
       }
@@ -516,7 +516,7 @@ export const PedidoDetallePage: React.FC = () => {
     } catch (err: any) {
       const msg = err.message || 'Error al reabrir pedido.';
       setModalError(msg);
-      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001')) {
+      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001') || err?.code === 'PT409' || msg.includes('PT409')) {
         setModalError('Conflicto de versión: El pedido fue modificado recientemente. Por favor cierre este cuadro para recargar los datos.');
         loadData();
       }
@@ -578,7 +578,7 @@ export const PedidoDetallePage: React.FC = () => {
     } catch (err: any) {
       const msg = err.message || 'Error al crear solicitud de información.';
       setModalError(msg);
-      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001')) {
+      if (msg.includes('VERSION_CONFLICT') || msg.includes('40001') || err?.code === 'PT409' || msg.includes('PT409')) {
         setModalError('Conflicto de versión: El pedido fue modificado recientemente. Por favor cierre este cuadro para recargar los datos.');
         loadData();
       }
@@ -939,106 +939,16 @@ export const PedidoDetallePage: React.FC = () => {
           </div>
 
           {/* Action Toolbar for Authorized Roles */}
-          {!isObserver && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
-              {/* Operational State Transitions */}
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {/* 1. Transición a "En revisión" (Válido desde Nuevo o Esperando información) */}
-                {pedido.estado === 'Nuevo' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!pedido.responsable_user_id) {
-                        setError('Debe asignar un responsable antes de pasar el pedido a En revisión.');
-                        return;
-                      }
-                      setTargetState('En revisión');
-                      setModalError(null);
-                      setShowStateModal(true);
-                    }}
-                    disabled={actionLoading || !pedido.responsable_user_id}
-                    title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En revisión' : 'Pasar a En revisión'}
-                    style={{
-                      background: 'var(--pedidos-control-bg, #f8fafc)',
-                      color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      padding: '0.45rem 0.85rem',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: 600,
-                      cursor: actionLoading || !pedido.responsable_user_id ? 'not-allowed' : 'pointer',
-                      opacity: !pedido.responsable_user_id ? 0.6 : 1,
-                    }}
-                  >
-                    En revisión
-                  </button>
-                )}
-
-                {/* 2. Transición a "En proceso" (Válido desde En revisión o Esperando información) */}
-                {pedido.estado === 'En revisión' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!pedido.responsable_user_id) {
-                        setError('Debe asignar un responsable antes de pasar el pedido a En proceso.');
-                        return;
-                      }
-                      setTargetState('En proceso');
-                      setModalError(null);
-                      setShowStateModal(true);
-                    }}
-                    disabled={actionLoading || !pedido.responsable_user_id}
-                    title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En proceso' : 'Pasar a En proceso'}
-                    style={{
-                      background: 'var(--pedidos-control-bg, #f8fafc)',
-                      color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      padding: '0.45rem 0.85rem',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: 600,
-                      cursor: actionLoading || !pedido.responsable_user_id ? 'not-allowed' : 'pointer',
-                      opacity: !pedido.responsable_user_id ? 0.6 : 1,
-                    }}
-                  >
-                    En proceso
-                  </button>
-                )}
-
-                {/* 2b. Retroceso de "En proceso" a "En revisión" */}
-                {pedido.estado === 'En proceso' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!pedido.responsable_user_id) {
-                        setError('Debe asignar un responsable antes de pasar el pedido a En revisión.');
-                        return;
-                      }
-                      setTargetState('En revisión');
-                      setModalError(null);
-                      setShowStateModal(true);
-                    }}
-                    disabled={actionLoading || !pedido.responsable_user_id}
-                    title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de volver a En revisión' : 'Volver a En revisión'}
-                    style={{
-                      background: 'var(--pedidos-control-bg, #f8fafc)',
-                      color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      padding: '0.45rem 0.85rem',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: 600,
-                      cursor: actionLoading || !pedido.responsable_user_id ? 'not-allowed' : 'pointer',
-                      opacity: !pedido.responsable_user_id ? 0.6 : 1,
-                    }}
-                  >
-                    Volver a En revisión
-                  </button>
-                )}
-
-                {/* 3. Acciones desde "Esperando información" */}
-                {pedido.estado === 'Esperando información' && (
-                  <>
+          {!isObserver && (() => {
+            const hasPendingInfo = Boolean(
+              (pedido.solicitudes || (pedido as any).solicitudes_informacion || []).some((si: any) => si.estado === 'pendiente')
+            );
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+                {/* Operational State Transitions */}
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {/* 1. Transición a "En revisión" (Válido desde Nuevo) */}
+                  {pedido.estado === 'Nuevo' && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1066,6 +976,41 @@ export const PedidoDetallePage: React.FC = () => {
                     >
                       En revisión
                     </button>
+                  )}
+
+                  {/* 1b. Acceso directo a "En proceso" (Válido desde Nuevo) */}
+                  {pedido.estado === 'Nuevo' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!pedido.responsable_user_id) {
+                          setError('Debe asignar un responsable antes de pasar el pedido a En proceso.');
+                          return;
+                        }
+                        setTargetState('En proceso');
+                        setModalError(null);
+                        setShowStateModal(true);
+                      }}
+                      disabled={actionLoading || !pedido.responsable_user_id}
+                      title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En proceso' : 'Pasar directamente a En proceso'}
+                      style={{
+                        background: 'var(--pedidos-control-bg, #f8fafc)',
+                        color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
+                        border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+                        padding: '0.45rem 0.85rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        cursor: actionLoading || !pedido.responsable_user_id ? 'not-allowed' : 'pointer',
+                        opacity: !pedido.responsable_user_id ? 0.6 : 1,
+                      }}
+                    >
+                      En proceso
+                    </button>
+                  )}
+
+                  {/* 2. Transición a "En proceso" (Válido desde En revisión) */}
+                  {pedido.estado === 'En revisión' && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1093,33 +1038,131 @@ export const PedidoDetallePage: React.FC = () => {
                     >
                       En proceso
                     </button>
-                  </>
-                )}
+                  )}
 
-                {/* 4. Solicitud de Información 48h */}
-                {pedido.estado !== 'Finalizado' && pedido.estado !== 'Cancelado' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalError(null);
-                      setShowInfoReqModal(true);
-                    }}
-                    disabled={actionLoading}
-                    style={{
-                      background: 'var(--pedidos-status-revision-bg, #fef3c7)',
-                      color: 'var(--pedidos-status-revision-text, #b45309)',
-                      border: '1px solid var(--pedidos-status-revision-border, #fcd34d)',
-                      padding: '0.45rem 0.85rem',
-                      borderRadius: '0.375rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: 600,
-                      cursor: actionLoading ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    Pedir información · 48 h
-                  </button>
-                )}
-              </div>
+                  {/* 2b. Retroceso de "En proceso" a "En revisión" */}
+                  {pedido.estado === 'En proceso' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!pedido.responsable_user_id) {
+                          setError('Debe asignar un responsable antes de pasar el pedido a En revisión.');
+                          return;
+                        }
+                        setTargetState('En revisión');
+                        setModalError(null);
+                        setShowStateModal(true);
+                      }}
+                      disabled={actionLoading || !pedido.responsable_user_id}
+                      title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de volver a En revisión' : 'Volver a En revisión'}
+                      style={{
+                        background: 'var(--pedidos-control-bg, #f8fafc)',
+                        color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
+                        border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+                        padding: '0.45rem 0.85rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        cursor: actionLoading || !pedido.responsable_user_id ? 'not-allowed' : 'pointer',
+                        opacity: !pedido.responsable_user_id ? 0.6 : 1,
+                      }}
+                    >
+                      Volver a En revisión
+                    </button>
+                  )}
+
+                  {/* 3. Acciones desde "Esperando información" */}
+                  {pedido.estado === 'Esperando información' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!pedido.responsable_user_id) {
+                            setError('Debe asignar un responsable antes de pasar el pedido a En revisión.');
+                            return;
+                          }
+                          if (hasPendingInfo) {
+                            setError('No se puede cambiar el estado mientras exista una solicitud de información pendiente de respuesta del solicitante.');
+                            return;
+                          }
+                          setTargetState('En revisión');
+                          setModalError(null);
+                          setShowStateModal(true);
+                        }}
+                        disabled={actionLoading || !pedido.responsable_user_id || hasPendingInfo}
+                        title={hasPendingInfo ? 'Esperando respuesta del solicitante a la solicitud de información de 48 h' : (!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En revisión' : 'Pasar a En revisión')}
+                        style={{
+                          background: 'var(--pedidos-control-bg, #f8fafc)',
+                          color: !pedido.responsable_user_id || hasPendingInfo ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
+                          border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+                          padding: '0.45rem 0.85rem',
+                          borderRadius: '0.375rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          cursor: actionLoading || !pedido.responsable_user_id || hasPendingInfo ? 'not-allowed' : 'pointer',
+                          opacity: !pedido.responsable_user_id || hasPendingInfo ? 0.6 : 1,
+                        }}
+                      >
+                        En revisión
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!pedido.responsable_user_id) {
+                            setError('Debe asignar un responsable antes de pasar el pedido a En proceso.');
+                            return;
+                          }
+                          if (hasPendingInfo) {
+                            setError('No se puede cambiar el estado mientras exista una solicitud de información pendiente de respuesta del solicitante.');
+                            return;
+                          }
+                          setTargetState('En proceso');
+                          setModalError(null);
+                          setShowStateModal(true);
+                        }}
+                        disabled={actionLoading || !pedido.responsable_user_id || hasPendingInfo}
+                        title={hasPendingInfo ? 'Esperando respuesta del solicitante a la solicitud de información de 48 h' : (!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En proceso' : 'Pasar a En proceso')}
+                        style={{
+                          background: 'var(--pedidos-control-bg, #f8fafc)',
+                          color: !pedido.responsable_user_id || hasPendingInfo ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
+                          border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+                          padding: '0.45rem 0.85rem',
+                          borderRadius: '0.375rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          cursor: actionLoading || !pedido.responsable_user_id || hasPendingInfo ? 'not-allowed' : 'pointer',
+                          opacity: !pedido.responsable_user_id || hasPendingInfo ? 0.6 : 1,
+                        }}
+                      >
+                        En proceso
+                      </button>
+                    </>
+                  )}
+
+                  {/* 4. Solicitud de Información 48h */}
+                  {['Nuevo', 'En revisión', 'En proceso'].includes(pedido.estado) && !hasPendingInfo && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalError(null);
+                        setShowInfoReqModal(true);
+                      }}
+                      disabled={actionLoading}
+                      style={{
+                        background: 'var(--pedidos-status-revision-bg, #fef3c7)',
+                        color: 'var(--pedidos-status-revision-text, #b45309)',
+                        border: '1px solid var(--pedidos-status-revision-border, #fcd34d)',
+                        padding: '0.45rem 0.85rem',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        cursor: actionLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      Pedir información · 48 h
+                    </button>
+                  )}
+                </div>
 
               {/* Resolution & Archiving Transitions */}
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1223,7 +1266,8 @@ export const PedidoDetallePage: React.FC = () => {
                 )}
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 

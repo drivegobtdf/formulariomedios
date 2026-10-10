@@ -9,6 +9,8 @@ import {
   signUp,
   signIn,
   signOut,
+  logoutCurrentDevice,
+  logoutAllDevices,
   getMyAccess,
   getEmailConfirmationRedirectUrl,
 } from '../services/auth';
@@ -272,6 +274,40 @@ describe('Auth Service - Operaciones con Supabase Client Mock', () => {
       appRole: 'administrador',
       solicitadoAt: '2026-09-12T00:00:00Z',
       aprobadoAt: '2026-09-12T00:00:00Z',
+    });
+  });
+
+  describe('Auditoría de Sesiones Compartidas (signOut Isolation)', () => {
+    it('signOut sin opciones debe usar scope: "local" por defecto para no desconectar otras terminales', async () => {
+      mockSupabase.auth.signOut.mockResolvedValue({ error: null });
+
+      const res = await signOut();
+      expect(res.success).toBe(true);
+      expect(mockSupabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    });
+
+    it('logoutCurrentDevice debe invocar signOut con scope: "local"', async () => {
+      mockSupabase.auth.signOut.mockResolvedValue({ error: null });
+
+      const res = await logoutCurrentDevice();
+      expect(res.success).toBe(true);
+      expect(mockSupabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    });
+
+    it('logoutAllDevices debe invocar signOut con scope: "global"', async () => {
+      mockSupabase.auth.signOut.mockResolvedValue({ error: null });
+
+      const res = await logoutAllDevices();
+      expect(res.success).toBe(true);
+      expect(mockSupabase.auth.signOut).toHaveBeenCalledWith({ scope: 'global' });
+    });
+
+    it('signOut propaga el error de Supabase si ocurre', async () => {
+      mockSupabase.auth.signOut.mockResolvedValue({ error: { message: 'Fallo de red al cerrar sesión' } });
+
+      const res = await signOut();
+      expect(res.success).toBe(false);
+      expect(res.error).toBe('Fallo de red al cerrar sesión');
     });
   });
 });

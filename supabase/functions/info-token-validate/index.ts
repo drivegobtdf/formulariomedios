@@ -64,18 +64,6 @@ export default async function handler(req: Request): Promise<Response> {
     const expiresAt = new Date(solicitud.expires_at).getTime();
     const isExpired = Date.now() >= expiresAt;
 
-    if (isExpired) {
-      return new Response(
-        JSON.stringify({
-          valid: false,
-          error: 'TOKEN_EXPIRED',
-          message: 'La solicitud de información ha vencido tras 48 horas corridas.',
-          expires_at: solicitud.expires_at,
-        }),
-        { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const isResponded = solicitud.estado === 'respondida';
     const pedData = solicitud.pedidos as any;
 
@@ -83,6 +71,7 @@ export default async function handler(req: Request): Promise<Response> {
       JSON.stringify({
         valid: true,
         responded: isResponded,
+        is_tardia: isExpired,
         solicitud: {
           id: solicitud.id,
           pedido_id: solicitud.pedido_id,
@@ -95,6 +84,7 @@ export default async function handler(req: Request): Promise<Response> {
           respuesta_texto: solicitud.respuesta_texto,
           responded_at: solicitud.responded_at,
           created_at: solicitud.created_at,
+          is_tardia: isExpired,
         },
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

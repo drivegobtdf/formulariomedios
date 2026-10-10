@@ -349,11 +349,14 @@ describe('Notificación "En proceso" — Suite Completa de Calidad y Seguridad',
 
       // 3. info_responded
       const irsp = renderInfoRespondedEmail({
-        nombre_apellido: 'Juan',
+        nombre_apellido: 'Operador Asignado',
+        solicitante_nombre: 'Juan Solicitante',
+        area_solicitante: 'Secretaría de Medios',
         pedido_visible: 'PED-1',
       }, customAppUrl);
       expect(irsp.n8nTipo).toBe('informacion_respondida');
-      expect(irsp.html).toContain('Información Complementaria Recibida');
+      expect(irsp.html).toContain('Respuesta a Solicitud de Información');
+      expect(irsp.html).toContain('Ver Pedido en Gestión');
 
       // 4. finalized
       const fin = renderFinalizedEmail({

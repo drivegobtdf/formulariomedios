@@ -121,18 +121,40 @@ export async function signIn(params: SignInParams): Promise<AuthResult<{ userId:
   return { success: true, data: { userId: data.user.id } };
 }
 
+export interface SignOutOptions {
+  scope?: 'local' | 'global' | 'others';
+}
+
 /**
  * Cierra la sesión activa en Supabase Auth.
+ * Por defecto en FASE A utiliza scope 'local' para evitar revocar sesiones
+ * concurrentes en cuentas compartidas del equipo (@laboratoriodedg).
  */
-export async function signOut(): Promise<AuthResult> {
+export async function signOut(options?: SignOutOptions): Promise<AuthResult> {
   const supabase = getSupabaseClient();
-  const { error } = await supabase.auth.signOut();
+  const scope = options?.scope ?? 'local';
+  const { error } = await supabase.auth.signOut({ scope });
 
   if (error) {
     return { success: false, error: error.message };
   }
 
   return { success: true };
+}
+
+/**
+ * Helper explícito para cerrar sesión solo en este dispositivo (scope local).
+ */
+export async function logoutCurrentDevice(): Promise<AuthResult> {
+  return signOut({ scope: 'local' });
+}
+
+/**
+ * Helper para cerrar sesión en todos los dispositivos (scope global).
+ * Reservado para uso con confirmación explícita (FASE B).
+ */
+export async function logoutAllDevices(): Promise<AuthResult> {
+  return signOut({ scope: 'global' });
 }
 
 /**

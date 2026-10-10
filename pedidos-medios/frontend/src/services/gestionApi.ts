@@ -45,6 +45,8 @@ export interface PedidoListItem {
   tipo_nombre?: string;
   responsable_user_id?: string;
   responsable_nombre?: string;
+  solicitante_nombre?: string;
+  area_solicitante?: string;
   informacion_especifica: Record<string, any>;
   version: number;
   archivado: boolean;
@@ -363,7 +365,12 @@ export async function fetchPedidos(filters?: {
       created_at,
       updated_at,
       categorias_servicio!pedidos_categoria_id_fkey ( nombre ),
-      tipos_servicio!pedidos_tipo_servicio_id_fkey ( nombre )
+      tipos_servicio!pedidos_tipo_servicio_id_fkey ( nombre ),
+      envios_formulario (
+        id,
+        nombre_apellido,
+        area_solicitante
+      )
     `);
 
   if (filters?.archivado !== undefined) {
@@ -430,6 +437,8 @@ export async function fetchPedidos(filters?: {
     tipo_nombre: p.tipos_servicio?.nombre,
     responsable_user_id: p.responsable_user_id,
     responsable_nombre: p.responsable_user_id ? (userMap.get(p.responsable_user_id) || 'Usuario Asignado') : undefined,
+    solicitante_nombre: p.envios_formulario?.nombre_apellido || p.informacion_especifica?.contacto_nombre || undefined,
+    area_solicitante: p.envios_formulario?.area_solicitante || p.informacion_especifica?.contacto_area || undefined,
     informacion_especifica: p.informacion_especifica || {},
     version: p.version,
     archivado: p.archivado,
@@ -764,7 +773,11 @@ export async function assignPedido(pedidoId: string, responsableUserId: string, 
     p_responsable_user_id: responsableUserId,
     p_expected_version: expectedVersion,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const err: any = new Error(error.message);
+    err.code = error.code;
+    throw err;
+  }
   return data;
 }
 
@@ -776,7 +789,11 @@ export async function changePedidoState(pedidoId: string, targetState: string, e
     p_expected_version: expectedVersion,
     p_motivo: motivo || null,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const err: any = new Error(error.message);
+    err.code = error.code;
+    throw err;
+  }
   return data;
 }
 

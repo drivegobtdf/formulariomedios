@@ -616,6 +616,43 @@ describe('GestionDashboardPage Unit Tests', () => {
         });
       });
     });
+
+    it('Renderiza solicitante y área en tarjetas Kanban con tooltip y elipsis', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockApprovedProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        signOut: vi.fn(),
+        refreshUser: vi.fn(),
+      });
+
+      vi.spyOn(gestionApi, 'fetchPedidos').mockResolvedValue([
+        {
+          ...mockPedidos[0],
+          solicitante_nombre: 'María Gómez',
+          area_solicitante: 'Secretaría de Deportes',
+        },
+      ]);
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
+      });
+
+      // Debe mostrar solicitante y área
+      expect(screen.getByText('María Gómez')).toBeInTheDocument();
+      expect(screen.getByText('Secretaría de Deportes')).toBeInTheDocument();
+      expect(screen.getByTitle('Solicitante: María Gómez')).toBeInTheDocument();
+      expect(screen.getByTitle('Área: Secretaría de Deportes')).toBeInTheDocument();
+    });
   });
 });
 

@@ -11,7 +11,7 @@ interface AuthContextType {
   isTeamOrAdmin: boolean;
   isObserver: boolean;
   refreshUser: () => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: (optionsOrEvent?: any) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -66,8 +66,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const handleSignOut = async () => {
-    await authSignOut();
+  const handleSignOut = async (optionsOrEvent?: any) => {
+    const scope = (optionsOrEvent && typeof optionsOrEvent === 'object' && optionsOrEvent.scope === 'global') ? 'global' : 'local';
+    await authSignOut({ scope });
     setUser(null);
   };
 

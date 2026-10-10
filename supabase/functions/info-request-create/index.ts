@@ -125,7 +125,7 @@ export default async function handler(req: Request): Promise<Response> {
       let statusCode = 400;
       if (code === '42501' || rpcErr.message.includes('ACCESS_DENIED') || rpcErr.message.includes('ROLE_FORBIDDEN')) {
         statusCode = 403;
-      } else if (code === '40001' || rpcErr.message.includes('VERSION_CONFLICT')) {
+      } else if (code === '40001' || code === 'PT409' || rpcErr.message.includes('VERSION_CONFLICT')) {
         statusCode = 409;
       } else if (code === 'P0002' || rpcErr.message.includes('PEDIDO_NOT_FOUND')) {
         statusCode = 404;
@@ -144,6 +144,9 @@ export default async function handler(req: Request): Promise<Response> {
         communication_id: rpcData?.communication_id,
         expires_at: rpcData?.expires_at,
         raw_token: rawToken,
+        estado: rpcData?.estado,
+        estado_previo: rpcData?.estado_previo,
+        version: rpcData?.version,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

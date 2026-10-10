@@ -336,7 +336,7 @@ describe('PedidoDetallePage Unit Tests', () => {
     expect(screen.queryByRole('button', { name: /Guardar Nota/i })).not.toBeInTheDocument();
   });
 
-  it('6. Transiciones canónicas según estado: Nuevo solo muestra En revisión, no En proceso directo', async () => {
+  it('6. Transiciones canónicas según estado: Nuevo muestra En revisión y En proceso directo si tiene responsable', async () => {
     vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
       user: mockAdminProfile,
       isLoading: false,
@@ -375,13 +375,11 @@ describe('PedidoDetallePage Unit Tests', () => {
       expect(screen.getByText('PED-2026-D000155')).toBeInTheDocument();
     });
 
-    // Debe existir botón "En revisión" y NO debe existir botón "En proceso"
+    // Debe existir botón "En revisión" y también botón de acceso directo "En proceso"
     const btnEnRevision = screen.getByRole('button', { name: /^En revisión$/i });
     expect(btnEnRevision).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^En proceso$/i })).not.toBeInTheDocument();
-
-    // Transición canónica
-    expect(screen.queryByRole('button', { name: /^En proceso$/i })).not.toBeInTheDocument();
+    const btnEnProceso = screen.getByRole('button', { name: /^En proceso$/i });
+    expect(btnEnProceso).toBeInTheDocument();
 
     // Al hacer clic en "En revisión", se abre modal y se confirma
     fireEvent.click(btnEnRevision);

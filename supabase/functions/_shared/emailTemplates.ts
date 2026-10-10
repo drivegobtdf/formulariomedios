@@ -258,34 +258,52 @@ export function renderEmail(
     case 'informacion_respondida':
     case 'info_responded': {
       const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
-      const subject = `[PEDIDOS] Información Recibida: ${payload.pedido_visible || 'PED'}`;
-      const portalUrl = `${cleanAppUrl}/mis-solicitudes`;
+      const subject = `[PEDIDOS] Información respondida: ${payload.pedido_visible || 'PED'}`;
+      const pedidoId = payload.pedido_id ? encodeURIComponent(String(payload.pedido_id)) : '';
+      const gestionUrl = pedidoId ? `${cleanAppUrl}/gestion/pedidos/${pedidoId}` : `${cleanAppUrl}/gestion`;
+      const catSafe = escapeHtml(payload.categoria || 'Servicio');
+      const tipSafe = escapeHtml(payload.tipo || 'General');
+      const solicitanteSafe = escapeHtml(payload.solicitante_nombre || payload.nombre_apellido || 'Solicitante');
+      const areaSafe = escapeHtml(payload.area_solicitante || 'Gobierno');
 
       const contentHtml = `
-        <h2 style="margin: 0 0 16px 0; color: #059669; font-size: 18px;">
-          ✓ Información Complementaria Recibida
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
+          Respuesta a Solicitud de Información (48 h)
         </h2>
         <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
-          Estimado/a <strong>${nombreSafe}</strong>,
+          Hola <strong>${nombreSafe}</strong>,
         </p>
         <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
-          Confirmamos que su respuesta y documentación complementaria para el pedido <strong>${pedVisible}</strong> ha sido recibida correctamente por el equipo de la Secretaría de Medios.
+          El solicitante ha respondido la solicitud de información del pedido <strong>${pedVisible}</strong>.
         </p>
-        <p style="margin: 0 0 20px 0; font-size: 14px; color: ${BRAND_MUTED}; line-height: 1.5;">
-          El pedido reanudará su circuito de producción habitual. Puede verificar el estado en tiempo real a través del portal.
-        </p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px;">
+          <tbody>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569; width: 140px;">Código PED:</td>
+              <td style="padding: 10px 14px; font-weight: 700; color: #0F172A;">${pedVisible}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569;">Categoría / Tipo:</td>
+              <td style="padding: 10px 14px;">${catSafe} — ${tipSafe}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 10px 14px; font-weight: 600; color: #475569;">Solicitante:</td>
+              <td style="padding: 10px 14px;">${solicitanteSafe} (${areaSafe})</td>
+            </tr>
+          </tbody>
+        </table>
         <div style="text-align: center; margin: 24px 0;">
-          <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
-            Consultar en Mis Solicitudes
+          <a href="${gestionUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Ver Pedido en Gestión
           </a>
         </div>
       `;
 
-      const text = `INFORMACIÓN COMPLEMENTARIA RECIBIDA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nConfirmamos la recepción de la información complementaria para su pedido ${payload.pedido_visible || 'PED'}.\nEl pedido continúa su curso.\n\nPortal: ${portalUrl}\n`;
+      const text = `INFORMACIÓN RESPONDIDA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nHola ${rawNombre},\nEl solicitante respondió la solicitud de información del pedido ${payload.pedido_visible || 'PED'}.\n\n* Código: ${payload.pedido_visible || 'PED'}\n* Categoría: ${payload.categoria || ''} - ${payload.tipo || ''}\n* Solicitante: ${payload.solicitante_nombre || payload.nombre_apellido || ''} (${payload.area_solicitante || ''})\n\nIngresá al pedido en:\n${gestionUrl}\n`;
 
       return {
         subject,
-        html: wrapHtmlLayout('Información Recibida', contentHtml),
+        html: wrapHtmlLayout('Información Respondida', contentHtml),
         text,
         n8nTipo: 'informacion_respondida',
       };

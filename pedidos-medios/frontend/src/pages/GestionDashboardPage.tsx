@@ -1167,6 +1167,38 @@ export const GestionDashboardPage: React.FC = () => {
                             {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                           </div>
 
+                          {/* Solicitante y Área */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: '0.2rem' }}>
+                            <div
+                              style={{
+                                fontSize: '0.75rem',
+                                color: 'var(--pedidos-text-primary, #0f172a)',
+                                fontWeight: 600,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                              title={`Solicitante: ${ped.solicitante_nombre || 'Sin solicitante'}`}
+                            >
+                              <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 500, marginRight: '0.25rem' }}>👤</span>
+                              {ped.solicitante_nombre || 'Sin solicitante'}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '0.725rem',
+                                color: 'var(--pedidos-text-secondary, #475569)',
+                                fontWeight: 400,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                              title={`Área: ${ped.area_solicitante || 'Sin área'}`}
+                            >
+                              <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 500, marginRight: '0.25rem' }}>🏛️</span>
+                              {ped.area_solicitante || 'Sin área'}
+                            </div>
+                          </div>
+
                           {/* Metadatos: Prioridad y Etiqueta Interna */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
                             {canEditMetadata && !isTerminal ? (
