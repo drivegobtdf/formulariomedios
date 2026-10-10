@@ -1,14 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useNotifications } from '../../hooks/useNotifications';
 import { UserNotification } from '../../services/notificationsApi';
-import { formatRelativeTime } from '../../utils/formatUtils';
+import { formatRelativeTime, formatNotificationSummary } from '../../utils/formatUtils';
 
 export const NotificationBell: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'todas' | 'no_leidas'>('todas');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
 
   const {
     notifications,
@@ -20,7 +22,12 @@ export const NotificationBell: React.FC = () => {
     isEligible,
   } = useNotifications({ limit: 10, unreadOnly: activeTab === 'no_leidas' });
 
-  // Cerrar al hacer clic fuera o presionar ESC
+  // Cerrar al navegar a otra ruta
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
+
+  // Cerrar al hacer clic fuera o presionar ESC (retornando foco al disparador)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -30,6 +37,7 @@ export const NotificationBell: React.FC = () => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setIsOpen(false);
+        bellButtonRef.current?.focus();
       }
     }
 
@@ -90,6 +98,7 @@ export const NotificationBell: React.FC = () => {
     <div style={{ position: 'relative', display: 'inline-block' }} ref={dropdownRef}>
       {/* Botón de Campana */}
       <button
+        ref={bellButtonRef}
         type="button"
         onClick={handleToggle}
         aria-label={
@@ -155,7 +164,7 @@ export const NotificationBell: React.FC = () => {
             top: 'calc(100% + 8px)',
             right: 0,
             width: '360px',
-            maxWidth: '90vw',
+            maxWidth: 'calc(100vw - 1.5rem)',
             backgroundColor: 'var(--pedidos-surface-card, #ffffff)',
             border: '1px solid var(--pedidos-border-default, #cbd5e1)',
             borderRadius: '0.5rem',
@@ -282,7 +291,7 @@ export const NotificationBell: React.FC = () => {
             ) : (
               notifications.map((notif) => {
                 const isUnread = !notif.readAt;
-                const resumen = notif.metadata?.mensaje_resumen || notif.metadata?.pedido_visible || 'Notificación';
+                const resumen = formatNotificationSummary(notif);
                 const timeText = formatRelativeTime(notif.createdAt);
 
                 return (

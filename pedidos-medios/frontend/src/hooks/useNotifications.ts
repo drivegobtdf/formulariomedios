@@ -151,29 +151,74 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const markRead = useCallback(async (notificationId: string) => {
     if (!notificationId) return;
 
-    // Actualización optimista
-    setNotifications((prev) =>
-      prev.map((n) =>
+    // Snapshot para rollback en caso de fallo backend
+    let prevItem: UserNotification | undefined;
+    setNotifications((prev) => {
+      prevItem = prev.find((n) => n.id === notificationId);
+      return prev.map((n) =>
         n.id === notificationId && !n.readAt
           ? { ...n, readAt: new Date().toISOString() }
           : n
-      )
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+      );
+    });
 
-    await markNotificationRead(notificationId);
+    if (prevItem && !prevItem.readAt) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+
+    try {
+      const res = await markNotificationRead(notificationId);
+      if (!res.success) {
+        // Rollback de estado optimista si backend rechazó la operación
+        if (prevItem) {
+          setNotifications((prev) =>
+            prev.map((n) => (n.id === notificationId ? { ...n, readAt: prevItem!.readAt } : n))
+          );
+        }
+        // Reconciliar contador con el backend
+        fetchUnreadNotificationCount().then((cnt) => setUnreadCount(cnt));
+        console.warn('[notifications] Error al marcar notificación como leída en backend:', res.error);
+      }
+    } catch (err: any) {
+      if (prevItem) {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notificationId ? { ...n, readAt: prevItem!.readAt } : n))
+        );
+      }
+      fetchUnreadNotificationCount().then((cnt) => setUnreadCount(cnt));
+      console.warn('[notifications] Excepción al marcar notificación como leída:', err);
+    }
   }, []);
 
   // Marcar todas como leídas
   const markAllRead = useCallback(async () => {
-    // Actualización optimista
-    const nowIso = new Date().toISOString();
-    setNotifications((prev) =>
-      prev.map((n) => (n.readAt ? n : { ...n, readAt: nowIso }))
-    );
-    setUnreadCount(0);
+    let prevList: UserNotification[] = [];
+    let prevCount = 0;
 
-    await markAllNotificationsRead();
+    setNotifications((prev) => {
+      prevList = prev;
+      const nowIso = new Date().toISOString();
+      return prev.map((n) => (n.readAt ? n : { ...n, readAt: nowIso }));
+    });
+    setUnreadCount((c) => {
+      prevCount = c;
+      return 0;
+    });
+
+    try {
+      const res = await markAllNotificationsRead();
+      if (!res.success) {
+        setNotifications(prevList);
+        setUnreadCount(prevCount);
+        fetchUnreadNotificationCount().then((cnt) => setUnreadCount(cnt));
+        console.warn('[notifications] Error al marcar todas las notificaciones como leídas:', res.error);
+      }
+    } catch (err: any) {
+      setNotifications(prevList);
+      setUnreadCount(prevCount);
+      fetchUnreadNotificationCount().then((cnt) => setUnreadCount(cnt));
+      console.warn('[notifications] Excepción al marcar todas las notificaciones:', err);
+    }
   }, []);
 
   return {

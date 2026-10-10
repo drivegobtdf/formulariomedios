@@ -374,20 +374,23 @@ export const PedidoDetallePage: React.FC = () => {
     if (!sectionParam) return;
 
     const targetId = `section-${sectionParam}`;
+    let highlightTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const timer = setTimeout(() => {
+    const rafId = requestAnimationFrame(() => {
       const el = document.getElementById(targetId) || document.getElementById('section-header');
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         el.classList.add('pedidos-section-highlight');
-        const removeTimer = setTimeout(() => {
+        highlightTimer = setTimeout(() => {
           el.classList.remove('pedidos-section-highlight');
         }, 2500);
-        return () => clearTimeout(removeTimer);
       }
-    }, 200);
+    });
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelAnimationFrame(rafId);
+      if (highlightTimer) clearTimeout(highlightTimer);
+    };
   }, [pedido, loading, location.search]);
 
   const handleDownload = async (archivoId: string, nombreOriginal: string) => {

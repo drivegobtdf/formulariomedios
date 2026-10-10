@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { UserNotification } from '../services/notificationsApi';
-import { formatRelativeTime, formatHistoryDate } from '../utils/formatUtils';
+import { formatRelativeTime, formatHistoryDate, formatNotificationSummary } from '../utils/formatUtils';
 
 export const NotificacionesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -249,7 +249,7 @@ export const NotificacionesPage: React.FC = () => {
           ) : (
             notifications.map((notif) => {
               const isUnread = !notif.readAt;
-              const resumen = notif.metadata?.mensaje_resumen || notif.metadata?.pedido_visible || 'Notificación';
+              const resumen = formatNotificationSummary(notif);
               const pedidoCode = notif.metadata?.pedido_visible;
               const relativeTime = formatRelativeTime(notif.createdAt);
               const exactTime = formatHistoryDate(notif.createdAt);

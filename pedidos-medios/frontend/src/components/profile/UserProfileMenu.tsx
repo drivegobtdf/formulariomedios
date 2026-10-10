@@ -1,14 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { UserProfileModal } from './UserProfileModal';
 import { GlobalLogoutModal } from './GlobalLogoutModal';
 
 export const UserProfileMenu: React.FC = () => {
   const { user, signOut } = useAuth();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showGlobalLogoutModal, setShowGlobalLogoutModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Cerrar al navegar a otra ruta
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -19,6 +27,7 @@ export const UserProfileMenu: React.FC = () => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setIsOpen(false);
+        profileButtonRef.current?.focus();
       }
     }
 
@@ -69,6 +78,7 @@ export const UserProfileMenu: React.FC = () => {
       <div style={{ position: 'relative', display: 'inline-block' }} ref={menuRef}>
         {/* Trigger Button */}
         <button
+          ref={profileButtonRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           aria-haspopup="true"
@@ -119,6 +129,7 @@ export const UserProfileMenu: React.FC = () => {
               top: 'calc(100% + 8px)',
               right: 0,
               width: '260px',
+              maxWidth: 'calc(100vw - 1.5rem)',
               backgroundColor: 'var(--pedidos-surface-card, #ffffff)',
               border: '1px solid var(--pedidos-border-default, #cbd5e1)',
               borderRadius: '0.5rem',

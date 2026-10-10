@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { formatRelativeTime } from '../../pedidos-medios/frontend/src/utils/formatUtils';
+import { formatRelativeTime, formatNotificationSummary } from '../../pedidos-medios/frontend/src/utils/formatUtils';
 import * as authService from '../../pedidos-medios/frontend/src/services/auth';
 import * as notificationsService from '../../pedidos-medios/frontend/src/services/notificationsApi';
 import { NotificationBell } from '../../pedidos-medios/frontend/src/components/notifications/NotificationBell';
@@ -338,6 +338,126 @@ describe('FASE B.2 — Centro de Notificaciones, Perfil de Usuario y UX', () => 
         expect(signOutMock).toHaveBeenCalledWith({ scope: 'global' });
         expect(onCloseMock).toHaveBeenCalled();
       });
+    });
+  });
+
+  // ============================================================================
+  // 6. UTILIDAD: formatNotificationSummary (Reglas de Privacidad y Redacción)
+  // ============================================================================
+  describe('6. formatNotificationSummary', () => {
+    it('debe formatear nota_creada como "[Nombre Apellido] dejó una nota interna en [PED-...]"', () => {
+      const res = formatNotificationSummary({
+        tipo: 'nota_creada',
+        metadata: {
+          pedido_visible: 'PED-2026-0042',
+          actor_nombre: 'Mariana López',
+          mensaje_resumen: 'Mariana López dejó una nota interna en PED-2026-0042',
+        },
+      });
+      expect(res).toBe('Mariana López dejó una nota interna en PED-2026-0042');
+    });
+
+    it('NUNCA debe exponer UUIDs ni correos electrónicos en nota_creada', () => {
+      const resWithEmail = formatNotificationSummary({
+        tipo: 'nota_creada',
+        metadata: {
+          pedido_visible: 'PED-2026-0042',
+          actor_nombre: 'mariana@tdf.gob.ar',
+        },
+      });
+      expect(resWithEmail).not.toContain('@tdf.gob.ar');
+      expect(resWithEmail).toBe('Un integrante del equipo dejó una nota interna en PED-2026-0042');
+
+      const resWithUuid = formatNotificationSummary({
+        tipo: 'nota_creada',
+        metadata: {
+          pedido_visible: 'PED-2026-0042',
+          actor_nombre: '550e8400-e29b-41d4-a716-446655440000',
+        },
+      });
+      expect(resWithUuid).not.toContain('550e8400-e29b-41d4-a716-446655440000');
+      expect(resWithUuid).toBe('Un integrante del equipo dejó una nota interna en PED-2026-0042');
+    });
+  });
+
+  // ============================================================================
+  // 7. COMPONENTE: NotificationBell — Badge 99+ y Visibilidad
+  // ============================================================================
+  describe('7. NotificationBell — Badge y foco de teclado', () => {
+    it.each([
+      [0, false, null],
+      [1, true, '1'],
+      [99, true, '99'],
+      [100, true, '99+'],
+      [150, true, '99+'],
+    ])('para unreadCount = %i debe renderizar badge: %s con texto: %s', (count, shouldShow, expectedText) => {
+      vi.spyOn(notificationsHookModule, 'useNotifications').mockReturnValue({
+        notifications: [],
+        unreadCount: count,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+        markRead: vi.fn(),
+        markAllRead: vi.fn(),
+        isEligible: true,
+      });
+
+      render(
+        <BrowserRouter>
+          <NotificationBell />
+        </BrowserRouter>
+      );
+
+      if (!shouldShow) {
+        expect(screen.queryByText(/[0-9]+/)).toBeNull();
+      } else {
+        expect(screen.getByText(expectedText!)).toBeInTheDocument();
+      }
+    });
+
+    it('al presionar Escape con el dropdown abierto debe cerrarse y regresar el foco al botón de la campana', async () => {
+      vi.spyOn(notificationsHookModule, 'useNotifications').mockReturnValue({
+        notifications: [
+          {
+            id: 'n-1',
+            userId: 'u-1',
+            pedidoId: 'p-1',
+            tipo: 'pedido_asignado',
+            actorUserId: null,
+            readAt: null,
+            metadata: { pedido_visible: 'PED-2026-0001' },
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        unreadCount: 1,
+        isLoading: false,
+        error: null,
+        refresh: vi.fn(),
+        markRead: vi.fn(),
+        markAllRead: vi.fn(),
+        isEligible: true,
+      });
+
+      render(
+        <BrowserRouter>
+          <NotificationBell />
+        </BrowserRouter>
+      );
+
+      const bellBtn = screen.getByRole('button', { name: /Notificaciones:/i });
+      fireEvent.click(bellBtn);
+
+      expect(screen.getByText('Marcar leídas')).toBeInTheDocument();
+
+      // Presionar Escape
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      // Dropdown debe cerrarse
+      await waitFor(() => {
+        expect(screen.queryByText('Marcar leídas')).toBeNull();
+      });
+      // Foco debe volver al botón de la campana
+      expect(document.activeElement).toBe(bellBtn);
     });
   });
 });

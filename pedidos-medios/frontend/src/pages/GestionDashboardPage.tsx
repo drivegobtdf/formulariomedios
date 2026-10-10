@@ -845,9 +845,16 @@ export const GestionDashboardPage: React.FC = () => {
                   const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)', border: 'var(--pedidos-border-default, #cbd5e1)' };
                   const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
                   return (
-                    <Link
+                    <article
                       key={ped.id}
-                      to={`/gestion/pedidos/${ped.id}`}
+                      className="kanban-card"
+                      onClick={(e) => {
+                        const target = e.target as HTMLElement;
+                        if (target.closest('input, select, button, .etiqueta-interna-pill, a, label')) {
+                          return;
+                        }
+                        navigate(`/gestion/pedidos/${ped.id}`);
+                      }}
                       style={{
                         backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : 'var(--pedidos-surface-raised, #ffffff)',
                         border: ped.retrabajo_activo ? '1px solid var(--pedidos-rework-border, #fde68a)' : '1px solid var(--pedidos-border-default, #e2e8f0)',
@@ -859,6 +866,7 @@ export const GestionDashboardPage: React.FC = () => {
                         flexDirection: 'column',
                         gap: '0.5rem',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                        cursor: 'pointer',
                         transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                       }}
                       onMouseEnter={(e) => {
@@ -998,9 +1006,15 @@ export const GestionDashboardPage: React.FC = () => {
                         <span style={{ color: ped.responsable_nombre ? 'var(--pedidos-text-secondary, #334155)' : '#b91c1c', fontWeight: 500 }}>
                           {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
                         </span>
-                        <span style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600 }}>Ver detalle &rarr;</span>
+                        <Link
+                          to={`/gestion/pedidos/${ped.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600, textDecoration: 'none' }}
+                        >
+                          Ver detalle &rarr;
+                        </Link>
                       </div>
-                    </Link>
+                    </article>
                   );
                 })}
               </div>
@@ -1095,25 +1109,15 @@ export const GestionDashboardPage: React.FC = () => {
                     {columnPedidos.map((ped) => {
                       const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
                       return (
-                        <div
+                        <article
                           key={ped.id}
-                          role="button"
-                          tabIndex={0}
+                          className="kanban-card"
                           onClick={(e) => {
                             const target = e.target as HTMLElement;
                             if (target.closest('input, select, button, .etiqueta-interna-pill, a, label')) {
                               return;
                             }
                             navigate(`/gestion/pedidos/${ped.id}`);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              const target = e.target as HTMLElement;
-                              if (target.closest('input, select, button, .etiqueta-interna-pill, a, label')) {
-                                return;
-                              }
-                              navigate(`/gestion/pedidos/${ped.id}`);
-                            }
                           }}
                           style={{
                             backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : 'var(--pedidos-surface-raised, #ffffff)',
@@ -1305,9 +1309,15 @@ export const GestionDashboardPage: React.FC = () => {
                             <span style={{ color: ped.responsable_nombre ? 'var(--pedidos-text-secondary, #334155)' : '#b91c1c', fontWeight: 500 }}>
                               {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
                             </span>
-                            <span style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600 }}>Ver detalle &rarr;</span>
+                            <Link
+                              to={`/gestion/pedidos/${ped.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600, textDecoration: 'none' }}
+                            >
+                              Ver detalle &rarr;
+                            </Link>
                           </div>
-                        </div>
+                        </article>
                       );
                     })}
 

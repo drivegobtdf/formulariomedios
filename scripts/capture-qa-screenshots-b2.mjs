@@ -299,10 +299,10 @@ async function main() {
   await page.goto(`http://${HOST}:${PORT}/gestion`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1200);
 
-  // 1. CAPTURA: Header con Campana (badge 2) y Perfil de Usuario
+  // 1. CAPTURA: Header con Campana (badge 2) y Perfil de Usuario (Light)
   console.log('[PLAYWRIGHT] Capturando 01: Header con campana y perfil (Light)...');
   await page.screenshot({
-    path: path.join(outputDir, 'b2_01_header_bell_and_profile_light.png'),
+    path: path.join(outputDir, 'b2_audit_01_header_light.png'),
     fullPage: false,
   });
 
@@ -310,13 +310,12 @@ async function main() {
   console.log('[PLAYWRIGHT] Buscando botón de campana...');
   const bellButton = page.locator('button[title="Centro de notificaciones"]');
   const bellCount = await bellButton.count();
-  console.log(`[PLAYWRIGHT] Bell button count: ${bellCount}`);
   if (bellCount > 0) {
     await bellButton.click();
     await page.waitForTimeout(500);
-    console.log('[PLAYWRIGHT] Capturando 02: Dropdown de notificaciones (Light)...');
+    console.log('[PLAYWRIGHT] Capturando 03: Dropdown de notificaciones...');
     await page.screenshot({
-      path: path.join(outputDir, 'b2_02_notifications_dropdown_light.png'),
+      path: path.join(outputDir, 'b2_audit_03_notifications_dropdown.png'),
     });
     await bellButton.click();
     await page.waitForTimeout(300);
@@ -326,7 +325,6 @@ async function main() {
   console.log('[PLAYWRIGHT] Buscando botón de perfil...');
   const profileButton = page.locator('button[title="Opciones de perfil y sesión"]');
   const profileCount = await profileButton.count();
-  console.log(`[PLAYWRIGHT] Profile button count: ${profileCount}`);
   if (profileCount > 0) {
     await profileButton.click();
     await page.waitForTimeout(300);
@@ -335,13 +333,30 @@ async function main() {
     if (await miPerfilOption.count() > 0) {
       await miPerfilOption.click();
       await page.waitForTimeout(500);
-      console.log('[PLAYWRIGHT] Capturando 03: Modal de Mi Perfil (Light)...');
+      console.log('[PLAYWRIGHT] Capturando 04: Modal de Mi Perfil...');
       await page.screenshot({
-        path: path.join(outputDir, 'b2_03_user_profile_modal_light.png'),
+        path: path.join(outputDir, 'b2_audit_04_user_profile_modal.png'),
       });
 
       const closeBtn = page.locator('button[aria-label="Cerrar modal"]');
       if (await closeBtn.count() > 0) await closeBtn.click();
+      await page.waitForTimeout(300);
+    }
+
+    // Modal de Logout Global
+    await profileButton.click();
+    await page.waitForTimeout(300);
+    const globalLogoutOption = page.locator('button:has-text("Cerrar sesión en todos los equipos")');
+    if (await globalLogoutOption.count() > 0) {
+      await globalLogoutOption.click();
+      await page.waitForTimeout(500);
+      console.log('[PLAYWRIGHT] Capturando 05: Modal de Logout Global...');
+      await page.screenshot({
+        path: path.join(outputDir, 'b2_audit_05_global_logout_modal.png'),
+      });
+
+      const cancelLogoutBtn = page.locator('button:has-text("Cancelar")');
+      if (await cancelLogoutBtn.count() > 0) await cancelLogoutBtn.click();
       await page.waitForTimeout(300);
     }
   }
@@ -350,37 +365,53 @@ async function main() {
   console.log('[PLAYWRIGHT] Navegando a /gestion/notificaciones...');
   await page.goto(`http://${HOST}:${PORT}/gestion/notificaciones`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1000);
-  console.log('[PLAYWRIGHT] Capturando 04: Página completa de notificaciones (Light)...');
+  console.log('[PLAYWRIGHT] Capturando 06: Página completa de notificaciones...');
   await page.screenshot({
-    path: path.join(outputDir, 'b2_04_full_notifications_page_light.png'),
+    path: path.join(outputDir, 'b2_audit_06_notificaciones_completas.png'),
   });
 
-  // 5. CAPTURA: Dark Mode
+  // 5. CAPTURA: Dark Mode (Header Dark)
   console.log('[PLAYWRIGHT] Activando modo oscuro...');
   const themeToggle = page.locator('.pedidos-btn-theme-toggle');
   if (await themeToggle.count() > 0) {
     await themeToggle.click();
     await page.waitForTimeout(400);
 
-    const darkBell = page.locator('button[title="Centro de notificaciones"]');
-    if (await darkBell.count() > 0) {
-      await darkBell.click();
-      await page.waitForTimeout(400);
-    }
-
-    console.log('[PLAYWRIGHT] Capturando 05: Header y dropdown en Dark Mode...');
+    console.log('[PLAYWRIGHT] Capturando 02: Header en Dark Mode...');
     await page.screenshot({
-      path: path.join(outputDir, 'b2_05_header_dropdown_dark.png'),
+      path: path.join(outputDir, 'b2_audit_02_header_dark.png'),
     });
+
+    // Volver a Light Mode
+    await themeToggle.click();
+    await page.waitForTimeout(400);
   }
 
-  // 6. CAPTURA: Kanban Cards Interaction
+  // 6. CAPTURA: Kanban Cards con select de prioridad interactivo
   console.log('[PLAYWRIGHT] Navegando a /gestion para capturar Kanban Cards...');
   await page.goto(`http://${HOST}:${PORT}/gestion`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1000);
-  console.log('[PLAYWRIGHT] Capturando 06: Tablero Kanban y cards con controles aislados...');
+  console.log('[PLAYWRIGHT] Capturando 07: Tablero Kanban y controles aislados de prioridad...');
   await page.screenshot({
-    path: path.join(outputDir, 'b2_06_kanban_cards_interaction.png'),
+    path: path.join(outputDir, 'b2_audit_07_card_prioridad_interactiva.png'),
+  });
+
+  // 7. CAPTURA: Responsive Tablet (768px)
+  console.log('[PLAYWRIGHT] Cambiando viewport a 768px...');
+  await page.setViewportSize({ width: 768, height: 900 });
+  await page.waitForTimeout(500);
+  console.log('[PLAYWRIGHT] Capturando 08: Responsive Tablet (768px)...');
+  await page.screenshot({
+    path: path.join(outputDir, 'b2_audit_08_responsive_768px.png'),
+  });
+
+  // 8. CAPTURA: Responsive Mobile (~390px)
+  console.log('[PLAYWRIGHT] Cambiando viewport a 390px...');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(500);
+  console.log('[PLAYWRIGHT] Capturando 09: Responsive Mobile (~390px)...');
+  await page.screenshot({
+    path: path.join(outputDir, 'b2_audit_09_responsive_mobile_390px.png'),
   });
 
   await browser.close();

@@ -141,3 +141,45 @@ export function formatRelativeTime(dateStr: string | null | undefined): string {
   }
 }
 
+/**
+ * Formatea el texto de resumen de una notificación de usuario.
+ * Garantiza:
+ * - Para 'nota_creada': "[Nombre Apellido] dejó una nota interna en [PED-...]"
+ * - Nunca expone UUIDs de base de datos
+ * - Nunca expone correos electrónicos
+ * - Nunca expone el texto confidencial de la nota
+ */
+export function formatNotificationSummary(notif: {
+  tipo: string;
+  metadata?: {
+    mensaje_resumen?: string;
+    pedido_visible?: string;
+    actor_nombre?: string;
+    [key: string]: any;
+  };
+}): string {
+  const meta = notif.metadata || {};
+  const pedidoCode = meta.pedido_visible || '';
+
+  if (notif.tipo === 'nota_creada') {
+    const actor = meta.actor_nombre?.trim();
+    if (actor && !actor.includes('@') && !/^[0-9a-f-]{36}$/i.test(actor)) {
+      return `${actor} dejó una nota interna en ${pedidoCode}`.trim();
+    }
+    if (meta.mensaje_resumen && !meta.mensaje_resumen.includes('@') && !/[0-9a-f]{8}-[0-9a-f]{4}/i.test(meta.mensaje_resumen)) {
+      return meta.mensaje_resumen;
+    }
+    return `Un integrante del equipo dejó una nota interna en ${pedidoCode}`.trim();
+  }
+
+  if (meta.mensaje_resumen) {
+    return meta.mensaje_resumen;
+  }
+
+  if (pedidoCode) {
+    return `Notificación para ${pedidoCode}`;
+  }
+
+  return 'Notificación operativa';
+}
+
