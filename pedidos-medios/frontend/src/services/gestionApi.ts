@@ -33,14 +33,17 @@ export interface PedidoListItem {
   numero: number;
   codigo_categoria: string;
   estado: string;
+  origen: 'publico' | 'interno';
+  titulo?: string;
+  created_by_user_id?: string;
   prioridad?: 'alta' | 'media' | 'baja' | null;
   etiqueta_interna?: string | null;
   retrabajo_activo?: boolean;
   revision_requested_at?: string | null;
   revision_count?: number;
-  envio_id?: string;
-  categoria_id: string;
-  tipo_servicio_id: string;
+  envio_id?: string | null;
+  categoria_id?: string | null;
+  tipo_servicio_id?: string | null;
   categoria_nombre?: string;
   tipo_nombre?: string;
   responsable_user_id?: string;
@@ -120,13 +123,13 @@ export interface EnrichedArchivoItem {
 }
 
 export interface PedidoDetailItem extends PedidoListItem {
-  envio: {
+  envio?: {
     id: string;
     nombre_apellido: string;
     telefono: string;
     correo: string;
     area_solicitante: string;
-  };
+  } | null;
   asignaciones: Array<{
     id: string;
     responsable_anterior?: string;
@@ -339,6 +342,7 @@ export async function fetchPedidos(filters?: {
   archivado?: boolean;
   search?: string;
   prioridad?: string;
+  origen?: 'todos' | 'publico' | 'interno';
 }): Promise<PedidoListItem[]> {
   const supabase = getSupabaseClient();
   let query = supabase
@@ -350,6 +354,9 @@ export async function fetchPedidos(filters?: {
       numero,
       codigo_categoria,
       estado,
+      origen,
+      titulo,
+      created_by_user_id,
       prioridad,
       etiqueta_interna,
       retrabajo_activo,
@@ -399,9 +406,13 @@ export async function fetchPedidos(filters?: {
     }
   }
 
+  if (filters?.origen && filters.origen !== 'todos') {
+    query = query.eq('origen', filters.origen);
+  }
+
   if (filters?.search && filters.search.trim().length > 0) {
     const s = filters.search.trim();
-    query = query.or(`pedido_visible.ilike.%${s}%`);
+    query = query.or(`pedido_visible.ilike.%${s}%,titulo.ilike.%${s}%`);
   }
 
   query = query
@@ -425,6 +436,9 @@ export async function fetchPedidos(filters?: {
     numero: p.numero,
     codigo_categoria: p.codigo_categoria,
     estado: p.estado,
+    origen: (p.origen as 'publico' | 'interno') || 'publico',
+    titulo: p.titulo || p.informacion_especifica?.titulo || undefined,
+    created_by_user_id: p.created_by_user_id || undefined,
     prioridad: p.prioridad || null,
     etiqueta_interna: p.etiqueta_interna || null,
     retrabajo_activo: Boolean(p.retrabajo_activo),
@@ -437,8 +451,8 @@ export async function fetchPedidos(filters?: {
     tipo_nombre: p.tipos_servicio?.nombre,
     responsable_user_id: p.responsable_user_id,
     responsable_nombre: p.responsable_user_id ? (userMap.get(p.responsable_user_id) || 'Usuario Asignado') : undefined,
-    solicitante_nombre: p.envios_formulario?.nombre_apellido || p.informacion_especifica?.contacto_nombre || undefined,
-    area_solicitante: p.envios_formulario?.area_solicitante || p.informacion_especifica?.contacto_area || undefined,
+    solicitante_nombre: p.envios_formulario?.nombre_apellido || p.informacion_especifica?.contacto_nombre || p.informacion_especifica?.solicitante?.nombre || undefined,
+    area_solicitante: p.envios_formulario?.area_solicitante || p.informacion_especifica?.contacto_area || p.informacion_especifica?.solicitante?.area || undefined,
     informacion_especifica: p.informacion_especifica || {},
     version: p.version,
     archivado: p.archivado,
@@ -462,6 +476,9 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       numero,
       codigo_categoria,
       estado,
+      origen,
+      titulo,
+      created_by_user_id,
       prioridad,
       etiqueta_interna,
       retrabajo_activo,
@@ -582,6 +599,9 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     numero: p.numero,
     codigo_categoria: p.codigo_categoria,
     estado: p.estado,
+    origen: (p.origen as 'publico' | 'interno') || 'publico',
+    titulo: p.titulo || p.informacion_especifica?.titulo || undefined,
+    created_by_user_id: p.created_by_user_id || undefined,
     prioridad: p.prioridad || null,
     etiqueta_interna: p.etiqueta_interna || null,
     retrabajo_activo: Boolean(p.retrabajo_activo),
@@ -594,12 +614,20 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     tipo_nombre: (p.tipos_servicio as any)?.nombre,
     responsable_user_id: p.responsable_user_id,
     responsable_nombre: p.responsable_user_id ? (userMap.get(p.responsable_user_id) || 'Usuario Asignado') : undefined,
+    solicitante_nombre: (p.envios_formulario as any)?.nombre_apellido || p.informacion_especifica?.contacto_nombre || p.informacion_especifica?.solicitante?.nombre || undefined,
+    area_solicitante: (p.envios_formulario as any)?.area_solicitante || p.informacion_especifica?.contacto_area || p.informacion_especifica?.solicitante?.area || undefined,
     informacion_especifica: p.informacion_especifica || {},
     version: p.version,
     archivado: p.archivado,
     created_at: p.created_at,
     updated_at: p.updated_at,
-    envio: p.envios_formulario as any,
+    envio: p.envios_formulario ? {
+      id: (p.envios_formulario as any).id,
+      nombre_apellido: (p.envios_formulario as any).nombre_apellido,
+      telefono: (p.envios_formulario as any).telefono,
+      correo: (p.envios_formulario as any).correo,
+      area_solicitante: (p.envios_formulario as any).area_solicitante,
+    } : null,
     asignaciones: (asignaciones || []).map((a: any) => ({
       id: a.id,
       responsable_anterior: a.responsable_anterior,
@@ -1197,3 +1225,86 @@ export async function adminExecutePurgePedidos(
 
   return data;
 }
+
+export interface CreateInternalPedidoParams {
+  titulo: string;
+  descripcion?: string;
+  solicitante_nombre?: string;
+  solicitante_area?: string;
+  solicitante_correo?: string;
+  solicitante_telefono?: string;
+  categoria_id?: string | null;
+  tipo_servicio_id?: string | null;
+  prioridad?: 'alta' | 'media' | 'baja' | null;
+  etiqueta_interna?: string | null;
+  fecha_limite?: string | null;
+  enlaces?: string[];
+  client_request_ref?: string;
+}
+
+export interface CatalogoCategoriaItem {
+  id: string;
+  nombre: string;
+  codigo_ped: string;
+  tipos: Array<{ id: string; nombre: string }>;
+}
+
+export async function fetchCatalogoServicios(): Promise<CatalogoCategoriaItem[]> {
+  const supabase = getSupabaseClient();
+  const [catsRes, tiposRes] = await Promise.all([
+    supabase.from('categorias_servicio').select('id, nombre, codigo_ped, orden').order('orden'),
+    supabase.from('tipos_servicio').select('id, categoria_id, nombre, orden').order('orden'),
+  ]);
+
+  if (catsRes.error) throw new Error(catsRes.error.message);
+  if (tiposRes.error) throw new Error(tiposRes.error.message);
+
+  const tiposByCat = new Map<string, Array<{ id: string; nombre: string }>>();
+  (tiposRes.data || []).forEach((t: any) => {
+    if (!tiposByCat.has(t.categoria_id)) tiposByCat.set(t.categoria_id, []);
+    tiposByCat.get(t.categoria_id)!.push({ id: t.id, nombre: t.nombre });
+  });
+
+  return (catsRes.data || []).map((c: any) => ({
+    id: c.id,
+    nombre: c.nombre,
+    codigo_ped: c.codigo_ped,
+    tipos: tiposByCat.get(c.id) || [],
+  }));
+}
+
+export async function createInternalPedido(params: CreateInternalPedidoParams): Promise<{
+  success: boolean;
+  id: string;
+  pedido_visible: string;
+  estado: string;
+  origen: string;
+  version: number;
+  idempotent: boolean;
+}> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_create_internal', {
+    p_titulo: params.titulo.trim(),
+    p_descripcion: params.descripcion?.trim() || null,
+    p_solicitante_nombre: params.solicitante_nombre?.trim() || null,
+    p_solicitante_area: params.solicitante_area?.trim() || null,
+    p_solicitante_correo: params.solicitante_correo?.trim() || null,
+    p_solicitante_telefono: params.solicitante_telefono?.trim() || null,
+    p_categoria_id: params.categoria_id || null,
+    p_tipo_servicio_id: params.tipo_servicio_id || null,
+    p_prioridad: params.prioridad || null,
+    p_etiqueta_interna: params.etiqueta_interna?.trim() || null,
+    p_fecha_limite: params.fecha_limite || null,
+    p_enlaces: params.enlaces && params.enlaces.length > 0 ? params.enlaces : null,
+    p_client_request_ref: params.client_request_ref || null,
+  });
+
+  if (error) {
+    const err: any = new Error(error.message);
+    err.code = error.code;
+    throw err;
+  }
+
+  return data;
+}
+

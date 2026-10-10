@@ -5,6 +5,7 @@ import { fetchPedidos, fetchGestionStats, updatePedidoMetadata, PedidoListItem, 
 import { getSupabaseClient } from '../services/supabaseClient';
 import { EliminarPedidosModal } from '../components/gestion/EliminarPedidosModal';
 import { EditarEtiquetaModal } from '../components/gestion/EditarEtiquetaModal';
+import { CargaInternaModal } from '../components/CargaInternaModal';
 import { formatReworkHistoricalText } from '../utils/statusBadges';
 
 export type GestionTabFilter =
@@ -51,7 +52,9 @@ export const GestionDashboardPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [tabFilter, setTabFilter] = useState<GestionTabFilter>('todos');
   const [prioridadFilter, setPrioridadFilter] = useState<string>('todas');
+  const [origenFilter, setOrigenFilter] = useState<'todos' | 'publico' | 'interno'>('todos');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCargaInternaModal, setShowCargaInternaModal] = useState(false);
 
   // Pagination for table
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,6 +79,7 @@ export const GestionDashboardPage: React.FC = () => {
           unassigned: tabFilter === 'sin_asignar' ? true : undefined,
           estado: estadoFilter,
           prioridad: prioridadFilter !== 'todas' ? prioridadFilter : undefined,
+          origen: origenFilter !== 'todos' ? origenFilter : undefined,
           search: searchTerm || undefined,
         }),
         fetchGestionStats().catch(() => ({
@@ -99,7 +103,7 @@ export const GestionDashboardPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [tabFilter, prioridadFilter, searchTerm, user?.userId, isApproved]);
+  }, [tabFilter, prioridadFilter, origenFilter, searchTerm, user?.userId, isApproved]);
 
   const handlePrioridadChange = async (ped: PedidoListItem, newPrioridad: string) => {
     if (!canEditMetadata || ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado') return;
@@ -472,7 +476,30 @@ export const GestionDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {canEditMetadata && (
+            <button
+              type="button"
+              onClick={() => setShowCargaInternaModal(true)}
+              style={{
+                padding: '0.45rem 0.9rem',
+                borderRadius: '0.375rem',
+                border: '1px solid #f43f5e',
+                background: '#e11d48',
+                color: '#ffffff',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: '0 1px 2px rgba(225, 29, 72, 0.2)',
+              }}
+            >
+              <span>➕</span>
+              <span>Carga interna</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setViewMode('board')}
@@ -703,6 +730,26 @@ export const GestionDashboardPage: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Selector de Origen */}
+          <select
+            value={origenFilter}
+            onChange={(e) => setOrigenFilter(e.target.value as 'todos' | 'publico' | 'interno')}
+            style={{
+              padding: '0.35rem 0.65rem',
+              borderRadius: '0.375rem',
+              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+              fontSize: '0.825rem',
+              backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+              color: 'var(--pedidos-text-primary, #334155)',
+              cursor: 'pointer',
+            }}
+            aria-label="Filtrar por origen"
+          >
+            <option value="todos">Todos los orígenes</option>
+            <option value="publico">🌐 Público</option>
+            <option value="interno">🏢 Interno</option>
+          </select>
+
           {/* Selector de Prioridad */}
           <select
             value={prioridadFilter}
@@ -728,7 +775,7 @@ export const GestionDashboardPage: React.FC = () => {
           <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
             <input
               type="text"
-              placeholder="Buscar por código PED..."
+              placeholder="Buscar por código o título..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -872,7 +919,11 @@ export const GestionDashboardPage: React.FC = () => {
                       style={{
                         backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : 'var(--pedidos-surface-raised, #ffffff)',
                         border: ped.retrabajo_activo ? '1px solid var(--pedidos-rework-border, #fde68a)' : '1px solid var(--pedidos-border-default, #e2e8f0)',
-                        borderLeft: ped.retrabajo_activo ? '4px solid var(--pedidos-rework-accent, #d97706)' : undefined,
+                        borderLeft: ped.retrabajo_activo
+                          ? '4px solid var(--pedidos-rework-accent, #d97706)'
+                          : ped.origen === 'interno'
+                          ? '4px solid var(--pedidos-interno-accent, #f43f5e)'
+                          : undefined,
                         borderRadius: '0.5rem',
                         padding: '1rem',
                         textDecoration: 'none',
@@ -904,6 +955,22 @@ export const GestionDashboardPage: React.FC = () => {
                             />
                           )}
                           <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--pedidos-text-primary, #0f172a)' }}>{ped.pedido_visible}</span>
+                          {ped.origen === 'interno' && (
+                            <span
+                              style={{
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: '4px',
+                                backgroundColor: 'var(--pedidos-badge-interno-bg, #ffe4e6)',
+                                color: 'var(--pedidos-badge-interno-text, #e11d48)',
+                                border: '1px solid var(--pedidos-badge-interno-border, #fecdd3)',
+                                letterSpacing: '0.02em',
+                              }}
+                            >
+                              INTERNO
+                            </span>
+                          )}
                         </div>
                         <span style={{
                           fontSize: '0.725rem',
@@ -954,8 +1021,45 @@ export const GestionDashboardPage: React.FC = () => {
                           RETRABAJADO · {formatReworkHistoricalText(ped.revision_count || 0)}
                         </div>
                       ) : null}
+                      {ped.titulo && (
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)', lineHeight: 1.25 }}>
+                          {ped.titulo}
+                        </div>
+                      )}
                       <div style={{ fontSize: '0.825rem', color: 'var(--pedidos-text-secondary, #334155)', fontWeight: 500 }}>
-                        {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
+                        {ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categorizar' : 'General')} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
+                      </div>
+
+                      {/* Solicitante y Área */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: '0.1rem' }}>
+                        <div
+                          style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--pedidos-text-primary, #0f172a)',
+                            fontWeight: 600,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={`Solicitante: ${ped.solicitante_nombre || (ped.origen === 'interno' ? 'No informado' : 'Sin solicitante')}`}
+                        >
+                          <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 500, marginRight: '0.25rem' }}>👤</span>
+                          {ped.solicitante_nombre || (ped.origen === 'interno' ? 'No informado' : 'Sin solicitante')}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '0.725rem',
+                            color: 'var(--pedidos-text-secondary, #475569)',
+                            fontWeight: 400,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={`Área: ${ped.area_solicitante || (ped.origen === 'interno' ? 'No informada' : 'Sin área')}`}
+                        >
+                          <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 500, marginRight: '0.25rem' }}>🏛️</span>
+                          {ped.area_solicitante || (ped.origen === 'interno' ? 'No informada' : 'Sin área')}
+                        </div>
                       </div>
 
                       {/* Metadatos: Prioridad y Etiqueta Interna */}
@@ -1136,7 +1240,11 @@ export const GestionDashboardPage: React.FC = () => {
                           style={{
                             backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : 'var(--pedidos-surface-raised, #ffffff)',
                             border: ped.retrabajo_activo ? '1px solid var(--pedidos-rework-border, #fde68a)' : '1px solid var(--pedidos-border-default, #cbd5e1)',
-                            borderLeft: ped.retrabajo_activo ? '4px solid var(--pedidos-rework-accent, #d97706)' : undefined,
+                            borderLeft: ped.retrabajo_activo
+                              ? '4px solid var(--pedidos-rework-accent, #d97706)'
+                              : ped.origen === 'interno'
+                              ? '4px solid var(--pedidos-interno-accent, #f43f5e)'
+                              : undefined,
                             borderRadius: '0.5rem',
                             padding: '0.85rem',
                             display: 'flex',
@@ -1171,6 +1279,22 @@ export const GestionDashboardPage: React.FC = () => {
                               <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #0f172a)' }}>
                                 {ped.pedido_visible}
                               </span>
+                              {ped.origen === 'interno' && (
+                                <span
+                                  style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    padding: '0.1rem 0.4rem',
+                                    borderRadius: '4px',
+                                    backgroundColor: 'var(--pedidos-badge-interno-bg, #ffe4e6)',
+                                    color: 'var(--pedidos-badge-interno-text, #e11d48)',
+                                    border: '1px solid var(--pedidos-badge-interno-border, #fecdd3)',
+                                    letterSpacing: '0.02em',
+                                  }}
+                                >
+                                  INTERNO
+                                </span>
+                              )}
                             </div>
                             <span style={{ fontSize: '0.725rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
                               {new Date(ped.created_at).toLocaleDateString()}
@@ -1198,9 +1322,24 @@ export const GestionDashboardPage: React.FC = () => {
                             </div>
                           )}
 
+                          {/* Titulo destacado para pedidos internos o con titulo */}
+                          {ped.titulo && (
+                            <div
+                              style={{
+                                fontSize: '0.85rem',
+                                fontWeight: 700,
+                                color: 'var(--pedidos-text-primary, #0f172a)',
+                                lineHeight: 1.25,
+                                marginTop: '0.1rem',
+                              }}
+                            >
+                              {ped.titulo}
+                            </div>
+                          )}
+
                           {/* Service Category & Type */}
                           <div style={{ fontSize: '0.8rem', color: 'var(--pedidos-text-secondary, #334155)', fontWeight: 500 }}>
-                            {ped.categoria_nombre || 'General'} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
+                            {ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categorizar' : 'General')} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                           </div>
 
                           {/* Solicitante y Área */}
@@ -1214,10 +1353,10 @@ export const GestionDashboardPage: React.FC = () => {
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
                               }}
-                              title={`Solicitante: ${ped.solicitante_nombre || 'Sin solicitante'}`}
+                              title={`Solicitante: ${ped.solicitante_nombre || (ped.origen === 'interno' ? 'No informado' : 'Sin solicitante')}`}
                             >
                               <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 500, marginRight: '0.25rem' }}>👤</span>
-                              {ped.solicitante_nombre || 'Sin solicitante'}
+                              {ped.solicitante_nombre || (ped.origen === 'interno' ? 'No informado' : 'Sin solicitante')}
                             </div>
                             <div
                               style={{
@@ -1228,10 +1367,10 @@ export const GestionDashboardPage: React.FC = () => {
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
                               }}
-                              title={`Área: ${ped.area_solicitante || 'Sin área'}`}
+                              title={`Área: ${ped.area_solicitante || (ped.origen === 'interno' ? 'No informada' : 'Sin área')}`}
                             >
                               <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 500, marginRight: '0.25rem' }}>🏛️</span>
-                              {ped.area_solicitante || 'Sin área'}
+                              {ped.area_solicitante || (ped.origen === 'interno' ? 'No informada' : 'Sin área')}
                             </div>
                           </div>
 
@@ -1401,11 +1540,34 @@ export const GestionDashboardPage: React.FC = () => {
                         </td>
                       )}
                       <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)' }}>
-                        {ped.pedido_visible}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <span>{ped.pedido_visible}</span>
+                          {ped.origen === 'interno' && (
+                            <span
+                              style={{
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: '4px',
+                                backgroundColor: 'var(--pedidos-badge-interno-bg, #ffe4e6)',
+                                color: 'var(--pedidos-badge-interno-text, #e11d48)',
+                                border: '1px solid var(--pedidos-badge-interno-border, #fecdd3)',
+                                letterSpacing: '0.02em',
+                              }}
+                            >
+                              INTERNO
+                            </span>
+                          )}
+                        </div>
+                        {ped.titulo && (
+                          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--pedidos-text-secondary, #475569)', marginTop: '0.15rem' }}>
+                            {ped.titulo}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: 'var(--pedidos-text-secondary, #334155)' }}>
-                        <div style={{ fontWeight: 500 }}>{ped.categoria_nombre || 'General'}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>{ped.tipo_nombre || 'Pieza'}</div>
+                        <div style={{ fontWeight: 500 }}>{ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categorizar' : 'General')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>{ped.tipo_nombre || (ped.origen === 'interno' ? 'Interno' : 'Pieza')}</div>
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         {canEditMetadata && !isTerminal ? (
@@ -1546,6 +1708,19 @@ export const GestionDashboardPage: React.FC = () => {
           pedidoVisible={selectedPedidoForEtiqueta.pedido_visible}
           initialEtiqueta={selectedPedidoForEtiqueta.etiqueta_interna || null}
           onSave={handleSaveEtiqueta}
+        />
+      )}
+
+      {/* Carga Interna Modal */}
+      {showCargaInternaModal && (
+        <CargaInternaModal
+          isOpen={showCargaInternaModal}
+          onClose={() => setShowCargaInternaModal(false)}
+          onSuccess={(_newPedidoId, visible) => {
+            setShowCargaInternaModal(false);
+            setDeleteSuccessMessage(`Pedido interno ${visible} creado exitosamente.`);
+            loadData();
+          }}
         />
       )}
     </div>

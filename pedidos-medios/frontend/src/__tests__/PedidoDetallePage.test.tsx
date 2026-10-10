@@ -35,6 +35,7 @@ describe('PedidoDetallePage Unit Tests', () => {
     anio: 2026,
     numero: 155,
     codigo_categoria: 'D',
+    origen: 'publico',
     categoria_id: 'cat-d',
     categoria_nombre: 'Diseño Gráfico',
     tipo_servicio_id: 'tipo-flyer',
@@ -100,6 +101,7 @@ describe('PedidoDetallePage Unit Tests', () => {
     anio: 2026,
     numero: 154,
     codigo_categoria: 'M',
+    origen: 'publico',
     categoria_id: 'cat-m',
     categoria_nombre: 'Animación y Motion Graphics',
     tipo_servicio_id: 'tipo-motion',
@@ -1226,6 +1228,151 @@ describe('PedidoDetallePage Unit Tests', () => {
     // Debe mostrar el badge estático
     expect(screen.getByText('🔴 Alta')).toBeInTheDocument();
     expect(screen.getByText(/URGENTE/i)).toBeInTheDocument();
+  });
+
+  it('debe renderizar badge INTERNO, título destacado y omitir el botón de Pedir información 48h para pedidos internos', async () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: mockAdminProfile,
+      isLoading: false,
+      isApproved: true,
+      isAdmin: true,
+      isTeamOrAdmin: true,
+      isObserver: false,
+      refreshUser: vi.fn(),
+      signOut: vi.fn(),
+    });
+
+    const mockInternalDetail: gestionApi.PedidoDetailItem = {
+      id: 'ped-int-detail-1',
+      pedido_visible: 'PED-2026-I000045',
+      anio: 2026,
+      numero: 45,
+      codigo_categoria: 'I',
+      origen: 'interno',
+      titulo: 'Cobertura Especial Festival Invierno',
+      categoria_id: null,
+      categoria_nombre: undefined,
+      tipo_servicio_id: null,
+      tipo_nombre: undefined,
+      estado: 'Nuevo',
+      responsable_user_id: undefined,
+      responsable_nombre: undefined,
+      informacion_especifica: {
+        titulo: 'Cobertura Especial Festival Invierno',
+        descripcion: 'Registro audiovisual completo del evento',
+      },
+      version: 1,
+      archivado: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      envio: null,
+      asignaciones: [],
+      notas: [],
+      solicitudes: [],
+      archivos: [],
+      enlaces: [],
+      entregas: [],
+    };
+
+    vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue(mockInternalDetail);
+    vi.spyOn(gestionApi, 'fetchInternalUsers').mockResolvedValue([]);
+    vi.spyOn(gestionApi, 'fetchPedidoHistorialOperativo').mockResolvedValue([]);
+
+    render(
+      <MemoryRouter initialEntries={[`/gestion/pedidos/${mockInternalDetail.id}`]}>
+        <Routes>
+          <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('PED-2026-I000045')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('INTERNO')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Cobertura Especial Festival Invierno' })).toBeInTheDocument();
+
+    // El botón de pedir información de 48h NUNCA debe estar presente para pedidos internos
+    expect(screen.queryByRole('button', { name: /Pedir información · 48 h/i })).not.toBeInTheDocument();
+  });
+
+  it('debe permitir abrir modal de finalización y finalizar pedido interno sin requerir archivos ni links', async () => {
+    vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+      user: mockAdminProfile,
+      isLoading: false,
+      isApproved: true,
+      isAdmin: true,
+      isTeamOrAdmin: true,
+      isObserver: false,
+      refreshUser: vi.fn(),
+      signOut: vi.fn(),
+    });
+
+    const mockInternalEnProceso: gestionApi.PedidoDetailItem = {
+      id: 'ped-int-detail-2',
+      pedido_visible: 'PED-2026-I000046',
+      anio: 2026,
+      numero: 46,
+      codigo_categoria: 'I',
+      origen: 'interno',
+      titulo: 'Diseño Flyer Urgente',
+      categoria_id: null,
+      tipo_servicio_id: null,
+      estado: 'En proceso',
+      responsable_user_id: 'usr-admin-1',
+      responsable_nombre: 'Pablo Saldivia',
+      informacion_especifica: {},
+      version: 2,
+      archivado: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      envio: null,
+      asignaciones: [],
+      notas: [],
+      solicitudes: [],
+      archivos: [],
+      enlaces: [],
+      entregas: [],
+    };
+
+    vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue(mockInternalEnProceso);
+    vi.spyOn(gestionApi, 'fetchInternalUsers').mockResolvedValue([]);
+    vi.spyOn(gestionApi, 'fetchPedidoHistorialOperativo').mockResolvedValue([]);
+    const finalizeSpy = vi.spyOn(gestionApi, 'finalizePedido').mockResolvedValue({
+      success: true,
+      pedido_id: mockInternalEnProceso.id,
+      estado: 'Finalizado',
+      version: 3,
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/gestion/pedidos/${mockInternalEnProceso.id}`]}>
+        <Routes>
+          <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Finalizar pedido/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Finalizar pedido/i }));
+
+    const finalizeButtons = await screen.findAllByRole('button', { name: 'Finalizar pedido' });
+    const finalizeSubmitBtn = finalizeButtons.find((b) => (b as HTMLButtonElement).type === 'submit')!;
+    expect(finalizeSubmitBtn).toBeEnabled();
+
+    fireEvent.click(finalizeSubmitBtn);
+
+    await waitFor(() => {
+      expect(finalizeSpy).toHaveBeenCalledWith(
+        mockInternalEnProceso.id,
+        2,
+        expect.anything()
+      );
+    });
   });
 });
 

@@ -45,7 +45,11 @@ export function getHistorialEventInfo(evento: string, payload: any) {
       title: 'Pedido Creado',
       icon: '📝',
       color: '#0284c7',
-      desc: payload?.origen ? `Creado desde formulario público (${payload.origen})` : 'Pedido ingresado y registrado en el sistema',
+      desc: payload?.origen === 'interno'
+        ? 'Creado internamente por el equipo'
+        : payload?.origen
+        ? `Creado desde formulario público (${payload.origen})`
+        : 'Pedido ingresado y registrado en el sistema',
     };
   }
   if (norm.includes('state_changed') || norm.includes('estado_cambiado') || norm.includes('state') || norm.includes('estado')) {
@@ -462,7 +466,7 @@ export const PedidoDetallePage: React.FC = () => {
       .filter((f) => f.status === 'completed' && f.archivoId)
       .map((f) => f.archivoId as string);
 
-    if (completedArchivoIds.length === 0 && !cleanUrl) {
+    if (pedido.origen !== 'interno' && completedArchivoIds.length === 0 && !cleanUrl) {
       setModalError('Adjuntá al menos un archivo o ingresá un enlace de entrega.');
       return;
     }
@@ -769,7 +773,7 @@ export const PedidoDetallePage: React.FC = () => {
   if (!pedido) return null;
 
   // Formato no redundante de Categoría y Tipo de Servicio
-  const categoriaTitulo = pedido.categoria_nombre || '';
+  const categoriaTitulo = pedido.categoria_nombre || (pedido.origen === 'interno' ? 'Carga Interna' : '');
   const tipoTitulo = pedido.tipo_nombre || '';
   const servicioEncabezado =
     categoriaTitulo.toLowerCase() === tipoTitulo.toLowerCase() || !tipoTitulo
@@ -888,6 +892,22 @@ export const PedidoDetallePage: React.FC = () => {
               <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--pedidos-text-primary, #0f172a)', margin: 0 }}>
                 {pedido.pedido_visible}
               </h1>
+              {pedido.origen === 'interno' && (
+                <span
+                  style={{
+                    backgroundColor: 'var(--pedidos-badge-interno-bg, #ffe4e6)',
+                    color: 'var(--pedidos-badge-interno-text, #e11d48)',
+                    border: '1px solid var(--pedidos-badge-interno-border, #fecdd3)',
+                    padding: '0.2rem 0.6rem',
+                    borderRadius: '4px',
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  INTERNO
+                </span>
+              )}
               {getEstadoBadge(pedido.estado)}
 
               {/* Selector o Badge de Prioridad */}
@@ -955,6 +975,12 @@ export const PedidoDetallePage: React.FC = () => {
                 (v{pedido.version})
               </span>
             </div>
+
+            {pedido.titulo && (
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)', margin: '0.4rem 0 0.15rem 0' }}>
+                {pedido.titulo}
+              </h2>
+            )}
 
             <p style={{ color: 'var(--pedidos-text-secondary, #334155)', margin: '0.35rem 0 0 0', fontSize: '1rem', fontWeight: 600 }}>
               {servicioEncabezado}
@@ -1176,8 +1202,8 @@ export const PedidoDetallePage: React.FC = () => {
                     </>
                   )}
 
-                  {/* 4. Solicitud de Información 48h */}
-                  {['Nuevo', 'En revisión', 'En proceso'].includes(pedido.estado) && !hasPendingInfo && (
+                  {/* 4. Solicitud de Información 48h (Solo para pedidos públicos) */}
+                  {pedido.origen !== 'interno' && ['Nuevo', 'En revisión', 'En proceso'].includes(pedido.estado) && !hasPendingInfo && (
                     <button
                       type="button"
                       onClick={() => {
@@ -1460,7 +1486,7 @@ export const PedidoDetallePage: React.FC = () => {
                   Nombre y apellido
                 </span>
                 <p style={{ margin: '0.15rem 0 0 0', fontWeight: 600, color: 'var(--pedidos-text-primary, #0f172a)' }}>
-                  {pedido.envio?.nombre_apellido || (pedido as any).solicitante_nombre || 'No especificado'}
+                  {pedido.envio?.nombre_apellido || (pedido as any).solicitante_nombre || (pedido.informacion_especifica as any)?.solicitante?.nombre || (pedido.informacion_especifica as any)?.contacto_nombre || 'No especificado'}
                 </p>
               </div>
 
@@ -1469,7 +1495,7 @@ export const PedidoDetallePage: React.FC = () => {
                   Área o dependencia
                 </span>
                 <p style={{ margin: '0.15rem 0 0 0', color: 'var(--pedidos-text-secondary, #334155)' }}>
-                  {pedido.envio?.area_solicitante || (pedido as any).solicitante_area || 'No especificada'}
+                  {pedido.envio?.area_solicitante || (pedido as any).solicitante_area || (pedido.informacion_especifica as any)?.solicitante?.area || (pedido.informacion_especifica as any)?.contacto_area || 'No especificada'}
                 </p>
               </div>
 
@@ -1478,7 +1504,7 @@ export const PedidoDetallePage: React.FC = () => {
                   Correo electrónico
                 </span>
                 <p style={{ margin: '0.15rem 0 0 0', color: 'var(--pedidos-brand-accent, #0369a1)', wordBreak: 'break-all' }}>
-                  {pedido.envio?.correo || (pedido as any).solicitante_correo || 'No especificado'}
+                  {pedido.envio?.correo || (pedido as any).solicitante_correo || (pedido.informacion_especifica as any)?.solicitante?.correo || 'No especificado'}
                 </p>
               </div>
 
@@ -1487,7 +1513,7 @@ export const PedidoDetallePage: React.FC = () => {
                   WhatsApp / Teléfono
                 </span>
                 <div style={{ marginTop: '0.2rem' }}>
-                  <WhatsAppPhoneLink phone={pedido.envio?.telefono || (pedido as any).solicitante_telefono} />
+                  <WhatsAppPhoneLink phone={pedido.envio?.telefono || (pedido as any).solicitante_telefono || (pedido.informacion_especifica as any)?.solicitante?.telefono} />
                 </div>
               </div>
             </div>
@@ -2462,13 +2488,18 @@ export const PedidoDetallePage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={actionLoading || deliveryFiles.some((f) => f.status === 'uploading') || deliveryFiles.some((f) => f.status === 'error') || (!entregaUrl.trim() && !deliveryFiles.some((f) => f.status === 'completed'))}
+                  disabled={
+                    actionLoading ||
+                    deliveryFiles.some((f) => f.status === 'uploading') ||
+                    deliveryFiles.some((f) => f.status === 'error') ||
+                    (pedido.origen !== 'interno' && !entregaUrl.trim() && !deliveryFiles.some((f) => f.status === 'completed'))
+                  }
                   style={{
                     background:
                       !actionLoading &&
                       !deliveryFiles.some((f) => f.status === 'uploading') &&
                       !deliveryFiles.some((f) => f.status === 'error') &&
-                      (Boolean(entregaUrl.trim()) || deliveryFiles.some((f) => f.status === 'completed'))
+                      (pedido.origen === 'interno' || Boolean(entregaUrl.trim()) || deliveryFiles.some((f) => f.status === 'completed'))
                         ? '#16a34a'
                         : 'var(--pedidos-border-default, #cbd5e1)',
                     color: '#ffffff',
@@ -2480,7 +2511,7 @@ export const PedidoDetallePage: React.FC = () => {
                       !actionLoading &&
                       !deliveryFiles.some((f) => f.status === 'uploading') &&
                       !deliveryFiles.some((f) => f.status === 'error') &&
-                      (Boolean(entregaUrl.trim()) || deliveryFiles.some((f) => f.status === 'completed'))
+                      (pedido.origen === 'interno' || Boolean(entregaUrl.trim()) || deliveryFiles.some((f) => f.status === 'completed'))
                         ? 'pointer'
                         : 'not-allowed',
                   }}

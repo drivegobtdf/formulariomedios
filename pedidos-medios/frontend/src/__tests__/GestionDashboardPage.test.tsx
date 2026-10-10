@@ -26,6 +26,7 @@ describe('GestionDashboardPage Unit Tests', () => {
       anio: 2026,
       numero: 1,
       codigo_categoria: 'D',
+      origen: 'publico',
       categoria_id: 'cat-1',
       categoria_nombre: 'Diseño Gráfico',
       tipo_servicio_id: 'tipo-1',
@@ -45,6 +46,7 @@ describe('GestionDashboardPage Unit Tests', () => {
       anio: 2026,
       numero: 2,
       codigo_categoria: 'P',
+      origen: 'publico',
       categoria_id: 'cat-2',
       categoria_nombre: 'Prensa',
       tipo_servicio_id: 'tipo-2',
@@ -62,6 +64,7 @@ describe('GestionDashboardPage Unit Tests', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(gestionApi, 'fetchCatalogoServicios').mockResolvedValue([]);
     vi.spyOn(gestionApi, 'fetchGestionStats').mockResolvedValue({
       total: 2,
       nuevos: 1,
@@ -238,6 +241,7 @@ describe('GestionDashboardPage Unit Tests', () => {
       anio: 2026,
       numero: 99,
       codigo_categoria: 'D',
+      origen: 'publico',
       categoria_id: 'cat-1',
       categoria_nombre: 'Diseño Gráfico',
       tipo_servicio_id: 'tipo-1',
@@ -779,6 +783,84 @@ describe('GestionDashboardPage Unit Tests', () => {
       // Debe reconciliar datos invocando fetchPedidos
       expect(fetchSpy).toHaveBeenCalled();
       alertSpy.mockRestore();
+    });
+
+    it('debe renderizar el botón de Carga interna y abrir el modal al hacer clic', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockApprovedProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        refreshUser: vi.fn(),
+        signOut: vi.fn(),
+      });
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Carga interna/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Carga interna/i }));
+
+      expect(await screen.findByText('Carga Interna de Pedido')).toBeInTheDocument();
+    });
+
+    it('debe renderizar la tarjeta con badge INTERNO y título destacado para pedidos internos', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockApprovedProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        refreshUser: vi.fn(),
+        signOut: vi.fn(),
+      });
+
+      const mockPedidosConInterno: gestionApi.PedidoListItem[] = [
+        {
+          id: 'ped-int-1',
+          pedido_visible: 'PED-2026-I000001',
+          anio: 2026,
+          numero: 1,
+          codigo_categoria: 'I',
+          origen: 'interno',
+          titulo: 'Campaña Invierno 2026',
+          categoria_id: null,
+          tipo_servicio_id: null,
+          estado: 'Nuevo',
+          informacion_especifica: {},
+          version: 1,
+          archivado: false,
+          responsable_user_id: undefined,
+          responsable_nombre: undefined,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ];
+
+      vi.spyOn(gestionApi, 'fetchPedidos').mockResolvedValue(mockPedidosConInterno);
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('PED-2026-I000001')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('INTERNO')).toBeInTheDocument();
+      expect(screen.getByText('Campaña Invierno 2026')).toBeInTheDocument();
+      expect(screen.getByText('Sin categorizar')).toBeInTheDocument();
     });
   });
 });

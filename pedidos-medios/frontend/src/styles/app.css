@@ -101,6 +101,12 @@
   --pedidos-rework-border: #FDE68A;
   --pedidos-rework-accent: #D97706;
 
+  /* Design Tokens Semánticos — Pedidos Internos (FASE B.3) */
+  --pedidos-badge-interno-bg: #FFE4E6;
+  --pedidos-badge-interno-text: #E11D48;
+  --pedidos-badge-interno-border: #FECDD3;
+  --pedidos-interno-accent: #F43F5E;
+
   /* Modal Backdrop */
   --pedidos-backdrop-bg: rgba(15, 23, 42, 0.6);
   --pedidos-surface-backdrop: rgba(15, 23, 42, 0.6);
@@ -2286,6 +2292,12 @@
   --pedidos-rework-text: #fcd34d;
   --pedidos-rework-border: rgba(245, 158, 11, 0.45);
   --pedidos-rework-accent: #f59e0b;
+
+  /* Pedidos Internos Dark (WCAG AA) */
+  --pedidos-badge-interno-bg: rgba(244, 63, 94, 0.18);
+  --pedidos-badge-interno-text: #fda4af;
+  --pedidos-badge-interno-border: rgba(244, 63, 94, 0.45);
+  --pedidos-interno-accent: #fb7185;
 
   /* Modal Backdrop */
   --pedidos-backdrop-bg: rgba(0, 0, 0, 0.75);
