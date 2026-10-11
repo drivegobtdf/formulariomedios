@@ -1374,6 +1374,357 @@ describe('PedidoDetallePage Unit Tests', () => {
       );
     });
   });
+
+  describe('Modal Finalizar Pedido - Validación y flexibilidad interna (Hotfix UI)', () => {
+    const mockInternalEnProceso: gestionApi.PedidoDetailItem = {
+      id: 'ped-int-modal-test',
+      pedido_visible: 'PED-2026-X000088',
+      anio: 2026,
+      numero: 88,
+      codigo_categoria: 'X',
+      origen: 'interno',
+      titulo: 'Pedido Interno de Prueba',
+      categoria_id: null,
+      tipo_servicio_id: null,
+      estado: 'En proceso',
+      responsable_user_id: 'usr-admin-1',
+      responsable_nombre: 'Pablo Saldivia',
+      informacion_especifica: {},
+      version: 2,
+      archivado: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      envio: null,
+      asignaciones: [],
+      notas: [],
+      solicitudes: [],
+      archivos: [],
+      enlaces: [],
+      entregas: [],
+    };
+
+    const mockPublicEnProceso: gestionApi.PedidoDetailItem = {
+      ...mockPedidoMotion,
+      id: 'ped-pub-modal-test',
+      pedido_visible: 'PED-2026-M000155',
+      origen: 'publico',
+      estado: 'En proceso',
+      responsable_user_id: 'usr-admin-1',
+      responsable_nombre: 'Pablo Saldivia',
+      version: 2,
+      archivos: [],
+      enlaces: [],
+      entregas: [],
+    };
+
+    beforeEach(() => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockAdminProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        refreshUser: vi.fn(),
+        signOut: vi.fn(),
+      });
+      vi.spyOn(gestionApi, 'fetchInternalUsers').mockResolvedValue([]);
+      vi.spyOn(gestionApi, 'fetchPedidoHistorialOperativo').mockResolvedValue([]);
+    });
+
+    it('Test A — INTERNO: files=[], url="", nota="" -> botón habilitado y finaliza correctamente', async () => {
+      vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue(mockInternalEnProceso);
+      const finalizeSpy = vi.spyOn(gestionApi, 'finalizePedido').mockResolvedValue({
+        success: true,
+        pedido_id: mockInternalEnProceso.id,
+        estado: 'Finalizado',
+        version: 3,
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/gestion/pedidos/${mockInternalEnProceso.id}`]}>
+          <Routes>
+            <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Finalizar pedido/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Finalizar pedido/i }));
+
+      // Etiquetas opcionales para pedidos internos
+      expect(screen.getByText('Archivos de entrega (opcional)')).toBeInTheDocument();
+      expect(screen.getByText('Enlace externo (opcional)')).toBeInTheDocument();
+
+      const finalizeButtons = await screen.findAllByRole('button', { name: 'Finalizar pedido' });
+      const finalizeSubmitBtn = finalizeButtons.find((b) => (b as HTMLButtonElement).type === 'submit')!;
+      expect(finalizeSubmitBtn).toBeEnabled();
+
+      fireEvent.click(finalizeSubmitBtn);
+
+      await waitFor(() => {
+        expect(finalizeSpy).toHaveBeenCalledWith(
+          mockInternalEnProceso.id,
+          2,
+          {
+            archivo_ids: undefined,
+            enlace_externo: undefined,
+            nota: undefined,
+          }
+        );
+      });
+    });
+
+    it('Test B — INTERNO: files=[], url="", nota="Trabajo completado" -> botón habilitado', async () => {
+      vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue(mockInternalEnProceso);
+      const finalizeSpy = vi.spyOn(gestionApi, 'finalizePedido').mockResolvedValue({
+        success: true,
+        pedido_id: mockInternalEnProceso.id,
+        estado: 'Finalizado',
+        version: 3,
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/gestion/pedidos/${mockInternalEnProceso.id}`]}>
+          <Routes>
+            <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Finalizar pedido/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Finalizar pedido/i }));
+
+      const notaInput = screen.getByPlaceholderText('Detalles o instrucciones de la entrega...');
+      fireEvent.change(notaInput, { target: { value: 'Trabajo completado' } });
+
+      const finalizeButtons = await screen.findAllByRole('button', { name: 'Finalizar pedido' });
+      const finalizeSubmitBtn = finalizeButtons.find((b) => (b as HTMLButtonElement).type === 'submit')!;
+      expect(finalizeSubmitBtn).toBeEnabled();
+
+      fireEvent.click(finalizeSubmitBtn);
+
+      await waitFor(() => {
+        expect(finalizeSpy).toHaveBeenCalledWith(
+          mockInternalEnProceso.id,
+          2,
+          {
+            archivo_ids: undefined,
+            enlace_externo: undefined,
+            nota: 'Trabajo completado',
+          }
+        );
+      });
+    });
+
+    it('Test C — INTERNO: files=[], url="a", nota="" -> botón deshabilitado y error URL visible; habilitado al corregir', async () => {
+      vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue(mockInternalEnProceso);
+
+      render(
+        <MemoryRouter initialEntries={[`/gestion/pedidos/${mockInternalEnProceso.id}`]}>
+          <Routes>
+            <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Finalizar pedido/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Finalizar pedido/i }));
+
+      const urlInput = screen.getByPlaceholderText('https://drive.google.com/...');
+      const finalizeButtons = await screen.findAllByRole('button', { name: 'Finalizar pedido' });
+      const finalizeSubmitBtn = finalizeButtons.find((b) => (b as HTMLButtonElement).type === 'submit')!;
+
+      // Inicialmente habilitado
+      expect(finalizeSubmitBtn).toBeEnabled();
+
+      // Al tipear "a", botón DEBE deshabilitarse y mostrar advertencia
+      fireEvent.change(urlInput, { target: { value: 'a' } });
+      expect(finalizeSubmitBtn).toBeDisabled();
+      expect(screen.getByText(/Ingrese un enlace válido comenzando con http:\/\/ o https:\/\//i)).toBeInTheDocument();
+
+      // Al limpiar la URL, vuelve a habilitarse para pedido interno
+      fireEvent.change(urlInput, { target: { value: '' } });
+      expect(finalizeSubmitBtn).toBeEnabled();
+      expect(screen.queryByText(/Ingrese un enlace válido comenzando con http:\/\/ o https:\/\//i)).not.toBeInTheDocument();
+    });
+
+    it('Test D — PÚBLICO: files=[], url="", nota="Terminado" -> botón deshabilitado (contrato público estricto)', async () => {
+      vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue(mockPublicEnProceso);
+
+      render(
+        <MemoryRouter initialEntries={[`/gestion/pedidos/${mockPublicEnProceso.id}`]}>
+          <Routes>
+            <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Finalizar pedido/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Finalizar pedido/i }));
+
+      // Etiquetas condicionales para pedidos públicos
+      expect(screen.getByText('Archivos de entrega (opcional si hay enlace)')).toBeInTheDocument();
+      expect(screen.getByText('Enlace externo (opcional si hay archivos)')).toBeInTheDocument();
+
+      const finalizeButtons = await screen.findAllByRole('button', { name: 'Finalizar pedido' });
+      const finalizeSubmitBtn = finalizeButtons.find((b) => (b as HTMLButtonElement).type === 'submit')!;
+
+      // Sin archivos ni enlace, el botón público DEBE permanecer deshabilitado
+      expect(finalizeSubmitBtn).toBeDisabled();
+
+      // Escribir solo nota NO debe habilitar el botón en pedidos públicos
+      const notaInput = screen.getByPlaceholderText('Detalles o instrucciones de la entrega...');
+      fireEvent.change(notaInput, { target: { value: 'Terminado' } });
+      expect(finalizeSubmitBtn).toBeDisabled();
+    });
+
+    it('Test E — PÚBLICO: files=[], url="a" -> botón deshabilitado y error URL visible', async () => {
+      vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue(mockPublicEnProceso);
+
+      render(
+        <MemoryRouter initialEntries={[`/gestion/pedidos/${mockPublicEnProceso.id}`]}>
+          <Routes>
+            <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Finalizar pedido/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Finalizar pedido/i }));
+
+      const urlInput = screen.getByPlaceholderText('https://drive.google.com/...');
+      const finalizeButtons = await screen.findAllByRole('button', { name: 'Finalizar pedido' });
+      const finalizeSubmitBtn = finalizeButtons.find((b) => (b as HTMLButtonElement).type === 'submit')!;
+
+      fireEvent.change(urlInput, { target: { value: 'a' } });
+      expect(finalizeSubmitBtn).toBeDisabled();
+      expect(screen.getByText(/Ingrese un enlace válido comenzando con http:\/\/ o https:\/\//i)).toBeInTheDocument();
+    });
+
+    it('Test F — PÚBLICO: files=[], url="https://drive.google.com/..." -> botón habilitado y finaliza correctamente', async () => {
+      vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue(mockPublicEnProceso);
+      const finalizeSpy = vi.spyOn(gestionApi, 'finalizePedido').mockResolvedValue({
+        success: true,
+        pedido_id: mockPublicEnProceso.id,
+        estado: 'Finalizado',
+        version: 3,
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/gestion/pedidos/${mockPublicEnProceso.id}`]}>
+          <Routes>
+            <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Finalizar pedido/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Finalizar pedido/i }));
+
+      const urlInput = screen.getByPlaceholderText('https://drive.google.com/...');
+      const finalizeButtons = await screen.findAllByRole('button', { name: 'Finalizar pedido' });
+      const finalizeSubmitBtn = finalizeButtons.find((b) => (b as HTMLButtonElement).type === 'submit')!;
+
+      fireEvent.change(urlInput, { target: { value: 'https://drive.google.com/drive/folders/carpeta-entrega-123' } });
+      expect(finalizeSubmitBtn).toBeEnabled();
+      expect(screen.queryByText(/Ingrese un enlace válido/i)).not.toBeInTheDocument();
+
+      fireEvent.click(finalizeSubmitBtn);
+
+      await waitFor(() => {
+        expect(finalizeSpy).toHaveBeenCalledWith(
+          mockPublicEnProceso.id,
+          2,
+          {
+            archivo_ids: undefined,
+            enlace_externo: 'https://drive.google.com/drive/folders/carpeta-entrega-123',
+            nota: undefined,
+          }
+        );
+      });
+    });
+
+    it('Test G — PÚBLICO: files=[archivoValido], url="" -> botón habilitado tras subida exitosa', async () => {
+      vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue(mockPublicEnProceso);
+      vi.spyOn(gestionApi, 'uploadDeliveryFile').mockResolvedValue({
+        archivo_id: 'arch-deliv-mock-1',
+        nombre_original: 'entregable_final.zip',
+        size_bytes: 2048,
+      } as any);
+
+      const finalizeSpy = vi.spyOn(gestionApi, 'finalizePedido').mockResolvedValue({
+        success: true,
+        pedido_id: mockPublicEnProceso.id,
+        estado: 'Finalizado',
+        version: 3,
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/gestion/pedidos/${mockPublicEnProceso.id}`]}>
+          <Routes>
+            <Route path="/gestion/pedidos/:id" element={<PedidoDetallePage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Finalizar pedido/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Finalizar pedido/i }));
+
+      const finalizeButtons = await screen.findAllByRole('button', { name: 'Finalizar pedido' });
+      const finalizeSubmitBtn = finalizeButtons.find((b) => (b as HTMLButtonElement).type === 'submit')!;
+      expect(finalizeSubmitBtn).toBeDisabled();
+
+      // Simular selección de archivo
+      const fileInput = document.getElementById('delivery-file-input') as HTMLInputElement;
+      expect(fileInput).toBeInTheDocument();
+
+      const testFile = new File(['mock content'], 'entregable_final.zip', { type: 'application/zip' });
+      fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+      // Esperar a que la subida mockeada complete
+      await waitFor(() => {
+        expect(screen.getByText('✓ Listo')).toBeInTheDocument();
+      });
+
+      expect(finalizeSubmitBtn).toBeEnabled();
+
+      fireEvent.click(finalizeSubmitBtn);
+
+      await waitFor(() => {
+        expect(finalizeSpy).toHaveBeenCalledWith(
+          mockPublicEnProceso.id,
+          2,
+          {
+            archivo_ids: ['arch-deliv-mock-1'],
+            enlace_externo: undefined,
+            nota: undefined,
+          }
+        );
+      });
+    });
+  });
 });
 
 

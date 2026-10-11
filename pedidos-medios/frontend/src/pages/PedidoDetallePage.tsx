@@ -26,6 +26,7 @@ import { EditarEtiquetaModal } from '../components/gestion/EditarEtiquetaModal';
 import { formatFileSize, formatArchivoEstado, formatLocalDate, formatHistoryDate } from '../utils/formatUtils';
 import { WhatsAppPhoneLink } from '../components/WhatsAppPhoneLink';
 import { formatReworkHistoricalText } from '../utils/statusBadges';
+import { isValidHttpUrl } from '../validation/formValidation';
 
 export function getHistorialEventInfo(evento: string, payload: any) {
   const norm = (evento || '').toLowerCase().replace(/[\.\_\s\-]+/g, '_');
@@ -460,19 +461,19 @@ export const PedidoDetallePage: React.FC = () => {
   const handleFinalize = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pedido) return;
-
+    const isInternalOrder = (pedido.origen || '').toLowerCase().trim() === 'interno';
     const cleanUrl = entregaUrl.trim();
     const completedArchivoIds = deliveryFiles
       .filter((f) => f.status === 'completed' && f.archivoId)
       .map((f) => f.archivoId as string);
 
-    if (pedido.origen !== 'interno' && completedArchivoIds.length === 0 && !cleanUrl) {
-      setModalError('Adjuntá al menos un archivo o ingresá un enlace de entrega.');
+    if (cleanUrl && !isValidHttpUrl(cleanUrl)) {
+      setModalError('La URL de entrega debe ser un enlace válido HTTP o HTTPS.');
       return;
     }
 
-    if (cleanUrl && !cleanUrl.match(/^https?:\/\/.+/i)) {
-      setModalError('La URL de entrega debe ser un enlace válido HTTP o HTTPS.');
+    if (!isInternalOrder && completedArchivoIds.length === 0 && !cleanUrl) {
+      setModalError('Adjuntá al menos un archivo o ingresá un enlace de entrega.');
       return;
     }
 
@@ -781,6 +782,37 @@ export const PedidoDetallePage: React.FC = () => {
       : `${categoriaTitulo} · ${tipoTitulo}`;
 
   const fechaLimiteVal = (pedido.informacion_especifica as any)?.fecha_limite || (pedido as any).fecha_limite;
+
+  // Lógica canónica de finalización (interno vs público)
+  const isInternal = (pedido.origen || '').toLowerCase().trim() === 'interno';
+  const cleanEntregaUrl = entregaUrl.trim();
+  const hasUrlContent = cleanEntregaUrl.length > 0;
+  const isEntregaUrlValid = isValidHttpUrl(cleanEntregaUrl);
+  const hasInvalidEntregaUrl = hasUrlContent && !isEntregaUrlValid;
+
+  const hasUploadingDelivery = deliveryFiles.some((f) => f.status === 'uploading');
+  const hasErrorDelivery = deliveryFiles.some((f) => f.status === 'error');
+  const hasCompletedDelivery = deliveryFiles.some((f) => f.status === 'completed' && Boolean(f.archivoId));
+
+  // Requisito de material de entrega:
+  // - Interno: archivos, enlace y nota son opcionales (pueden ser los tres vacíos).
+  // - Público: exige al menos un archivo completado O un enlace HTTP/HTTPS válido.
+  const hasDeliveryMaterial = isInternal
+    ? true
+    : (hasCompletedDelivery || isEntregaUrlValid);
+
+  // canFinalize:
+  // - no estar enviando (actionLoading)
+  // - no haber subidas en curso
+  // - no haber archivos con error
+  // - si se ingresó enlace, no debe ser inválido (bloquea "a", etc. tanto en público como en interno)
+  // - cumplir requisito de material
+  const canFinalize =
+    !actionLoading &&
+    !hasUploadingDelivery &&
+    !hasErrorDelivery &&
+    !hasInvalidEntregaUrl &&
+    hasDeliveryMaterial;
 
   return (
     <div className="pedidos-detalle-container">
@@ -2354,7 +2386,7 @@ export const PedidoDetallePage: React.FC = () => {
               {/* Archivos de entrega */}
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>
-                  Archivos de entrega (opcional si hay enlace)
+                  {isInternal ? 'Archivos de entrega (opcional)' : 'Archivos de entrega (opcional si hay enlace)'}
                 </label>
                 <div style={{ border: '2px dashed var(--pedidos-border-default, #cbd5e1)', borderRadius: '0.5rem', padding: '1rem', textAlign: 'center', backgroundColor: 'var(--pedidos-surface-sunken, #f8fafc)' }}>
                   <input
@@ -2447,16 +2479,34 @@ export const PedidoDetallePage: React.FC = () => {
               {/* Enlace externo */}
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>
-                  Enlace externo (opcional)
+                  {isInternal ? 'Enlace externo (opcional)' : 'Enlace externo (opcional si hay archivos)'}
                 </label>
                 <input
                   type="url"
                   placeholder="https://drive.google.com/..."
                   value={entregaUrl}
                   disabled={actionLoading}
-                  onChange={(e) => setEntregaUrl(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #1e293b)', borderRadius: '0.375rem', boxSizing: 'border-box' }}
+                  onChange={(e) => {
+                    setEntregaUrl(e.target.value);
+                    if (modalError) setModalError(null);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: hasInvalidEntregaUrl
+                      ? '1px solid var(--pedidos-status-rejected-border, #ef4444)'
+                      : '1px solid var(--pedidos-control-border, #cbd5e1)',
+                    backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
+                    color: 'var(--pedidos-control-text, #1e293b)',
+                    borderRadius: '0.375rem',
+                    boxSizing: 'border-box',
+                  }}
                 />
+                {hasInvalidEntregaUrl && (
+                  <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.75rem', color: 'var(--pedidos-status-rejected-text, #dc2626)' }}>
+                    ⚠️ Ingrese un enlace válido comenzando con http:// o https://
+                  </p>
+                )}
               </div>
 
               {/* Nota de entrega */}
@@ -2488,37 +2538,20 @@ export const PedidoDetallePage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={
-                    actionLoading ||
-                    deliveryFiles.some((f) => f.status === 'uploading') ||
-                    deliveryFiles.some((f) => f.status === 'error') ||
-                    (pedido.origen !== 'interno' && !entregaUrl.trim() && !deliveryFiles.some((f) => f.status === 'completed'))
-                  }
+                  disabled={!canFinalize}
                   style={{
-                    background:
-                      !actionLoading &&
-                      !deliveryFiles.some((f) => f.status === 'uploading') &&
-                      !deliveryFiles.some((f) => f.status === 'error') &&
-                      (pedido.origen === 'interno' || Boolean(entregaUrl.trim()) || deliveryFiles.some((f) => f.status === 'completed'))
-                        ? '#16a34a'
-                        : 'var(--pedidos-border-default, #cbd5e1)',
+                    background: canFinalize ? '#16a34a' : 'var(--pedidos-border-default, #cbd5e1)',
                     color: '#ffffff',
                     border: 'none',
                     padding: '0.5rem 1rem',
                     borderRadius: '0.375rem',
                     fontWeight: 600,
-                    cursor:
-                      !actionLoading &&
-                      !deliveryFiles.some((f) => f.status === 'uploading') &&
-                      !deliveryFiles.some((f) => f.status === 'error') &&
-                      (pedido.origen === 'interno' || Boolean(entregaUrl.trim()) || deliveryFiles.some((f) => f.status === 'completed'))
-                        ? 'pointer'
-                        : 'not-allowed',
+                    cursor: canFinalize ? 'pointer' : 'not-allowed',
                   }}
                 >
                   {actionLoading
                     ? 'Finalizando...'
-                    : deliveryFiles.some((f) => f.status === 'uploading')
+                    : hasUploadingDelivery
                     ? 'Subiendo archivos...'
                     : 'Finalizar pedido'}
                 </button>
