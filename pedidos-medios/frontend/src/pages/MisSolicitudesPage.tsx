@@ -7,6 +7,7 @@ import {
   solicitanteSubmitInfoResponse,
   solicitanteSessionRevoke,
   downloadSolicitanteDeliveryFile,
+  formatFriendlyPublicEvent,
   SolicitantePedidoListItem,
   SolicitantePedidoDetailDTO,
 } from '../services/trackingApi';
@@ -18,7 +19,7 @@ import {
 } from '../services/sessionStorageService';
 import { InfoResponseForm } from '../components/InfoResponseForm';
 import { SolicitarRevisionModal } from '../components/SolicitarRevisionModal';
-import { formatFileSize, formatHistoryDate } from '../utils/formatUtils';
+import { formatFileSize, formatHistoryDate, getServicioSolicitadoTexto } from '../utils/formatUtils';
 import { renderPedidoStatusBundle } from '../utils/statusBadges';
 
 interface UrlParamsResult {
@@ -1203,7 +1204,7 @@ export const MisSolicitudesPage: React.FC = () => {
                   <div>
                     <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Servicio Solicitado</span>
                     <p style={{ margin: '0.15rem 0 0 0', fontWeight: 700, color: '#1e293b', fontSize: '1rem' }}>
-                      {selectedPedido.categoria_nombre} — {selectedPedido.tipo_nombre}
+                      {getServicioSolicitadoTexto(selectedPedido)}
                     </p>
                   </div>
                   <div>
@@ -1350,87 +1351,151 @@ export const MisSolicitudesPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Final Delivery & Drive Link */}
-                {selectedPedido.entrega && (
-                  <div style={{ border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', borderRadius: '0.5rem', padding: '1.25rem' }}>
-                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#166534', margin: '0 0 0.5rem 0' }}>
-                      Entrega final · v{selectedPedido.entrega.version}
-                    </h3>
-                    {(selectedPedido.entrega.nota_publica || selectedPedido.entrega.nota) && (
-                      <p style={{ margin: '0 0 0.75rem 0', color: '#1e293b', fontSize: '0.875rem' }}>
-                        {selectedPedido.entrega.nota_publica || selectedPedido.entrega.nota}
-                      </p>
-                    )}
-                    {selectedPedido.entrega.archivos && selectedPedido.entrega.archivos.length > 0 && (
-                      <div style={{ marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.8125rem', color: '#166534' }}>
-                          Archivos entregados ({selectedPedido.entrega.archivos.length}):
-                        </strong>
-                        {selectedPedido.entrega.archivos.map((fa: any) => (
-                          <div
-                            key={fa.id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '0.5rem 0.75rem',
-                              backgroundColor: '#ffffff',
-                              border: '1px solid #86efac',
-                              borderRadius: '0.375rem',
-                              fontSize: '0.8125rem',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
-                              <span>📄</span>
-                              <span style={{ fontWeight: 600, color: '#1e293b', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                                {fa.nombre_original}
-                              </span>
-                              {fa.size_bytes && (
-                                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({formatFileSize(fa.size_bytes)})</span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadDeliveryFile(fa.id, fa.nombre_original)}
-                              disabled={downloadingArchivoId === fa.id}
+                {/* Final Delivery & Closure Note */}
+                {(() => {
+                  const notaCierre =
+                    selectedPedido.entrega?.nota_publica ||
+                    selectedPedido.entrega?.nota ||
+                    (selectedPedido.notas_publicas && selectedPedido.notas_publicas.length > 0
+                      ? selectedPedido.notas_publicas[selectedPedido.notas_publicas.length - 1]?.texto
+                      : null) ||
+                    ((selectedPedido as any).notas && (selectedPedido as any).notas.length > 0
+                      ? (selectedPedido as any).notas[(selectedPedido as any).notas.length - 1]?.texto
+                      : null);
+
+                  const tieneMaterial = Boolean(
+                    (selectedPedido.entrega?.archivos && selectedPedido.entrega.archivos.length > 0) ||
+                    selectedPedido.entrega?.url_entrega
+                  );
+
+                  if (!selectedPedido.entrega && !(selectedPedido.estado === 'Finalizado' && notaCierre)) {
+                    return null;
+                  }
+
+                  return (
+                    <div style={{ border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', borderRadius: '0.5rem', padding: '1.25rem' }}>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#166534', margin: '0 0 0.5rem 0' }}>
+                        {selectedPedido.entrega?.version ? `Entrega final · v${selectedPedido.entrega.version}` : 'Entrega final'}
+                      </h3>
+                      {notaCierre && (
+                        <p style={{ margin: tieneMaterial ? '0 0 0.75rem 0' : 0, color: '#1e293b', fontSize: '0.925rem', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                          {notaCierre}
+                        </p>
+                      )}
+                      {selectedPedido.entrega?.archivos && selectedPedido.entrega.archivos.length > 0 && (
+                        <div style={{ marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <strong style={{ fontSize: '0.8125rem', color: '#166534' }}>
+                            Archivos entregados ({selectedPedido.entrega.archivos.length}):
+                          </strong>
+                          {selectedPedido.entrega.archivos.map((fa: any) => (
+                            <div
+                              key={fa.id}
                               style={{
-                                backgroundColor: '#16a34a',
-                                color: '#ffffff',
-                                border: 'none',
-                                padding: '0.35rem 0.75rem',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                cursor: downloadingArchivoId === fa.id ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '0.5rem 0.75rem',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #86efac',
+                                borderRadius: '0.375rem',
+                                fontSize: '0.8125rem',
                               }}
                             >
-                              {downloadingArchivoId === fa.id ? 'Descargando...' : '📥 Descargar'}
-                            </button>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                                <span>📄</span>
+                                <span style={{ fontWeight: 600, color: '#1e293b', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                  {fa.nombre_original}
+                                </span>
+                                {fa.size_bytes && (
+                                  <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({formatFileSize(fa.size_bytes)})</span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadDeliveryFile(fa.id, fa.nombre_original)}
+                                disabled={downloadingArchivoId === fa.id}
+                                style={{
+                                  backgroundColor: '#16a34a',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  padding: '0.35rem 0.75rem',
+                                  borderRadius: '0.25rem',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  cursor: downloadingArchivoId === fa.id ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                {downloadingArchivoId === fa.id ? 'Descargando...' : '📥 Descargar'}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {selectedPedido.entrega?.url_entrega && (
+                        <a
+                          href={selectedPedido.entrega.url_entrega}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-block',
+                            backgroundColor: '#16a34a',
+                            color: '#ffffff',
+                            padding: '0.55rem 1.15rem',
+                            borderRadius: '0.375rem',
+                            fontWeight: 700,
+                            fontSize: '0.875rem',
+                            textDecoration: 'none',
+                          }}
+                        >
+                          Abrir entrega externa
+                        </a>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Public Notes (Notas del equipo para el solicitante) */}
+                {(() => {
+                  const notaCierre =
+                    selectedPedido.nota_final?.texto ||
+                    selectedPedido.entrega?.nota_publica ||
+                    selectedPedido.entrega?.nota ||
+                    (selectedPedido.notas_publicas && selectedPedido.notas_publicas.length > 0
+                      ? selectedPedido.notas_publicas[selectedPedido.notas_publicas.length - 1]?.texto
+                      : null) ||
+                    ((selectedPedido as any).notas && (selectedPedido as any).notas.length > 0
+                      ? (selectedPedido as any).notas[(selectedPedido as any).notas.length - 1]?.texto
+                      : null);
+
+                  const allPublicNotes = selectedPedido.notas_publicas || (selectedPedido as any).notas || [];
+                  const visibleNotes = allPublicNotes.filter(
+                    (n: any) =>
+                      n.texto &&
+                      n.texto.trim() &&
+                      n.texto.trim() !== (notaCierre || '').trim() &&
+                      (!n.visibilidad || n.visibilidad === 'solicitante' || n.visibilidad === 'para_solicitante')
+                  );
+                  if (visibleNotes.length === 0) return null;
+                  return (
+                    <div style={{ border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderRadius: '0.5rem', padding: '1.25rem' }}>
+                      <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#334155', margin: '0 0 0.65rem 0' }}>
+                        Notas y comunicaciones
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                        {visibleNotes.map((note: any, nIdx: number) => (
+                          <div key={note.id || nIdx} style={{ backgroundColor: '#ffffff', padding: '0.75rem 1rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
+                            <p style={{ margin: 0, color: '#1e293b', whiteSpace: 'pre-wrap' }}>{note.texto}</p>
+                            {note.created_at && (
+                              <span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.725rem', color: '#64748b' }}>
+                                {formatHistoryDate(note.created_at)}
+                              </span>
+                            )}
                           </div>
                         ))}
                       </div>
-                    )}
-                    {selectedPedido.entrega.url_entrega && (
-                      <a
-                        href={selectedPedido.entrega.url_entrega}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-block',
-                          backgroundColor: '#16a34a',
-                          color: '#ffffff',
-                          padding: '0.55rem 1.15rem',
-                          borderRadius: '0.375rem',
-                          fontWeight: 700,
-                          fontSize: '0.875rem',
-                          textDecoration: 'none',
-                        }}
-                      >
-                        Abrir entrega externa
-                      </a>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  );
+                })()}
 
                 {/* Public Timeline / Historial */}
                 {(() => {
@@ -1442,35 +1507,41 @@ export const MisSolicitudesPage: React.FC = () => {
                         Historial
                       </h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {timelineItems.map((item, idx) => (
-                          <div
-                            key={idx}
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              padding: '0.5rem 0.75rem',
-                              backgroundColor: '#f8fafc',
-                              borderLeft: '3px solid #0284c7',
-                              borderRadius: '0 0.375rem 0.375rem 0',
-                              fontSize: '0.8125rem',
-                            }}
-                          >
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                              <span style={{ fontWeight: 600, color: '#1e293b' }}>
-                                {item.descripcion || item.detalle || item.evento || 'Actualización de seguimiento'}
-                              </span>
-                              {item.descripcion && item.evento && item.descripcion !== item.evento && (
-                                <span style={{ fontSize: '0.725rem', color: '#64748b' }}>
-                                  {item.evento}
+                        {timelineItems.map((item: any, idx: number) => {
+                          const friendly = formatFriendlyPublicEvent(item.titulo || item.evento || item.event_name || '');
+                          const labelTitulo = item.titulo || friendly.titulo;
+                          const labelDesc = item.descripcion || friendly.descripcion;
+
+                          return (
+                            <div
+                              key={idx}
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '0.6rem 0.85rem',
+                                backgroundColor: '#f8fafc',
+                                borderLeft: '3px solid #0284c7',
+                                borderRadius: '0 0.375rem 0.375rem 0',
+                                fontSize: '0.8125rem',
+                              }}
+                            >
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                                  {labelTitulo}
                                 </span>
-                              )}
+                                {labelDesc && (
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                    {labelDesc}
+                                  </span>
+                                )}
+                              </div>
+                              <span style={{ color: '#64748b', whiteSpace: 'nowrap', marginLeft: '0.75rem' }}>
+                                {formatHistoryDate(item.fecha || item.occurred_at || item.created_at)}
+                              </span>
                             </div>
-                            <span style={{ color: '#64748b', whiteSpace: 'nowrap', marginLeft: '0.75rem' }}>
-                              {formatHistoryDate(item.occurred_at || item.created_at || item.fecha)}
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );

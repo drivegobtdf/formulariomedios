@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatFileSize, formatLocalDate, formatArchivoEstado } from '../utils/formatUtils';
+import { formatFileSize, formatLocalDate, formatArchivoEstado, getServicioSolicitadoTexto } from '../utils/formatUtils';
 
 describe('formatUtils Unit Tests', () => {
   describe('formatFileSize', () => {
@@ -60,4 +60,69 @@ describe('formatUtils Unit Tests', () => {
       expect(formatArchivoEstado(null)).toBe('Desconocido');
     });
   });
+
+  describe('getServicioSolicitadoTexto', () => {
+    it('debe combinar categoria y tipo cuando ambos están presentes', () => {
+      expect(getServicioSolicitadoTexto({
+        categoria_nombre: 'Prensa',
+        tipo_nombre: 'Gacetilla de Prensa',
+      })).toBe('Prensa — Gacetilla de Prensa');
+    });
+
+    it('debe retornar solo categoria cuando tipo no está presente', () => {
+      expect(getServicioSolicitadoTexto({
+        categoria_nombre: 'Fotografía',
+        tipo_nombre: '',
+      })).toBe('Fotografía');
+    });
+
+    it('debe retornar solo tipo cuando categoria no está presente', () => {
+      expect(getServicioSolicitadoTexto({
+        categoria_nombre: '',
+        tipo_nombre: 'Spot Publicitario',
+      })).toBe('Spot Publicitario');
+    });
+
+    it('debe resolver título directo del pedido si categoria y tipo están ausentes', () => {
+      expect(getServicioSolicitadoTexto({
+        categoria_nombre: '',
+        tipo_nombre: '',
+        titulo: 'Campaña Invierno 2026',
+      })).toBe('Campaña Invierno 2026');
+    });
+
+    it('debe resolver título o servicio en informacion_especifica si categoria y tipo están ausentes', () => {
+      expect(getServicioSolicitadoTexto({
+        categoria_nombre: '',
+        tipo_nombre: '',
+        informacion_especifica: {
+          titulo: 'Cobertura Audiovisual Acto Central',
+        },
+      })).toBe('Cobertura Audiovisual Acto Central');
+
+      expect(getServicioSolicitadoTexto({
+        categoria_nombre: '',
+        tipo_nombre: '',
+        informacion_especifica: {
+          nombre_servicio: 'Diseño de Afiche Promocional',
+        },
+      })).toBe('Diseño de Afiche Promocional');
+    });
+
+    it('debe resolver propiedad anidada en pedido (modelo DB / RPC)', () => {
+      expect(getServicioSolicitadoTexto({
+        pedido: {
+          categoria_nombre: 'Diseño Gráfico',
+          tipo_nombre: 'Folleto Tríptico',
+        },
+      })).toBe('Diseño Gráfico — Folleto Tríptico');
+    });
+
+    it('debe retornar "—" únicamente si ningún dato está disponible (nunca " — ")', () => {
+      expect(getServicioSolicitadoTexto(null)).toBe('—');
+      expect(getServicioSolicitadoTexto({})).toBe('—');
+      expect(getServicioSolicitadoTexto({ categoria_nombre: '', tipo_nombre: '' })).toBe('—');
+    });
+  });
 });
+

@@ -70,6 +70,7 @@ export interface SolicitantePedidoDetailDTO {
   codigo_categoria: string;
   categoria_nombre: string;
   tipo_nombre: string;
+  titulo?: string;
   estado: string;
   retrabajo_activo?: boolean;
   revision_count?: number;
@@ -81,6 +82,7 @@ export interface SolicitantePedidoDetailDTO {
     id: string;
     texto: string;
     created_at: string;
+    visibilidad?: string;
   }>;
   solicitudes_informacion: Array<{
     id: string;
@@ -105,6 +107,10 @@ export interface SolicitantePedidoDetailDTO {
       mime_type?: string;
       created_at?: string;
     }>;
+  } | null;
+  nota_final?: {
+    texto: string;
+    created_at: string;
   } | null;
   revision_activa?: {
     id: string;
@@ -137,6 +143,7 @@ export interface SolicitantePedidoDetailDTO {
   }>;
   timeline_publico?: Array<{
     evento?: string;
+    titulo?: string;
     fecha?: string;
     occurred_at?: string;
     created_at?: string;
@@ -145,12 +152,16 @@ export interface SolicitantePedidoDetailDTO {
   }>;
   historial?: Array<{
     evento?: string;
+    titulo?: string;
     fecha?: string;
     occurred_at?: string;
     created_at?: string;
     descripcion?: string;
     detalle?: string;
   }>;
+  pedido?: Record<string, any>;
+  notas?: Array<any>;
+  solicitudes?: Array<any>;
 }
 
 // 1. Request access link by email
@@ -246,6 +257,177 @@ export async function solicitanteGetPedidos(
   return data;
 }
 
+// Mapeo canónico a lenguaje natural en español para el historial público del solicitante
+export const PUBLIC_EVENT_LABELS: Record<string, { titulo: string; descripcion?: string }> = {
+  'pedido.created': {
+    titulo: 'Solicitud creada',
+    descripcion: 'La solicitud fue ingresada y registrada en el sistema.',
+  },
+  'pedido.info_requested': {
+    titulo: 'Se solicitó información adicional',
+    descripcion: 'El equipo solicitó información complementaria para continuar.',
+  },
+  'pedido.info_responded': {
+    titulo: 'Respondiste la información solicitada',
+    descripcion: 'Información complementaria enviada con éxito.',
+  },
+  'pedido.finalized': {
+    titulo: 'Pedido finalizado',
+    descripcion: 'El trabajo ha sido completado satisfactoriamente.',
+  },
+  'pedido.cancelled': {
+    titulo: 'Pedido cancelado',
+    descripcion: 'El pedido fue cancelado.',
+  },
+  'pedido.revision_requested': {
+    titulo: 'Pedido devuelto para corrección',
+    descripcion: 'Solicitud de revisión enviada.',
+  },
+};
+
+/**
+ * Traduce nombres técnicos de eventos (p. ej. 'pedido.info_requested') a etiquetas
+ * en lenguaje natural amigables para el solicitante, sin exponer nomenclaturas técnicas.
+ */
+export function formatFriendlyPublicEvent(rawEvent?: string): { titulo: string; descripcion?: string } {
+  const trimmed = (rawEvent || '').trim();
+  if (PUBLIC_EVENT_LABELS[trimmed]) {
+    return PUBLIC_EVENT_LABELS[trimmed];
+  }
+  // Limpieza genérica para eventos no estándar sin tecnicismos
+  const cleaned = trimmed
+    .replace(/^pedido\./, '')
+    .replace(/_/g, ' ')
+    .trim();
+  const titulo = cleaned
+    ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+    : 'Actualización de seguimiento';
+  return { titulo };
+}
+
+/**
+ * Normaliza y sanea el detalle del pedido recibido del backend/RPC para la vista pública:
+ * - Aplana las propiedades anidadas en 'pedido' hacia la raíz
+ * - Filtra notas públicas (visibilidad = 'solicitante' o 'para_solicitante') y excluye notas internas
+ * - En pedidos finalizados solo con nota, recupera la nota de entrega visible
+ * - Sanea el historial eliminando campos técnicos internos (actor_id, origen, version, entrega_id, etc.)
+ */
+export function normalizeSolicitantePedidoDetail(rawData: any): SolicitantePedidoDetailDTO {
+  if (!rawData || typeof rawData !== 'object') {
+    return rawData;
+  }
+
+  const ped = rawData.pedido && typeof rawData.pedido === 'object' ? rawData.pedido : rawData;
+
+  // 1. Filtrar notas públicas estrictamente (solicitante / para_solicitante)
+  const rawNotas = rawData.notas || rawData.notas_publicas || ped.notas || [];
+  const publicNotas = Array.isArray(rawNotas)
+    ? rawNotas
+        .filter((n: any) => !n.visibilidad || n.visibilidad === 'solicitante' || n.visibilidad === 'para_solicitante')
+        .map((n: any) => ({
+          id: n.id || '',
+          texto: n.texto || '',
+          created_at: n.created_at || '',
+          visibilidad: n.visibilidad || 'solicitante',
+        }))
+    : [];
+
+  // 2. Extraer solicitudes de información
+  const rawSolicitudes = rawData.solicitudes || rawData.solicitudes_informacion || ped.solicitudes || [];
+  const publicSolicitudes = Array.isArray(rawSolicitudes) ? rawSolicitudes : [];
+
+  // 3. Extraer entrega inicial
+  let entrega = rawData.entrega || ped.entrega || null;
+
+  // 4. Estado y atributos
+  const estadoActual = ped.estado || rawData.estado || '';
+
+  // 5. Historial público saneado (eliminar actor_id, origen, version, entrega_id, pedido_id, has_enlace, payloads crudos)
+  const rawHistorial = rawData.historial || rawData.timeline_publico || ped.historial || [];
+  let finalEventNote: string | null = null;
+
+  const sanitizedHistorial = Array.isArray(rawHistorial)
+    ? rawHistorial.map((h: any) => {
+        const rawEventName = (h.evento || h.event_name || h.event || h.tipo || '').trim();
+        const friendly = formatFriendlyPublicEvent(rawEventName);
+
+        // Si el evento de finalización contiene una nota, preservarla para entrega final
+        if (rawEventName === 'pedido.finalized' || rawEventName === 'finalized') {
+          const payloadNote = h.detalles?.nota || h.payload?.nota;
+          if (typeof payloadNote === 'string' && payloadNote.trim()) {
+            finalEventNote = payloadNote.trim();
+          }
+        }
+
+        const titulo = h.titulo || friendly.titulo;
+        const descripcion = h.descripcion || friendly.descripcion || (typeof h.descripcion === 'string' && !h.descripcion.includes('pedido.') ? h.descripcion : undefined);
+
+        return {
+          evento: titulo,
+          titulo,
+          descripcion,
+          fecha: h.created_at || h.occurred_at || h.fecha || '',
+          created_at: h.created_at || h.occurred_at || h.fecha || '',
+          occurred_at: h.occurred_at || h.created_at || h.fecha || '',
+        };
+      })
+    : [];
+
+  // 6. Rescate de nota de entrega final si el pedido está Finalizado
+  let notaFinalObj: { texto: string; created_at: string } | null = rawData.nota_final || ped.nota_final || null;
+  if (!notaFinalObj && estadoActual === 'Finalizado') {
+    const lastPublicNote = publicNotas.length > 0 ? publicNotas[publicNotas.length - 1].texto : null;
+    const notaCierre = entrega?.nota_publica || entrega?.nota || lastPublicNote || finalEventNote;
+
+    if (notaCierre) {
+      notaFinalObj = {
+        texto: notaCierre,
+        created_at: ped.updated_at || ped.created_at || new Date().toISOString(),
+      };
+    }
+  }
+
+  // Sincronizar nota en entrega si existe objeto de entrega
+  if (entrega && notaFinalObj) {
+    entrega.nota = entrega.nota || notaFinalObj.texto;
+    entrega.nota_publica = entrega.nota_publica || notaFinalObj.texto;
+  }
+
+  // 7. Retornar DTO sanitizado y aplanado
+  const normalized: SolicitantePedidoDetailDTO = {
+    id: ped.id || rawData.id || '',
+    envio_id: ped.envio_id || rawData.envio_id,
+    pedido_visible: ped.pedido_visible || rawData.pedido_visible || '',
+    anio: ped.anio ?? rawData.anio ?? 0,
+    numero: ped.numero ?? rawData.numero ?? 0,
+    codigo_categoria: ped.codigo_categoria || rawData.codigo_categoria || '',
+    categoria_nombre: ped.categoria_nombre || rawData.categoria_nombre || '',
+    tipo_nombre: ped.tipo_nombre || rawData.tipo_nombre || '',
+    titulo: ped.titulo || rawData.titulo,
+    estado: estadoActual,
+    retrabajo_activo: Boolean(ped.retrabajo_activo ?? rawData.retrabajo_activo),
+    revision_count: Number(ped.revision_count ?? rawData.revision_count ?? 0),
+    tiene_revision_abierta: Boolean(rawData.revision_activa || ped.revision_activa || rawData.tiene_revision_abierta),
+    created_at: ped.created_at || rawData.created_at || '',
+    updated_at: ped.updated_at || rawData.updated_at || '',
+    informacion_especifica: ped.informacion_especifica || rawData.informacion_especifica || {},
+    notas_publicas: publicNotas,
+    solicitudes_informacion: publicSolicitudes,
+    entrega,
+    nota_final: notaFinalObj,
+    revision_activa: rawData.revision_activa || ped.revision_activa || null,
+    revisiones_historial: rawData.revisiones_historial || ped.revisiones_historial || [],
+    archivos_adjuntos: rawData.archivos_adjuntos || ped.archivos_adjuntos || rawData.archivos_iniciales || [],
+    timeline_publico: sanitizedHistorial,
+    historial: sanitizedHistorial,
+    pedido: ped,
+    solicitudes: publicSolicitudes,
+    notas: publicNotas,
+  } as any;
+
+  return normalized;
+}
+
 // 4. Get full sanitized detail of a specific pedido for authenticated solicitante session
 export async function solicitanteGetPedidoDetail(
   sessionToken: string,
@@ -272,8 +454,9 @@ export async function solicitanteGetPedidoDetail(
     (err as any).status = res.status;
     throw err;
   }
-  return data;
+  return normalizeSolicitantePedidoDetail(data);
 }
+
 
 // 5. Submit response to 48h info request under authenticated solicitante session
 export async function solicitanteSubmitInfoResponse(

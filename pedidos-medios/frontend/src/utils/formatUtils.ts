@@ -183,3 +183,52 @@ export function formatNotificationSummary(notif: {
   return 'Notificación operativa';
 }
 
+/**
+ * Resuelve de forma inteligente y jerárquica el nombre o descripción del servicio solicitado.
+ * Jerarquía:
+ * 1. categoria_nombre + tipo_nombre (si ambos están presentes) -> "Categoría — Tipo"
+ * 2. Solo categoria_nombre -> "Categoría"
+ * 3. Solo tipo_nombre -> "Tipo"
+ * 4. Título directo en pedido o campos descriptivos legibles en informacion_especifica
+ * 5. Fallback a "—" únicamente si no hay nada disponible
+ */
+export function getServicioSolicitadoTexto(pedido: any): string {
+  if (!pedido) return '—';
+
+  const cat = (pedido.categoria_nombre || pedido.pedido?.categoria_nombre || '').trim();
+  const tipo = (pedido.tipo_nombre || pedido.pedido?.tipo_nombre || '').trim();
+
+  if (cat && tipo) {
+    return `${cat} — ${tipo}`;
+  }
+  if (cat) {
+    return cat;
+  }
+  if (tipo) {
+    return tipo;
+  }
+
+  const tituloDirecto = (pedido.titulo || pedido.pedido?.titulo || '').trim();
+  if (tituloDirecto) return tituloDirecto;
+
+  const info = pedido.informacion_especifica || pedido.pedido?.informacion_especifica || {};
+  const infoCandidates = [
+    info.titulo,
+    info.nombre_servicio,
+    info.servicio_solicitado,
+    info.tipo_trabajo,
+    info.tipo_servicio,
+    info.servicio,
+    info.resumen,
+    info.descripcion_corta,
+  ];
+
+  for (const candidate of infoCandidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+
+  return '—';
+}
+
