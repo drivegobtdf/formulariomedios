@@ -463,6 +463,7 @@ export const PedidoDetallePage: React.FC = () => {
     if (!pedido) return;
     const isInternalOrder = (pedido.origen || '').toLowerCase().trim() === 'interno';
     const cleanUrl = entregaUrl.trim();
+    const cleanNota = entregaNota.trim();
     const completedArchivoIds = deliveryFiles
       .filter((f) => f.status === 'completed' && f.archivoId)
       .map((f) => f.archivoId as string);
@@ -472,8 +473,8 @@ export const PedidoDetallePage: React.FC = () => {
       return;
     }
 
-    if (!isInternalOrder && completedArchivoIds.length === 0 && !cleanUrl) {
-      setModalError('Adjuntá al menos un archivo o ingresá un enlace de entrega.');
+    if (!isInternalOrder && cleanNota.length === 0) {
+      setModalError('La nota de entrega es obligatoria para finalizar un pedido público.');
       return;
     }
 
@@ -786,33 +787,30 @@ export const PedidoDetallePage: React.FC = () => {
   // Lógica canónica de finalización (interno vs público)
   const isInternal = (pedido.origen || '').toLowerCase().trim() === 'interno';
   const cleanEntregaUrl = entregaUrl.trim();
+  const cleanNota = entregaNota.trim();
   const hasUrlContent = cleanEntregaUrl.length > 0;
   const isEntregaUrlValid = isValidHttpUrl(cleanEntregaUrl);
   const hasInvalidEntregaUrl = hasUrlContent && !isEntregaUrlValid;
 
   const hasUploadingDelivery = deliveryFiles.some((f) => f.status === 'uploading');
   const hasErrorDelivery = deliveryFiles.some((f) => f.status === 'error');
-  const hasCompletedDelivery = deliveryFiles.some((f) => f.status === 'completed' && Boolean(f.archivoId));
 
-  // Requisito de material de entrega:
-  // - Interno: archivos, enlace y nota son opcionales (pueden ser los tres vacíos).
-  // - Público: exige al menos un archivo completado O un enlace HTTP/HTTPS válido.
-  const hasDeliveryMaterial = isInternal
-    ? true
-    : (hasCompletedDelivery || isEntregaUrlValid);
+  // Nota obligatoria únicamente para pedidos públicos
+  const hasRequiredNote = isInternal ? true : cleanNota.length > 0;
 
   // canFinalize:
   // - no estar enviando (actionLoading)
   // - no haber subidas en curso
   // - no haber archivos con error
   // - si se ingresó enlace, no debe ser inválido (bloquea "a", etc. tanto en público como en interno)
-  // - cumplir requisito de material
+  // - cumplir requisito de nota (obligatoria en público, opcional en interno)
+  // - archivos y enlace son opcionales en ambos orígenes
   const canFinalize =
     !actionLoading &&
     !hasUploadingDelivery &&
     !hasErrorDelivery &&
     !hasInvalidEntregaUrl &&
-    hasDeliveryMaterial;
+    hasRequiredNote;
 
   return (
     <div className="pedidos-detalle-container">
@@ -2386,7 +2384,7 @@ export const PedidoDetallePage: React.FC = () => {
               {/* Archivos de entrega */}
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>
-                  {isInternal ? 'Archivos de entrega (opcional)' : 'Archivos de entrega (opcional si hay enlace)'}
+                  Archivos de entrega (opcional)
                 </label>
                 <div style={{ border: '2px dashed var(--pedidos-border-default, #cbd5e1)', borderRadius: '0.5rem', padding: '1rem', textAlign: 'center', backgroundColor: 'var(--pedidos-surface-sunken, #f8fafc)' }}>
                   <input
@@ -2479,7 +2477,7 @@ export const PedidoDetallePage: React.FC = () => {
               {/* Enlace externo */}
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>
-                  {isInternal ? 'Enlace externo (opcional)' : 'Enlace externo (opcional si hay archivos)'}
+                  Enlace externo (opcional)
                 </label>
                 <input
                   type="url"
@@ -2512,7 +2510,7 @@ export const PedidoDetallePage: React.FC = () => {
               {/* Nota de entrega */}
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>
-                  Nota de entrega (opcional)
+                  {isInternal ? 'Nota de entrega (opcional)' : 'Nota de entrega (obligatoria)'}
                 </label>
                 <textarea
                   rows={3}
