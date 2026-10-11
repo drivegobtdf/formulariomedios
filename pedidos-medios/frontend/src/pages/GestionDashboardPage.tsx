@@ -1027,7 +1027,7 @@ export const GestionDashboardPage: React.FC = () => {
                         </div>
                       )}
                       <div style={{ fontSize: '0.825rem', color: 'var(--pedidos-text-secondary, #334155)', fontWeight: 500 }}>
-                        {ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categorizar' : 'General')} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
+                        {ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categoría' : 'General')} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                       </div>
 
                       {/* Solicitante y Área */}
@@ -1339,7 +1339,7 @@ export const GestionDashboardPage: React.FC = () => {
 
                           {/* Service Category & Type */}
                           <div style={{ fontSize: '0.8rem', color: 'var(--pedidos-text-secondary, #334155)', fontWeight: 500 }}>
-                            {ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categorizar' : 'General')} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
+                            {ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categoría' : 'General')} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                           </div>
 
                           {/* Solicitante y Área */}
@@ -1566,8 +1566,8 @@ export const GestionDashboardPage: React.FC = () => {
                         )}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: 'var(--pedidos-text-secondary, #334155)' }}>
-                        <div style={{ fontWeight: 500 }}>{ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categorizar' : 'General')}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>{ped.tipo_nombre || (ped.origen === 'interno' ? 'Interno' : 'Pieza')}</div>
+                        <div style={{ fontWeight: 500 }}>{ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categoría' : 'General')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>{ped.tipo_nombre || (ped.origen === 'interno' ? 'General' : 'Pieza')}</div>
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         {canEditMetadata && !isTerminal ? (

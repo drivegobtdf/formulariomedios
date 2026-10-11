@@ -115,7 +115,7 @@ async function main() {
     assert(resMin?.success === true, 'Respuesta indica success=true');
     assert(Boolean(resMin?.id), 'Retorna ID de pedido');
     assert(resMin?.origen === 'interno', 'Origen retornado es interno');
-    assert(/^PED-[0-9]{4}-I[0-9]{6}$/.test(resMin?.pedido_visible), `Correlativo tiene formato canónico PED-YYYY-INNNNNN (${resMin?.pedido_visible})`);
+    assert(/^PED-[0-9]{4}-X[0-9]{6}$/.test(resMin?.pedido_visible), `Correlativo tiene formato canónico neutral PED-YYYY-XNNNNNN (${resMin?.pedido_visible})`);
     createdPedidos.push(resMin.id);
 
     // Verificar en BD directamente
@@ -125,7 +125,7 @@ async function main() {
     assert(dbMin?.envio_id === null, 'envio_id es NULL (sin envío público asociado)');
     assert(dbMin?.categoria_id === null, 'categoria_id es NULL por defecto');
     assert(dbMin?.tipo_servicio_id === null, 'tipo_servicio_id es NULL por defecto');
-    assert(dbMin?.codigo_categoria === 'I', 'codigo_categoria es "I" (Interno)');
+    assert(dbMin?.codigo_categoria === 'X', 'codigo_categoria es "X" (Sin clasificar / neutral)');
     assert(dbMin?.estado === 'Nuevo', 'Estado inicial es "Nuevo"');
     assert(dbMin?.created_by_user_id === adminUser.userId, 'created_by_user_id coincide con el actor');
 
@@ -186,6 +186,27 @@ async function main() {
       .select('enlace_id, enlaces_material(url)')
       .eq('pedido_id', resFull.id);
     assert(enlacesDb?.length === 2, '2 enlaces asociados en enlace_pedido');
+
+    // =========================================================================
+    // TEST 2.1: Concurrencia de dos creaciones internas sin categoría (X)
+    // =========================================================================
+    console.log('\n--- 3. TEST: Concurrencia de dos creaciones internas sin categoría en paralelo ---');
+    const [conc1, conc2] = await Promise.all([
+      adminClient.rpc('pedido_create_internal', {
+        p_titulo: 'Pedido Concurrente A ' + runId,
+        p_client_request_ref: crypto.randomUUID(),
+      }),
+      adminClient.rpc('pedido_create_internal', {
+        p_titulo: 'Pedido Concurrente B ' + runId,
+        p_client_request_ref: crypto.randomUUID(),
+      })
+    ]);
+    assert(!conc1.error, 'Creación concurrente 1 exitosa: ' + (conc1.error?.message || 'OK'));
+    assert(!conc2.error, 'Creación concurrente 2 exitosa: ' + (conc2.error?.message || 'OK'));
+    assert(conc1.data?.pedido_visible !== conc2.data?.pedido_visible, `Correlativos concurrentes son distintos (${conc1.data?.pedido_visible} !== ${conc2.data?.pedido_visible})`);
+    assert(/^PED-[0-9]{4}-X[0-9]{6}$/.test(conc1.data?.pedido_visible), 'Correlativo 1 es PED-YYYY-XNNNNNN');
+    assert(/^PED-[0-9]{4}-X[0-9]{6}$/.test(conc2.data?.pedido_visible), 'Correlativo 2 es PED-YYYY-XNNNNNN');
+    createdPedidos.push(conc1.data.id, conc2.data.id);
 
     // =========================================================================
     // TEST 3: Idempotencia con client_request_ref

@@ -827,10 +827,10 @@ describe('GestionDashboardPage Unit Tests', () => {
       const mockPedidosConInterno: gestionApi.PedidoListItem[] = [
         {
           id: 'ped-int-1',
-          pedido_visible: 'PED-2026-I000001',
+          pedido_visible: 'PED-2026-X000001',
           anio: 2026,
           numero: 1,
-          codigo_categoria: 'I',
+          codigo_categoria: 'X',
           origen: 'interno',
           titulo: 'Campaña Invierno 2026',
           categoria_id: null,
@@ -855,12 +855,12 @@ describe('GestionDashboardPage Unit Tests', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('PED-2026-I000001')).toBeInTheDocument();
+        expect(screen.getByText('PED-2026-X000001')).toBeInTheDocument();
       });
 
       expect(screen.getByText('INTERNO')).toBeInTheDocument();
       expect(screen.getByText('Campaña Invierno 2026')).toBeInTheDocument();
-      expect(screen.getByText('Sin categorizar')).toBeInTheDocument();
+      expect(screen.getByText('Sin categoría')).toBeInTheDocument();
     });
   });
 });

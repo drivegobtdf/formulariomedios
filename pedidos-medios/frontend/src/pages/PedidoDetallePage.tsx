@@ -773,7 +773,7 @@ export const PedidoDetallePage: React.FC = () => {
   if (!pedido) return null;
 
   // Formato no redundante de Categoría y Tipo de Servicio
-  const categoriaTitulo = pedido.categoria_nombre || (pedido.origen === 'interno' ? 'Carga Interna' : '');
+  const categoriaTitulo = pedido.categoria_nombre || (pedido.origen === 'interno' ? 'Sin categoría' : '');
   const tipoTitulo = pedido.tipo_nombre || '';
   const servicioEncabezado =
     categoriaTitulo.toLowerCase() === tipoTitulo.toLowerCase() || !tipoTitulo

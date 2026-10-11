@@ -121,6 +121,13 @@ async function main() {
     assert(!createErr, 'Creación interna completada sin error');
     const internalPedidoId = createRes?.id || createRes?.pedido_id;
     assert(Boolean(internalPedidoId), `Pedido interno creado con ID: ${internalPedidoId}`);
+    assert(/^PED-[0-9]{4}-X[0-9]{6}$/.test(createRes?.pedido_visible), `Pedido interno sin categoría genera correlativo neutral PED-YYYY-XNNNNNN (${createRes?.pedido_visible})`);
+    assert(createRes?.codigo_categoria === 'X', 'codigo_categoria retornado es "X"');
+
+    const { data: checkDbX } = await serviceClient.from('pedidos').select('categoria_id, codigo_categoria, origen').eq('id', internalPedidoId).single();
+    assert(checkDbX?.categoria_id === null, 'DB: categoria_id permanece estrictamente NULL');
+    assert(checkDbX?.codigo_categoria === 'X', 'DB: codigo_categoria es "X" (no representa origen)');
+    assert(checkDbX?.origen === 'interno', 'DB: origen es "interno"');
 
     // 2.2 Llevar a En revisión y luego a En proceso
     // Primero asignar a Operador B

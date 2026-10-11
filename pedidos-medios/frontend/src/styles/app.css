@@ -101,11 +101,11 @@
   --pedidos-rework-border: #FDE68A;
   --pedidos-rework-accent: #D97706;
 
-  /* Design Tokens Semánticos — Pedidos Internos (FASE B.3) */
+  /* Design Tokens Semánticos — Pedidos Internos (FASE B.3 / B.3.2) */
   --pedidos-badge-interno-bg: #FFE4E6;
-  --pedidos-badge-interno-text: #E11D48;
+  --pedidos-badge-interno-text: #BE123C;
   --pedidos-badge-interno-border: #FECDD3;
-  --pedidos-interno-accent: #F43F5E;
+  --pedidos-interno-accent: #FB7185;
 
   /* Modal Backdrop */
   --pedidos-backdrop-bg: rgba(15, 23, 42, 0.6);

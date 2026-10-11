@@ -1244,10 +1244,10 @@ describe('PedidoDetallePage Unit Tests', () => {
 
     const mockInternalDetail: gestionApi.PedidoDetailItem = {
       id: 'ped-int-detail-1',
-      pedido_visible: 'PED-2026-I000045',
+      pedido_visible: 'PED-2026-X000045',
       anio: 2026,
       numero: 45,
-      codigo_categoria: 'I',
+      codigo_categoria: 'X',
       origen: 'interno',
       titulo: 'Cobertura Especial Festival Invierno',
       categoria_id: null,
@@ -1287,7 +1287,7 @@ describe('PedidoDetallePage Unit Tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('PED-2026-I000045')).toBeInTheDocument();
+      expect(screen.getByText('PED-2026-X000045')).toBeInTheDocument();
     });
 
     expect(screen.getByText('INTERNO')).toBeInTheDocument();
@@ -1311,10 +1311,10 @@ describe('PedidoDetallePage Unit Tests', () => {
 
     const mockInternalEnProceso: gestionApi.PedidoDetailItem = {
       id: 'ped-int-detail-2',
-      pedido_visible: 'PED-2026-I000046',
+      pedido_visible: 'PED-2026-X000046',
       anio: 2026,
       numero: 46,
-      codigo_categoria: 'I',
+      codigo_categoria: 'X',
       origen: 'interno',
       titulo: 'Diseño Flyer Urgente',
       categoria_id: null,
