@@ -148,7 +148,7 @@ export const NotificationBell: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-              border: '2px solid var(--pedidos-surface-card, #ffffff)',
+              border: '2px solid var(--pedidos-popover-bg, #ffffff)',
             }}
           >
             {badgeText}
@@ -159,14 +159,15 @@ export const NotificationBell: React.FC = () => {
       {/* Panel Dropdown */}
       {isOpen && (
         <div
+          className="pedidos-notification-dropdown"
           style={{
             position: 'absolute',
             top: 'calc(100% + 8px)',
             right: 0,
             width: '360px',
             maxWidth: 'calc(100vw - 1.5rem)',
-            backgroundColor: 'var(--pedidos-surface-card, #ffffff)',
-            border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+            backgroundColor: 'var(--pedidos-popover-bg, #ffffff)',
+            border: '1px solid var(--pedidos-popover-border, #cbd5e1)',
             borderRadius: '0.5rem',
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
             zIndex: 1000,
@@ -179,11 +180,11 @@ export const NotificationBell: React.FC = () => {
           <div
             style={{
               padding: '0.75rem 0.9rem',
-              borderBottom: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
+              borderBottom: '1px solid var(--pedidos-popover-border, #e2e8f0)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              backgroundColor: 'var(--pedidos-surface-raised, #f8fafc)',
+              backgroundColor: 'var(--pedidos-popover-header-bg, #f8fafc)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -231,8 +232,8 @@ export const NotificationBell: React.FC = () => {
           <div
             style={{
               display: 'flex',
-              borderBottom: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
-              backgroundColor: 'var(--pedidos-surface-card, #ffffff)',
+              borderBottom: '1px solid var(--pedidos-popover-border, #e2e8f0)',
+              backgroundColor: 'var(--pedidos-popover-header-bg, #f8fafc)',
             }}
           >
             <button
@@ -309,19 +310,19 @@ export const NotificationBell: React.FC = () => {
                       alignItems: 'flex-start',
                       gap: '0.65rem',
                       cursor: 'pointer',
-                      borderBottom: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
+                      borderBottom: '1px solid var(--pedidos-popover-border, #f1f5f9)',
                       backgroundColor: isUnread
-                        ? 'var(--pedidos-surface-sunken, #f8fafc)'
-                        : 'var(--pedidos-surface-card, #ffffff)',
+                        ? 'var(--pedidos-popover-item-unread, #f0f9ff)'
+                        : 'var(--pedidos-popover-bg, #ffffff)',
                       transition: 'background-color 0.15s ease',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--pedidos-surface-raised, #f1f5f9)';
+                      e.currentTarget.style.backgroundColor = 'var(--pedidos-popover-item-hover, #f1f5f9)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = isUnread
-                        ? 'var(--pedidos-surface-sunken, #f8fafc)'
-                        : 'var(--pedidos-surface-card, #ffffff)';
+                        ? 'var(--pedidos-popover-item-unread, #f0f9ff)'
+                        : 'var(--pedidos-popover-bg, #ffffff)';
                     }}
                   >
                     {/* Icono de tipo */}
@@ -376,8 +377,8 @@ export const NotificationBell: React.FC = () => {
           <div
             style={{
               padding: '0.6rem 0.9rem',
-              borderTop: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
-              backgroundColor: 'var(--pedidos-surface-raised, #f8fafc)',
+              borderTop: '1px solid var(--pedidos-popover-border, #e2e8f0)',
+              backgroundColor: 'var(--pedidos-popover-footer-bg, #f8fafc)',
               textAlign: 'center',
             }}
           >

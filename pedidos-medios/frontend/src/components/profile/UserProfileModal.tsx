@@ -66,13 +66,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'administrador':
-        return { label: 'Administrador', bg: '#fef3c7', color: '#b45309' };
+        return { label: 'Administrador', className: 'pedidos-role-admin' };
       case 'equipo':
-        return { label: 'Equipo Operativo', bg: '#e0f2fe', color: '#0369a1' };
+        return { label: 'Equipo Operativo', className: 'pedidos-role-equipo' };
       case 'observador':
-        return { label: 'Observador', bg: '#f1f5f9', color: '#475569' };
+        return { label: 'Observador', className: 'pedidos-role-obs' };
       default:
-        return { label: role, bg: '#f1f5f9', color: '#475569' };
+        return { label: role, className: 'pedidos-role-obs' };
     }
   };
 
@@ -149,9 +149,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                 marginBottom: '1rem',
                 padding: '0.65rem 0.85rem',
                 borderRadius: '0.375rem',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                color: '#b91c1c',
+                backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)',
+                border: '1px solid var(--pedidos-status-cancelado-border, #fecaca)',
+                color: 'var(--pedidos-status-cancelado-text, #b91c1c)',
                 fontSize: '0.85rem',
               }}
             >
@@ -165,9 +165,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                 marginBottom: '1rem',
                 padding: '0.65rem 0.85rem',
                 borderRadius: '0.375rem',
-                backgroundColor: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                color: '#15803d',
+                backgroundColor: 'var(--pedidos-status-finalizado-bg, #f0fdf4)',
+                border: '1px solid var(--pedidos-status-finalizado-border, #bbf7d0)',
+                color: 'var(--pedidos-status-finalizado-text, #15803d)',
                 fontSize: '0.85rem',
               }}
             >
@@ -201,7 +201,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     padding: '0.55rem 0.75rem',
                     borderRadius: '0.375rem',
                     border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                    backgroundColor: 'var(--pedidos-surface-card, #ffffff)',
+                    backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
                     color: 'var(--pedidos-text-primary, #0f172a)',
                     fontSize: '0.875rem',
                     boxSizing: 'border-box',
@@ -232,7 +232,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     padding: '0.55rem 0.75rem',
                     borderRadius: '0.375rem',
                     border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                    backgroundColor: 'var(--pedidos-surface-card, #ffffff)',
+                    backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
                     color: 'var(--pedidos-text-primary, #0f172a)',
                     fontSize: '0.875rem',
                     boxSizing: 'border-box',
@@ -326,13 +326,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                   Rol Asignado
                 </span>
                 <span
+                  className={roleInfo.className}
                   style={{
                     fontSize: '0.75rem',
                     fontWeight: 700,
                     padding: '0.15rem 0.45rem',
                     borderRadius: '0.25rem',
-                    backgroundColor: roleInfo.bg,
-                    color: roleInfo.color,
                     width: 'fit-content',
                   }}
                 >
@@ -360,8 +359,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     fontWeight: 700,
                     padding: '0.15rem 0.45rem',
                     borderRadius: '0.25rem',
-                    backgroundColor: '#dcfce7',
-                    color: '#15803d',
+                    backgroundColor: 'var(--pedidos-status-finalizado-bg, #dcfce7)',
+                    color: 'var(--pedidos-status-finalizado-text, #15803d)',
+                    border: '1px solid var(--pedidos-status-finalizado-border, #bbf7d0)',
                     width: 'fit-content',
                   }}
                 >
@@ -407,7 +407,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                 borderRadius: '0.375rem',
                 border: 'none',
                 backgroundColor: 'var(--pedidos-brand-accent, #0284c7)',
-                color: '#ffffff',
+                color: 'var(--pedidos-text-inverse, #ffffff)',
                 fontWeight: 600,
                 fontSize: '0.85rem',
                 cursor: isSaving ? 'not-allowed' : 'pointer',

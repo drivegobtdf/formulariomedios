@@ -88,9 +88,9 @@ export const GlobalLogoutModal: React.FC<GlobalLogoutModalProps> = ({ isOpen, on
             style={{
               padding: '0.75rem',
               borderRadius: '0.375rem',
-              backgroundColor: '#fffbeb',
-              border: '1px solid #fef3c7',
-              color: '#b45309',
+              backgroundColor: 'var(--pedidos-status-revision-bg, #fffbeb)',
+              border: '1px solid var(--pedidos-status-revision-border, #fef3c7)',
+              color: 'var(--pedidos-status-revision-text, #b45309)',
               fontSize: '0.85rem',
               marginBottom: '1rem',
               lineHeight: 1.45,

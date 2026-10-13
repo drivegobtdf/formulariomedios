@@ -32,6 +32,16 @@
   --pedidos-surface-default: #FFFFFF;
   --pedidos-surface-raised: #FFFFFF;
   --pedidos-surface-overlay: #FFFFFF;
+  --pedidos-surface-card: #FFFFFF;
+
+  /* Design Tokens Semánticos — Popovers & Dropdowns */
+  --pedidos-popover-bg: #FFFFFF;
+  --pedidos-popover-header-bg: #F8FAFC;
+  --pedidos-popover-footer-bg: #F8FAFC;
+  --pedidos-popover-border: #E2E8F0;
+  --pedidos-popover-item-hover: #F1F5F9;
+  --pedidos-popover-item-unread: #F0F9FF;
+  --pedidos-popover-danger-hover: #FEF2F2;
 
   /* Design Tokens Semánticos — Tipografía y Contraste */
   --pedidos-text-primary: #0F172A;
@@ -2215,6 +2225,20 @@
   --pedidos-surface-default: #111827;
   --pedidos-surface-raised: #1e293b;
   --pedidos-surface-overlay: #1e293b;
+  --pedidos-surface-card: #1e293b;
+
+  /* Brand Accent & Hover (Accessible in dark theme) */
+  --pedidos-brand-accent: #38bdf8;
+  --pedidos-brand-accent-hover: #7dd3fc;
+
+  /* Design Tokens Semánticos — Popovers & Dropdowns Dark */
+  --pedidos-popover-bg: #1e293b;
+  --pedidos-popover-header-bg: #0f172a;
+  --pedidos-popover-footer-bg: #0f172a;
+  --pedidos-popover-border: #334155;
+  --pedidos-popover-item-hover: #243147;
+  --pedidos-popover-item-unread: rgba(56, 189, 248, 0.12);
+  --pedidos-popover-danger-hover: rgba(239, 68, 68, 0.18);
 
   /* Legacy brand tokens override */
   --pedidos-brand-bg: #0b1120;
@@ -2520,6 +2544,16 @@ body:has(.pedidos-app[data-theme="dark"]) {
   }
 }
 
-
-
-
+/* ==============================================================================
+   Dropdowns y Popovers — Responsive Guard
+   ============================================================================== */
+@media (max-width: 640px) {
+  .pedidos-app .pedidos-notification-dropdown {
+    position: fixed !important;
+    top: 70px !important;
+    left: 0.75rem !important;
+    right: 0.75rem !important;
+    width: auto !important;
+    max-width: calc(100vw - 1.5rem) !important;
+  }
+}

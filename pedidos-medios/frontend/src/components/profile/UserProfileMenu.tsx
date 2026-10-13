@@ -46,13 +46,13 @@ export const UserProfileMenu: React.FC = () => {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'administrador':
-        return { label: 'Admin', bg: '#fef3c7', color: '#b45309' };
+        return { label: 'Admin', className: 'pedidos-role-admin' };
       case 'equipo':
-        return { label: 'Equipo', bg: '#e0f2fe', color: '#0369a1' };
+        return { label: 'Equipo', className: 'pedidos-role-equipo' };
       case 'observador':
-        return { label: 'Observador', bg: '#f1f5f9', color: '#475569' };
+        return { label: 'Observador', className: 'pedidos-role-obs' };
       default:
-        return { label: role, bg: '#f1f5f9', color: '#475569' };
+        return { label: role, className: 'pedidos-role-obs' };
     }
   };
 
@@ -105,13 +105,12 @@ export const UserProfileMenu: React.FC = () => {
             {user.nombre} {user.apellido}
           </span>
           <span
+            className={roleInfo.className}
             style={{
               fontSize: '0.675rem',
               fontWeight: 700,
               padding: '0.1rem 0.35rem',
               borderRadius: '0.25rem',
-              backgroundColor: roleInfo.bg,
-              color: roleInfo.color,
             }}
           >
             {roleInfo.label}
@@ -130,8 +129,8 @@ export const UserProfileMenu: React.FC = () => {
               right: 0,
               width: '260px',
               maxWidth: 'calc(100vw - 1.5rem)',
-              backgroundColor: 'var(--pedidos-surface-card, #ffffff)',
-              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+              backgroundColor: 'var(--pedidos-popover-bg, #ffffff)',
+              border: '1px solid var(--pedidos-popover-border, #cbd5e1)',
               borderRadius: '0.5rem',
               boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15)',
               zIndex: 1000,
@@ -144,8 +143,8 @@ export const UserProfileMenu: React.FC = () => {
             <div
               style={{
                 padding: '0.75rem 0.9rem',
-                borderBottom: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
-                backgroundColor: 'var(--pedidos-surface-raised, #f8fafc)',
+                borderBottom: '1px solid var(--pedidos-popover-border, #e2e8f0)',
+                backgroundColor: 'var(--pedidos-popover-header-bg, #f8fafc)',
               }}
             >
               <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #0f172a)' }}>
@@ -177,7 +176,7 @@ export const UserProfileMenu: React.FC = () => {
                   transition: 'background-color 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--pedidos-surface-raised, #f1f5f9)';
+                  e.currentTarget.style.backgroundColor = 'var(--pedidos-popover-item-hover, #f1f5f9)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
@@ -187,7 +186,7 @@ export const UserProfileMenu: React.FC = () => {
                 <span>Mi perfil</span>
               </button>
 
-              <div style={{ height: '1px', backgroundColor: 'var(--pedidos-border-subtle, #e2e8f0)', margin: '0.35rem 0' }} />
+              <div style={{ height: '1px', backgroundColor: 'var(--pedidos-popover-border, #e2e8f0)', margin: '0.35rem 0' }} />
 
               <button
                 type="button"
@@ -208,7 +207,7 @@ export const UserProfileMenu: React.FC = () => {
                   transition: 'background-color 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--pedidos-surface-raised, #f1f5f9)';
+                  e.currentTarget.style.backgroundColor = 'var(--pedidos-popover-item-hover, #f1f5f9)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
@@ -230,7 +229,7 @@ export const UserProfileMenu: React.FC = () => {
                   gap: '0.55rem',
                   background: 'none',
                   border: 'none',
-                  color: '#dc2626',
+                  color: 'var(--pedidos-brand-danger, #dc2626)',
                   fontSize: '0.825rem',
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -238,7 +237,7 @@ export const UserProfileMenu: React.FC = () => {
                   transition: 'background-color 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#fef2f2';
+                  e.currentTarget.style.backgroundColor = 'var(--pedidos-popover-danger-hover, #fef2f2)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
