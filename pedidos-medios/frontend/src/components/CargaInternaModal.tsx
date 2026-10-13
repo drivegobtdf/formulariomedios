@@ -36,6 +36,52 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
   const [loadingCatalogo, setLoadingCatalogo] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
+  // Helper para resetear los campos al estado inicial limpio
+  const resetForm = () => {
+    setTitulo('');
+    setDescripcion('');
+    setSolicitanteNombre('');
+    setSolicitanteArea('');
+    setSolicitanteCorreo('');
+    setSolicitanteTelefono('');
+    setCategoriaId('');
+    setTipoServicioId('');
+    setPrioridad('');
+    setEtiquetaInterna('');
+    setFechaLimite('');
+    setEnlaces(['']);
+    setError(null);
+    setShowDiscardConfirm(false);
+  };
+
+  // Detección estricta de formulario modificado (dirty)
+  const isDirty =
+    Boolean(titulo) ||
+    Boolean(descripcion) ||
+    Boolean(solicitanteNombre) ||
+    Boolean(solicitanteArea) ||
+    Boolean(solicitanteCorreo) ||
+    Boolean(solicitanteTelefono) ||
+    Boolean(categoriaId) ||
+    Boolean(tipoServicioId) ||
+    Boolean(prioridad) ||
+    Boolean(etiquetaInterna) ||
+    Boolean(fechaLimite) ||
+    enlaces.length > 1 ||
+    (enlaces.length === 1 && Boolean(enlaces[0]));
+
+  // Cierre explícito protegido contra pérdida de datos
+  const handleRequestClose = () => {
+    if (submitting) return;
+    if (isDirty) {
+      setShowDiscardConfirm(true);
+    } else {
+      resetForm();
+      onClose();
+    }
+  };
 
   // Cargar catálogo de categorías y servicios al abrir
   useEffect(() => {
@@ -58,17 +104,24 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
     };
   }, [isOpen]);
 
-  // Manejo de tecla Escape
+  // Manejo de tecla Escape con confirmación si el formulario está dirty
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !submitting) {
-        onClose();
+        if (showDiscardConfirm) {
+          setShowDiscardConfirm(false);
+        } else if (isDirty) {
+          setShowDiscardConfirm(true);
+        } else {
+          resetForm();
+          onClose();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, submitting, onClose]);
+  }, [isOpen, submitting, isDirty, showDiscardConfirm, onClose]);
 
   if (!isOpen) return null;
 
@@ -138,6 +191,7 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
 
       const res = await createInternalPedido(payload);
       if (res && res.id) {
+        resetForm();
         onSuccess(res.id, res.pedido_visible);
       } else {
         throw new Error('Respuesta inválida al crear pedido interno.');
@@ -168,12 +222,10 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
         padding: '1rem',
         overflowY: 'auto',
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
-      }}
     >
       <div
         style={{
+          position: 'relative',
           backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)',
           color: 'var(--pedidos-text-primary, #0f172a)',
           border: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
@@ -187,6 +239,118 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
           overflow: 'hidden',
         }}
       >
+        {/* Diálogo de Confirmación de Descarte */}
+        {showDiscardConfirm && (
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="discard-confirm-title"
+            aria-describedby="discard-confirm-desc"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1200,
+              padding: '1.25rem',
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)',
+                color: 'var(--pedidos-text-primary, #0f172a)',
+                borderRadius: '0.625rem',
+                padding: '1.5rem',
+                maxWidth: '440px',
+                width: '100%',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                border: '1px solid var(--pedidos-border-default, #e2e8f0)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '1.4rem', lineHeight: 1 }} aria-hidden="true">
+                  ⚠️
+                </span>
+                <h3
+                  id="discard-confirm-title"
+                  style={{
+                    margin: 0,
+                    fontSize: '1.15rem',
+                    fontWeight: 700,
+                    color: 'var(--pedidos-text-primary, #0f172a)',
+                  }}
+                >
+                  ¿Descartar los cambios?
+                </h3>
+              </div>
+              <p
+                id="discard-confirm-desc"
+                style={{
+                  margin: 0,
+                  fontSize: '0.9rem',
+                  lineHeight: 1.5,
+                  color: 'var(--pedidos-text-muted, #475569)',
+                }}
+              >
+                Hay información cargada que todavía no fue guardada. Si cerrás esta ventana, se perderán los cambios.
+              </p>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '0.75rem',
+                  marginTop: '0.5rem',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowDiscardConfirm(false)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+                    backgroundColor: 'var(--pedidos-surface-sunken, #ffffff)',
+                    color: 'var(--pedidos-text-primary, #334155)',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Seguir editando
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetForm();
+                    onClose();
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.375rem',
+                    border: 'none',
+                    backgroundColor: '#dc2626',
+                    color: '#ffffff',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Descartar cambios
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Cabecera del Modal */}
         <div
           style={{
@@ -228,7 +392,7 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleRequestClose}
             disabled={submitting}
             aria-label="Cerrar modal"
             style={{
@@ -787,7 +951,7 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
           >
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleRequestClose}
               disabled={submitting}
               style={{
                 padding: '0.5rem 1rem',

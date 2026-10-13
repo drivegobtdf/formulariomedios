@@ -2313,12 +2313,12 @@ body:has(.pedidos-app[data-theme="dark"]) {
   background-color: #0b1120;
 }
 
-/* Logo Plate en Modo Oscuro */
+/* Logo en Modo Oscuro - Sin placa blanca, integración directa con header oscuro */
 .pedidos-app[data-theme="dark"] .pedidos-header-logo {
-  background-color: #ffffff;
-  padding: 4px 10px;
-  border-radius: var(--pedidos-radius-md, 0.5rem);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* Header & Footer */

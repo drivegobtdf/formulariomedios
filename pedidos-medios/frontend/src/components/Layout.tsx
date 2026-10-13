@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { NotificationBell } from './notifications/NotificationBell';
 import { UserProfileMenu } from './profile/UserProfileMenu';
 import logoGobTdf from '../assets/logo-gob-tdf.png';
+import logoGobTdfBlanco from '../../../../GOB-TDF-BLANCO-scaled-e1777050842342.png';
 
 export const Layout: React.FC = () => {
   const config = getPublicConfig();
@@ -56,6 +57,9 @@ export const Layout: React.FC = () => {
     ? 'pedidos-app pedidos-app-tracking'
     : 'pedidos-app pedidos-app-public';
 
+  const isDark = isInternalManagementPath && theme === 'dark';
+  const currentLogo = isDark ? logoGobTdfBlanco : logoGobTdf;
+
   return (
     <div className={containerClass} data-theme={isInternalManagementPath ? theme : undefined}>
       <header className="pedidos-header">
@@ -65,7 +69,7 @@ export const Layout: React.FC = () => {
             <div className="pedidos-header-main-row">
               <NavLink to="/" className="pedidos-header-brand-link" aria-label="Portal Oficial - Gobierno de Tierra del Fuego AIAS">
                 <img
-                  src={logoGobTdf}
+                  src={currentLogo}
                   alt="Gobierno de Tierra del Fuego AIAS"
                   className="pedidos-header-logo"
                 />
@@ -126,7 +130,7 @@ export const Layout: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <NavLink to="/" className="pedidos-header-brand-link" aria-label="Portal Oficial - Gobierno de Tierra del Fuego AIAS">
                 <img
-                  src={logoGobTdf}
+                  src={currentLogo}
                   alt="Gobierno de Tierra del Fuego AIAS"
                   className="pedidos-header-logo"
                 />

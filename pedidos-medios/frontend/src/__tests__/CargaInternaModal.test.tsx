@@ -148,4 +148,173 @@ describe('CargaInternaModal Component', () => {
 
     expect(screen.getAllByPlaceholderText(/https:\/\/drive\.google\.com\/\.\.\. o https:\/\/figma\.com\/\.\.\./i)).toHaveLength(1);
   });
+
+  describe('Protección contra cierre accidental y pérdida de datos', () => {
+    const renderOpenModal = async (onClose = vi.fn(), onSuccess = vi.fn()) => {
+      const utils = render(<CargaInternaModal isOpen={true} onClose={onClose} onSuccess={onSuccess} />);
+      await waitFor(() => {
+        expect(gestionApi.fetchCatalogoServicios).toHaveBeenCalled();
+      });
+      return utils;
+    };
+
+    it('A. abrir Carga Interna -> completar título -> click backdrop -> modal sigue abierto -> título permanece', async () => {
+      const mockOnClose = vi.fn();
+      await renderOpenModal(mockOnClose);
+
+      const tituloInput = screen.getByPlaceholderText(/Cobertura Acto Malvinas 2026/i) as HTMLInputElement;
+      fireEvent.change(tituloInput, { target: { value: 'Proyecto Ininterrumpido' } });
+
+      const dialogBackdrop = screen.getByRole('dialog');
+      fireEvent.click(dialogBackdrop);
+
+      expect(mockOnClose).not.toHaveBeenCalled();
+      expect(tituloInput.value).toBe('Proyecto Ininterrumpido');
+      expect(screen.getByText('Carga Interna de Pedido')).toBeInTheDocument();
+    });
+
+    it('B. abrir modal vacío -> click backdrop -> modal sigue abierto', async () => {
+      const mockOnClose = vi.fn();
+      await renderOpenModal(mockOnClose);
+
+      const dialogBackdrop = screen.getByRole('dialog');
+      fireEvent.click(dialogBackdrop);
+
+      expect(mockOnClose).not.toHaveBeenCalled();
+      expect(screen.getByText('Carga Interna de Pedido')).toBeInTheDocument();
+    });
+
+    it('C. modificar formulario -> click X -> aparece confirmación de descarte', async () => {
+      const mockOnClose = vi.fn();
+      await renderOpenModal(mockOnClose);
+
+      const descInput = screen.getByPlaceholderText(/Detalles sobre las necesidades del pedido/i);
+      fireEvent.change(descInput, { target: { value: 'Borrador con datos valiosos' } });
+
+      const closeBtn = screen.getByRole('button', { name: /Cerrar modal/i });
+      fireEvent.click(closeBtn);
+
+      expect(mockOnClose).not.toHaveBeenCalled();
+      expect(screen.getByText('¿Descartar los cambios?')).toBeInTheDocument();
+      expect(
+        screen.getByText(/Hay información cargada que todavía no fue guardada/i)
+      ).toBeInTheDocument();
+    });
+
+    it('D. confirmación -> "Seguir editando" -> modal abierto -> datos preservados', async () => {
+      const mockOnClose = vi.fn();
+      await renderOpenModal(mockOnClose);
+
+      const descInput = screen.getByPlaceholderText(/Detalles sobre las necesidades del pedido/i) as HTMLTextAreaElement;
+      fireEvent.change(descInput, { target: { value: 'Borrador con datos valiosos' } });
+
+      const closeBtn = screen.getByRole('button', { name: /Cerrar modal/i });
+      fireEvent.click(closeBtn);
+
+      const keepEditingBtn = screen.getByRole('button', { name: /Seguir editando/i });
+      fireEvent.click(keepEditingBtn);
+
+      expect(mockOnClose).not.toHaveBeenCalled();
+      expect(screen.queryByText('¿Descartar los cambios?')).not.toBeInTheDocument();
+      expect(descInput.value).toBe('Borrador con datos valiosos');
+    });
+
+    it('E. confirmación -> "Descartar cambios" -> modal cierra', async () => {
+      const mockOnClose = vi.fn();
+      await renderOpenModal(mockOnClose);
+
+      const descInput = screen.getByPlaceholderText(/Detalles sobre las necesidades del pedido/i);
+      fireEvent.change(descInput, { target: { value: 'Borrador a descartar' } });
+
+      const closeBtn = screen.getByRole('button', { name: /Cerrar modal/i });
+      fireEvent.click(closeBtn);
+
+      const discardBtn = screen.getByRole('button', { name: /Descartar cambios/i });
+      fireEvent.click(discardBtn);
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('F. formulario limpio -> click X -> cierra normalmente sin alerta', async () => {
+      const mockOnClose = vi.fn();
+      await renderOpenModal(mockOnClose);
+
+      const closeBtn = screen.getByRole('button', { name: /Cerrar modal/i });
+      fireEvent.click(closeBtn);
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('¿Descartar los cambios?')).not.toBeInTheDocument();
+    });
+
+    it('G. formulario dirty -> Escape -> confirmar antes de descartar', async () => {
+      const mockOnClose = vi.fn();
+      await renderOpenModal(mockOnClose);
+
+      const solicitanteInput = screen.getByPlaceholderText(/Lic\. Martín Rodríguez/i);
+      fireEvent.change(solicitanteInput, { target: { value: 'Juan Pérez' } });
+
+      fireEvent.keyDown(window, { key: 'Escape' });
+
+      expect(mockOnClose).not.toHaveBeenCalled();
+      expect(screen.getByText('¿Descartar los cambios?')).toBeInTheDocument();
+
+      // Si se pulsa Escape dentro de la confirmación, se cancela la alerta y regresa a editar
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(screen.queryByText('¿Descartar los cambios?')).not.toBeInTheDocument();
+      expect(mockOnClose).not.toHaveBeenCalled();
+    });
+
+    it('H. submit exitoso -> cierra sin alerta de descarte', async () => {
+      const mockOnClose = vi.fn();
+      const mockOnSuccess = vi.fn();
+
+      vi.mocked(gestionApi.createInternalPedido).mockResolvedValue({
+        success: true,
+        id: 'ped-int-999',
+        pedido_visible: 'PED-2026-I000099',
+        estado: 'Nuevo',
+        origen: 'interno',
+        version: 1,
+        idempotent: false,
+      });
+
+      await renderOpenModal(mockOnClose, mockOnSuccess);
+
+      const tituloInput = screen.getByPlaceholderText(/Cobertura Acto Malvinas 2026/i);
+      fireEvent.change(tituloInput, { target: { value: 'Lanzamiento Oficial 2026' } });
+
+      const submitBtn = screen.getByRole('button', { name: /Crear Pedido Interno/i });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(mockOnSuccess).toHaveBeenCalledWith('ped-int-999', 'PED-2026-I000099');
+      });
+
+      expect(mockOnClose).not.toHaveBeenCalled();
+      expect(screen.queryByText('¿Descartar los cambios?')).not.toBeInTheDocument();
+    });
+
+    it('I. botón Cancelar en footer respeta confirmación si está dirty o cierra directo si está limpio', async () => {
+      const mockOnClose = vi.fn();
+      const { unmount } = await renderOpenModal(mockOnClose);
+
+      // Limpio: Cancelar cierra directo
+      const cancelBtn = screen.getByRole('button', { name: /Cancelar/i });
+      fireEvent.click(cancelBtn);
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+      unmount();
+
+      // Dirty: Cancelar pide confirmación
+      const mockOnCloseDirty = vi.fn();
+      await renderOpenModal(mockOnCloseDirty);
+      const tituloInput = screen.getByPlaceholderText(/Cobertura Acto Malvinas 2026/i);
+      fireEvent.change(tituloInput, { target: { value: 'Cambio pendiente' } });
+
+      const cancelBtnDirty = screen.getByRole('button', { name: /Cancelar/i });
+      fireEvent.click(cancelBtnDirty);
+
+      expect(mockOnCloseDirty).not.toHaveBeenCalled();
+      expect(screen.getByText('¿Descartar los cambios?')).toBeInTheDocument();
+    });
+  });
 });

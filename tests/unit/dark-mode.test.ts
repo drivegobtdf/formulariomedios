@@ -152,5 +152,21 @@ describe('Modo Oscuro (Dark Mode)', () => {
     // No debe usar filter: invert
     expect(cssContent).not.toContain('filter: invert');
   });
+
+  it('8. En modo oscuro, el logo institucional no debe tener contenedor visual blanco, marco ni sombra en app.css', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const cssPath = path.resolve(__dirname, '../../pedidos-medios/frontend/src/styles/app.css');
+    const cssContent = fs.readFileSync(cssPath, 'utf-8');
+
+    const darkLogoMatch = cssContent.match(/\.pedidos-app\[data-theme="dark"\]\s+\.pedidos-header-logo\s*\{([^}]+)\}/);
+    expect(darkLogoMatch).not.toBeNull();
+    if (darkLogoMatch) {
+      const ruleBody = darkLogoMatch[1];
+      expect(ruleBody).not.toContain('background-color: #ffffff');
+      expect(ruleBody).toContain('background-color: transparent');
+      expect(ruleBody).toContain('box-shadow: none');
+    }
+  });
 });
 
