@@ -14,6 +14,7 @@ import { UsuariosAdminPage } from '../pages/UsuariosAdminPage';
 import { NotificacionesPage } from '../pages/NotificacionesPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { PrivacyPage } from '../pages/PrivacyPage';
+import { TablerosPrivadosPage } from '../pages/TablerosPrivadosPage';
 import { ConfirmarEmailPage, readAuthReturn } from '../pages/ConfirmarEmailPage';
 import { getPublicConfig } from '../services/config';
 
@@ -42,6 +43,10 @@ const RouterContent: React.FC = () => {
         <Route path="solicitar-acceso" element={<SolicitarAccesoPage />} />
         <Route path="confirmar-email" element={<ConfirmarEmailPage />} />
         <Route path="gestion" element={<GestionDashboardPage />} />
+        <Route path="gestion/tableros" element={<TablerosPrivadosPage />} />
+        <Route path="gestion/tableros/:boardId" element={<TablerosPrivadosPage />} />
+        <Route path="tableros" element={<TablerosPrivadosPage />} />
+        <Route path="tableros/:boardId" element={<TablerosPrivadosPage />} />
         <Route path="gestion/notificaciones" element={<NotificacionesPage />} />
         <Route path="notificaciones" element={<NotificacionesPage />} />
         <Route path="gestion/pedidos/:id" element={<PedidoDetallePage />} />

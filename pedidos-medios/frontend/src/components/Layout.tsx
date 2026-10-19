@@ -28,6 +28,7 @@ export const Layout: React.FC = () => {
 
   const isInternalManagementPath =
     location.pathname.startsWith('/gestion') ||
+    location.pathname.startsWith('/tableros') ||
     location.pathname.startsWith('/notificaciones') ||
     location.pathname.startsWith('/usuarios') ||
     location.pathname.startsWith('/pedido/');
@@ -105,9 +106,14 @@ export const Layout: React.FC = () => {
 
             {isInternalPath && (
               <nav className="pedidos-nav" aria-label="Navegación interna">
-                <NavLink to="/gestion" className={({ isActive }) => (isActive ? 'active' : '')}>
+                <NavLink to="/gestion" end className={({ isActive }) => (isActive ? 'active' : '')}>
                   Gestión de Pedidos
                 </NavLink>
+                {user && !isObserver && (
+                  <NavLink to="/gestion/tableros" className={({ isActive }) => (isActive ? 'active' : '')}>
+                    Tableros Privados
+                  </NavLink>
+                )}
                 {isAdmin && (
                   <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
                     Usuarios y Roles
@@ -164,9 +170,14 @@ export const Layout: React.FC = () => {
               <NavLink to="/mis-solicitudes" className={({ isActive }) => (isActive ? 'active' : '')}>
                 Mis Solicitudes
               </NavLink>
-              <NavLink to="/gestion" className={({ isActive }) => (isActive ? 'active' : '')}>
+              <NavLink to="/gestion" end className={({ isActive }) => (isActive ? 'active' : '')}>
                 Gestión
               </NavLink>
+              {user && !isObserver && (
+                <NavLink to="/gestion/tableros" className={({ isActive }) => (isActive ? 'active' : '')}>
+                  Tableros
+                </NavLink>
+              )}
               <NavLink to="/usuarios" className={({ isActive }) => (isActive ? 'active' : '')}>
                 Usuarios
               </NavLink>

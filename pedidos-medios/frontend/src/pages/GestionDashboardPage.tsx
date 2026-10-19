@@ -571,6 +571,28 @@ export const GestionDashboardPage: React.FC = () => {
           >
             Tabla
           </button>
+          {!isObserver && (
+            <Link
+              to="/gestion/tableros"
+              style={{
+                padding: '0.45rem 0.9rem',
+                borderRadius: '0.375rem',
+                border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+                background: 'var(--pedidos-control-bg, #ffffff)',
+                color: 'var(--pedidos-control-text, #334155)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <span>📋</span>
+              <span>Tableros privados</span>
+            </Link>
+          )}
         </div>
       </div>
 
