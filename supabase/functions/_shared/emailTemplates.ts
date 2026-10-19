@@ -316,7 +316,11 @@ export function renderEmail(
     case 'pedido_finalizado': {
       const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
       const rawPedVisible = (payload.pedido_visible || '').trim();
-      const subject = `[PEDIDOS] Solicitud Finalizada: ${payload.pedido_visible || 'PED'}`;
+      const versionNum = Number(payload.extra?.version_number || payload.version_number || payload.entrega_version || 1);
+      const isNuevaVersion = versionNum > 1;
+      const subject = isNuevaVersion
+        ? `[PEDIDOS] Nueva versión disponible: ${payload.pedido_visible || 'PED'} (Versión ${versionNum})`
+        : `[PEDIDOS] Solicitud Finalizada: ${payload.pedido_visible || 'PED'}`;
       const rawToken = (payload.magic_token || payload.raw_token || payload.token || '').trim();
       const portalUrl = rawToken
         ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}${rawPedVisible ? `&pedido=${encodeURIComponent(rawPedVisible)}` : ''}`
@@ -345,15 +349,23 @@ export function renderEmail(
         entregaBlockText = `\nEnlace de entrega de material: ${urlEntrega}\n`;
       }
 
+      const heading = isNuevaVersion
+        ? `✓ Nueva versión disponible (Versión ${versionNum})`
+        : '✓ Solicitud Finalizada Exitosamente';
+
+      const descHtml = isNuevaVersion
+        ? `Le informamos que el equipo de la Secretaría de Medios ha publicado una nueva versión (<strong>Versión ${versionNum}</strong>) de su pedido <strong>${pedVisible}</strong> (${catSafe}${tipSafe ? ' - ' + tipSafe : ''}).`
+        : `Le informamos que el pedido <strong>${pedVisible}</strong> (${catSafe}${tipSafe ? ' - ' + tipSafe : ''}) ha sido completado y finalizado por el equipo de la Secretaría de Medios.`;
+
       const contentHtml = `
         <h2 style="margin: 0 0 16px 0; color: #059669; font-size: 18px;">
-          ✓ Solicitud Finalizada Exitosamente
+          ${heading}
         </h2>
         <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
           Estimado/a <strong>${nombreSafe}</strong>,
         </p>
         <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
-          Le informamos que el pedido <strong>${pedVisible}</strong> (${catSafe}${tipSafe ? ' - ' + tipSafe : ''}) ha sido completado y finalizado por el equipo de la Secretaría de Medios.
+          ${descHtml}
         </p>
         ${entregaBlockHtml}
         ${notaCierreSafe ? `
@@ -656,24 +668,35 @@ export function renderEmail(
     case 'pedido_en_proceso': {
       const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
       const rawPedVisible = (payload.pedido_visible || '').trim();
-      const subject = `[PEDIDOS] Tu solicitud ${payload.pedido_visible || 'PED'} está en proceso`;
+      const isReopen = Boolean(payload.extra?.is_reopen || payload.is_reopen);
+      const subject = isReopen
+        ? `[PEDIDOS] Tu solicitud ${payload.pedido_visible || 'PED'} fue reabierta y está en proceso`
+        : `[PEDIDOS] Tu solicitud ${payload.pedido_visible || 'PED'} está en proceso`;
       const rawToken = (payload.magic_token || payload.raw_token || payload.token || '').trim();
       const portalUrl = rawToken
         ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}${rawPedVisible ? `&pedido=${encodeURIComponent(rawPedVisible)}` : ''}`
         : `${cleanAppUrl}/mis-solicitudes`;
 
+      const heading = isReopen
+        ? 'Tu solicitud fue reabierta y está en proceso'
+        : 'Tu solicitud está en proceso';
+
+      const descHtml = isReopen
+        ? `Tu solicitud <strong>${pedVisible}</strong> fue reabierta por el equipo de la Secretaría de Medios y volvió a encontrarse &ldquo;En proceso&rdquo; para realizar una actualización.`
+        : `Tu solicitud <strong>${pedVisible}</strong> ingresó a la etapa &ldquo;En proceso&rdquo;.`;
+
       const contentHtml = `
         <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
-          Tu solicitud está en proceso
+          ${heading}
         </h2>
         <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
           Estimado/a <strong>${nombreSafe}</strong>,
         </p>
         <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
-          Tu solicitud <strong>${pedVisible}</strong> ingresó a la etapa &ldquo;En proceso&rdquo;.
+          ${descHtml}
         </p>
         <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
-          El equipo de la Secretaría de Medios comenzó a trabajar en tu requerimiento.
+          ${isReopen ? 'El equipo se encuentra trabajando en la nueva versión de tu requerimiento.' : 'El equipo de la Secretaría de Medios comenzó a trabajar en tu requerimiento.'}
         </p>
         <p style="margin: 0 0 20px 0; font-size: 14px; color: ${BRAND_MUTED}; line-height: 1.5;">
           Podés consultar el estado actualizado desde el portal de Mis solicitudes.
@@ -685,11 +708,11 @@ export function renderEmail(
         </div>
       `;
 
-      const text = `TU SOLICITUD ESTÁ EN PROCESO\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nTu solicitud ${payload.pedido_visible || 'PED'} ingresó a la etapa "En proceso".\nEl equipo de la Secretaría de Medios comenzó a trabajar en tu requerimiento.\nPodés consultar el estado actualizado desde el portal de Mis solicitudes en:\n${portalUrl}\n`;
+      const text = `${heading.toUpperCase()}\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\n${isReopen ? `Tu solicitud ${payload.pedido_visible || 'PED'} fue reabierta y volvió a encontrarse "En proceso" para una actualización.` : `Tu solicitud ${payload.pedido_visible || 'PED'} ingresó a la etapa "En proceso".`}\n${isReopen ? 'El equipo se encuentra trabajando en la nueva versión de tu requerimiento.' : 'El equipo de la Secretaría de Medios comenzó a trabajar en tu requerimiento.'}\nPodés consultar el estado actualizado desde el portal de Mis solicitudes en:\n${portalUrl}\n`;
 
       return {
         subject,
-        html: wrapHtmlLayout('Tu solicitud está en proceso', contentHtml),
+        html: wrapHtmlLayout(heading, contentHtml),
         text,
         n8nTipo: 'en_proceso',
       };

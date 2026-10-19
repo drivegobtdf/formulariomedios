@@ -90,7 +90,7 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
     // En Diseño Gráfico, seleccionar Flyer
     fireEvent.click(screen.getByRole('checkbox', { name: /Flyer para redes sociales/i }));
     fireEvent.change(screen.getByLabelText(/Fecha del evento\/actividad\/pieza/i), {
-      target: { value: '2026-10-15' },
+      target: { value: '2026-12-01' },
     });
     fireEvent.change(screen.getByLabelText(/Texto y contenido que debe incluir el flyer/i), {
       target: { value: 'Texto institucional sobre inscripciones abiertas.' },

@@ -1212,6 +1212,14 @@ export const MisSolicitudesPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* En proceso con versiones previas */}
+                {selectedPedido.estado === 'En proceso' && selectedPedido.versiones && selectedPedido.versiones.length > 0 && (
+                  <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '0.5rem', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e40af', fontSize: '0.875rem', fontWeight: 600 }}>
+                    <span style={{ fontSize: '1.1rem' }}>ℹ️</span>
+                    <span>El equipo está trabajando en una nueva versión.</span>
+                  </div>
+                )}
+
                 {/* Active Revision Banner */}
                 {selectedPedido.revision_activa && (
                   <div style={{ border: '1px solid #fde68a', backgroundColor: '#fffbeb', borderRadius: '0.5rem', padding: '1.25rem' }}>
@@ -1351,8 +1359,9 @@ export const MisSolicitudesPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Final Delivery & Closure Note */}
+                {/* Final Delivery & Canonical Versions */}
                 {(() => {
+                  const hasVersiones = Boolean(selectedPedido.versiones && selectedPedido.versiones.length > 0);
                   const notaCierre =
                     selectedPedido.entrega?.nota_publica ||
                     selectedPedido.entrega?.nota ||
@@ -1368,8 +1377,131 @@ export const MisSolicitudesPage: React.FC = () => {
                     selectedPedido.entrega?.url_entrega
                   );
 
-                  if (!selectedPedido.entrega && !(selectedPedido.estado === 'Finalizado' && notaCierre)) {
+                  if (!hasVersiones && !selectedPedido.entrega && !(selectedPedido.estado === 'Finalizado' && notaCierre)) {
                     return null;
+                  }
+
+                  if (hasVersiones && selectedPedido.versiones) {
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {selectedPedido.versiones.map((v, idx) => {
+                          const isLatest = idx === 0;
+                          return (
+                            <details
+                              key={v.version_number}
+                              open={isLatest}
+                              style={{
+                                border: `1px solid ${isLatest ? '#86efac' : '#cbd5e1'}`,
+                                backgroundColor: isLatest ? '#f0fdf4' : '#f8fafc',
+                                borderRadius: '0.5rem',
+                                padding: '1rem',
+                              }}
+                            >
+                              <summary
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  cursor: 'pointer',
+                                  listStyle: 'none',
+                                  fontWeight: 700,
+                                  color: isLatest ? '#166534' : '#334155',
+                                  fontSize: '1rem',
+                                  flexWrap: 'wrap',
+                                  gap: '0.5rem',
+                                }}
+                              >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <span>{isLatest ? '🟢' : '📦'}</span>
+                                  <span>Versión {v.version_number} {isLatest && '(Actual)'}</span>
+                                </span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b' }}>
+                                  Finalizado: {new Date(v.finalizado_at).toLocaleDateString('es-AR')}
+                                </span>
+                              </summary>
+
+                              <div style={{ marginTop: '0.75rem', borderTop: '1px solid #e2e8f0', paddingTop: '0.75rem' }}>
+                                {v.nota && (
+                                  <p style={{ margin: '0 0 0.75rem 0', color: '#1e293b', fontSize: '0.9rem', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                    <strong>Nota:</strong> {v.nota}
+                                  </p>
+                                )}
+
+                                {v.archivos && v.archivos.length > 0 && (
+                                  <div style={{ marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <strong style={{ fontSize: '0.8125rem', color: isLatest ? '#166534' : '#475569' }}>
+                                      Archivos entregados ({v.archivos.length}):
+                                    </strong>
+                                    {v.archivos.map((fa: any) => (
+                                      <div
+                                        key={fa.id}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          padding: '0.5rem 0.75rem',
+                                          backgroundColor: '#ffffff',
+                                          border: `1px solid ${isLatest ? '#86efac' : '#cbd5e1'}`,
+                                          borderRadius: '0.375rem',
+                                          fontSize: '0.8125rem',
+                                        }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                                          <span>📄</span>
+                                          <span style={{ fontWeight: 600, color: '#1e293b', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                            {fa.nombre_original}
+                                          </span>
+                                          {fa.size_bytes && (
+                                            <span style={{ color: '#64748b', fontSize: '0.75rem' }}>({formatFileSize(fa.size_bytes)})</span>
+                                          )}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDownloadDeliveryFile(fa.id, fa.nombre_original)}
+                                          disabled={downloadingArchivoId === fa.id}
+                                          style={{
+                                            backgroundColor: '#16a34a',
+                                            color: '#ffffff',
+                                            border: 'none',
+                                            padding: '0.35rem 0.75rem',
+                                            borderRadius: '0.25rem',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 600,
+                                            cursor: downloadingArchivoId === fa.id ? 'not-allowed' : 'pointer',
+                                          }}
+                                        >
+                                          {downloadingArchivoId === fa.id ? 'Descargando...' : '📥 Descargar'}
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {v.enlace_externo && (
+                                  <a
+                                    href={v.enlace_externo}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      display: 'inline-block',
+                                      backgroundColor: '#16a34a',
+                                      color: '#ffffff',
+                                      padding: '0.5rem 1rem',
+                                      borderRadius: '0.375rem',
+                                      fontWeight: 700,
+                                      fontSize: '0.85rem',
+                                      textDecoration: 'none',
+                                    }}
+                                  >
+                                    Abrir enlace externo
+                                  </a>
+                                )}
+                              </div>
+                            </details>
+                          );
+                        })}
+                      </div>
+                    );
                   }
 
                   return (

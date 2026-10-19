@@ -191,6 +191,17 @@ export interface PedidoDetailItem extends PedidoListItem {
     entregado_por_nombre?: string;
     created_at: string;
   }>;
+  versiones?: Array<{
+    id: string;
+    version_number: number;
+    finalizado_at: string;
+    nota?: string;
+    entrega_id?: string;
+    enlace_externo?: string;
+    archivo_id?: string;
+    finalizado_por?: string;
+    finalizado_por_nombre?: string;
+  }>;
   revisiones?: Array<{
     id: string;
     solicitud_id: string;
@@ -572,6 +583,13 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     .eq('pedido_id', pedidoId)
     .order('version', { ascending: false });
 
+  // Versiones Canónicas (Fase 4A)
+  const { data: versionesData } = await supabase
+    .from('pedido_versiones')
+    .select('id, version_number, finalizado_at, nota_cierre, entrega_id, finalizado_por')
+    .eq('pedido_id', pedidoId)
+    .order('version_number', { ascending: false });
+
   // Revisiones
   const { data: revisionesData } = await supabase
     .from('revision_pedidos')
@@ -745,6 +763,20 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       entregado_por_nombre: userMap.get(e.entregado_por) || undefined,
       created_at: e.created_at,
     })),
+    versiones: (versionesData || []).map((v: any) => {
+      const ent = (entregas || []).find((e: any) => e.id === v.entrega_id);
+      return {
+        id: v.id,
+        version_number: v.version_number,
+        finalizado_at: v.finalizado_at,
+        nota: v.nota_cierre || undefined,
+        entrega_id: v.entrega_id || undefined,
+        enlace_externo: ent?.enlace_externo || undefined,
+        archivo_id: ent?.archivo_id || undefined,
+        finalizado_por: v.finalizado_por || undefined,
+        finalizado_por_nombre: userMap.get(v.finalizado_por) || undefined,
+      };
+    }),
     revisiones: (revisionesData || []).map((r: any) => ({
       id: r.id,
       solicitud_id: r.solicitud_id,
@@ -974,6 +1006,17 @@ export async function cancelPedido(pedidoId: string, motivo: string, expectedVer
 export async function reopenPedido(pedidoId: string, motivo: string, expectedVersion: number) {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.rpc('pedido_reopen', {
+    p_pedido_id: pedidoId,
+    p_motivo: motivo,
+    p_expected_version: expectedVersion,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function reopenPedidoFinalized(pedidoId: string, motivo: string, expectedVersion: number) {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_reopen_finalized', {
     p_pedido_id: pedidoId,
     p_motivo: motivo,
     p_expected_version: expectedVersion,

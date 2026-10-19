@@ -125,6 +125,18 @@ export interface SolicitantePedidoDetailDTO {
       mime_type?: string;
     }>;
   } | null;
+  versiones?: Array<{
+    version_number: number;
+    finalizado_at: string;
+    nota?: string | null;
+    enlace_externo?: string | null;
+    archivos?: Array<{
+      id: string;
+      nombre_original: string;
+      size_bytes?: number;
+      mime_type?: string;
+    }>;
+  }>;
   revisiones_historial?: Array<{
     id: string;
     revision_number: number;
@@ -279,6 +291,14 @@ export const PUBLIC_EVENT_LABELS: Record<string, { titulo: string; descripcion?:
     titulo: 'Pedido cancelado',
     descripcion: 'El pedido fue cancelado.',
   },
+  'pedido.reopened': {
+    titulo: 'Pedido reabierto',
+    descripcion: 'El equipo reabrió el pedido para realizar una actualización.',
+  },
+  'reopened': {
+    titulo: 'Pedido reabierto',
+    descripcion: 'El equipo reabrió el pedido para realizar una actualización.',
+  },
   'pedido.revision_requested': {
     titulo: 'Pedido devuelto para corrección',
     descripcion: 'Solicitud de revisión enviada.',
@@ -415,6 +435,7 @@ export function normalizeSolicitantePedidoDetail(rawData: any): SolicitantePedid
     solicitudes_informacion: publicSolicitudes,
     entrega,
     nota_final: notaFinalObj,
+    versiones: Array.isArray(rawData.versiones || ped.versiones) ? (rawData.versiones || ped.versiones) : [],
     revision_activa: rawData.revision_activa || ped.revision_activa || null,
     revisiones_historial: rawData.revisiones_historial || ped.revisiones_historial || [],
     archivos_adjuntos: rawData.archivos_adjuntos || ped.archivos_adjuntos || rawData.archivos_iniciales || [],

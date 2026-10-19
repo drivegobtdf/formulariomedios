@@ -10,6 +10,7 @@ import {
   uploadDeliveryFile,
   cancelPedido,
   reopenPedido,
+  reopenPedidoFinalized,
   archivePedido,
   restorePedido,
   createNotaPedido,
@@ -145,7 +146,7 @@ export const PedidoDetallePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isLoading: authLoading, isApproved, isAdmin, isObserver, signOut } = useAuth();
+  const { user, isLoading: authLoading, isApproved, isAdmin, isTeamOrAdmin, isObserver, signOut } = useAuth();
 
   const [pedido, setPedido] = useState<PedidoDetailItem | null>(null);
   const [historial, setHistorial] = useState<HistorialOperativoItem[]>([]);
@@ -551,7 +552,11 @@ export const PedidoDetallePage: React.FC = () => {
     setModalError(null);
     setError(null);
     try {
-      await reopenPedido(pedido.id, reopenMotivo.trim(), pedido.version);
+      if (pedido.estado === 'Finalizado') {
+        await reopenPedidoFinalized(pedido.id, reopenMotivo.trim(), pedido.version);
+      } else {
+        await reopenPedido(pedido.id, reopenMotivo.trim(), pedido.version);
+      }
       setShowReopenModal(false);
       setReopenMotivo('');
       setSuccessMessage('Pedido reabierto exitosamente.');
@@ -1337,6 +1342,30 @@ export const PedidoDetallePage: React.FC = () => {
                   </button>
                 )}
 
+                {/* Reabrir para administrador o equipo si está finalizado */}
+                {pedido.estado === 'Finalizado' && isTeamOrAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalError(null);
+                      setShowReopenModal(true);
+                    }}
+                    disabled={actionLoading}
+                    style={{
+                      background: 'var(--pedidos-status-proceso-bg, #e0e7ff)',
+                      color: 'var(--pedidos-status-proceso-text, #4338ca)',
+                      border: '1px solid var(--pedidos-status-proceso-border, #c7d2fe)',
+                      padding: '0.45rem 0.85rem',
+                      borderRadius: '0.375rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      cursor: actionLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Reabrir pedido
+                  </button>
+                )}
+
                 {/* Archivar / Desarchivar para Administrador */}
                 {isAdmin && (
                   <button
@@ -1954,18 +1983,64 @@ export const PedidoDetallePage: React.FC = () => {
             )}
           </div>
 
-          {/* Entregas Registradas */}
+          {/* Entregas y Versiones Canónicas */}
           <div className="pedidos-detalle-card">
             <div className="pedidos-detalle-card-header">
               <h2 className="pedidos-detalle-card-title">
-                Entregas ({(pedido.entregas || []).length})
+                {pedido.versiones && pedido.versiones.length > 0
+                  ? `Versiones de Finalización (${pedido.versiones.length})`
+                  : `Entregas (${(pedido.entregas || []).length})`}
               </h2>
             </div>
 
-            {(pedido.entregas || []).length === 0 ? (
+            {(!pedido.versiones || pedido.versiones.length === 0) && (!pedido.entregas || pedido.entregas.length === 0) ? (
               <p style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
-                No hay entregas registradas.
+                No hay versiones ni entregas registradas.
               </p>
+            ) : pedido.versiones && pedido.versiones.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {pedido.versiones.map((ver, idx) => {
+                  const isLatest = idx === 0;
+                  return (
+                    <div
+                      key={ver.id}
+                      style={{
+                        background: isLatest ? 'var(--pedidos-status-finalizado-bg, #f0fdf4)' : 'var(--pedidos-surface-sunken, #f8fafc)',
+                        border: `1px solid ${isLatest ? 'var(--pedidos-status-finalizado-border, #86efac)' : 'var(--pedidos-border-default, #e2e8f0)'}`,
+                        borderRadius: '0.5rem',
+                        padding: '0.75rem',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: isLatest ? 'var(--pedidos-status-finalizado-text, #15803d)' : 'var(--pedidos-text-muted, #64748b)' }}>
+                          Versión {ver.version_number} {isLatest && '(Última finalización)'}
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
+                          {ver.finalizado_por_nombre ? `${ver.finalizado_por_nombre} · ` : ''}
+                          {new Date(ver.finalizado_at).toLocaleDateString('es-AR')}
+                        </span>
+                      </div>
+                      {ver.enlace_externo && (
+                        <div style={{ marginBottom: '0.35rem' }}>
+                          <a
+                            href={ver.enlace_externo}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: 'var(--pedidos-brand-accent, #0369a1)', fontSize: '0.8125rem', wordBreak: 'break-all', fontWeight: 600 }}
+                          >
+                            🔗 {ver.enlace_externo}
+                          </a>
+                        </div>
+                      )}
+                      {ver.nota && (
+                        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--pedidos-text-secondary, #334155)', whiteSpace: 'pre-wrap' }}>
+                          <strong>Nota de cierre:</strong> {ver.nota}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {(pedido.entregas || []).map((ent: any) => (
