@@ -210,6 +210,12 @@ describe('tablerosApi — Frontend Client Service (Fase 4C)', () => {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           single: vi.fn().mockResolvedValue({ data: { app_role: 'equipo' } }),
+          in: vi.fn().mockResolvedValue({
+            data: [
+              { user_id: 'user-team-1', nombre: 'Pablo', apellido: 'Saldivia', nombre_usuario: 'psaldivia' },
+              { user_id: 'user-other', nombre: 'Keila', apellido: 'Jurnet', nombre_usuario: 'kjurnet' },
+            ],
+          }),
         };
       }
       if (table === 'tableros_privados') {
@@ -245,6 +251,16 @@ describe('tablerosApi — Frontend Client Service (Fase 4C)', () => {
 
   it('13. fetchTableroDetail carga tablero, columnas, tarjetas y miembros', async () => {
     const mockFrom = vi.fn().mockImplementation((table: string) => {
+      if (table === 'usuarios_acceso') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          in: vi.fn().mockResolvedValue({
+            data: [
+              { user_id: 'user-team-1', nombre: 'Pablo', apellido: 'Saldivia', nombre_usuario: 'psaldivia', app_role: 'equipo' },
+            ],
+          }),
+        };
+      }
       if (table === 'tableros_privados') {
         return {
           select: vi.fn().mockReturnThis(),

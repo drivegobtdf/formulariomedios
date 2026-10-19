@@ -129,13 +129,14 @@ export async function fetchTableros(): Promise<TableroPrivado[]> {
   // Obtener tableros
   const { data: boards, error } = await supabase
     .from('tableros_privados')
-    .select(`
-      *,
-      propietario:usuarios_acceso!tableros_privados_propietario_id_fkey(nombre, apellido, nombre_usuario)
-    `)
+    .select('*')
     .order('updated_at', { ascending: false });
 
-  if (error || !boards) return [];
+  if (error) {
+    console.error('Error al cargar tableros privados:', error);
+    throw error;
+  }
+  if (!boards || boards.length === 0) return [];
 
   // Obtener membresías del usuario para determinar su rol
   const { data: miembros } = await supabase
@@ -145,6 +146,25 @@ export async function fetchTableros(): Promise<TableroPrivado[]> {
 
   const miembroMap = new Map<string, 'lectura' | 'edicion'>();
   miembros?.forEach((m) => miembroMap.set(m.tablero_id, m.rol_tablero));
+
+  // Obtener perfiles de los propietarios en una consulta autorizada
+  const ownerIds = Array.from(new Set(boards.map((b) => b.propietario_id).filter(Boolean)));
+  const ownerMap = new Map<string, { nombre: string; apellido: string; nombre_usuario: string }>();
+
+  if (ownerIds.length > 0) {
+    const { data: owners } = await supabase
+      .from('usuarios_acceso')
+      .select('user_id, nombre, apellido, nombre_usuario')
+      .in('user_id', ownerIds);
+
+    owners?.forEach((o) => {
+      ownerMap.set(o.user_id, {
+        nombre: o.nombre,
+        apellido: o.apellido,
+        nombre_usuario: o.nombre_usuario,
+      });
+    });
+  }
 
   return boards.map((b: any) => {
     let miRol: TableroPrivado['mi_rol'] = 'lectura';
@@ -158,6 +178,7 @@ export async function fetchTableros(): Promise<TableroPrivado[]> {
 
     return {
       ...b,
+      propietario: ownerMap.get(b.propietario_id) || undefined,
       mi_rol: miRol,
     };
   });
@@ -229,18 +250,12 @@ export async function fetchTableroDetail(tableroId: string) {
   const [boardRes, miembrosRes, colsRes, cardsRes] = await Promise.all([
     supabase
       .from('tableros_privados')
-      .select(`
-        *,
-        propietario:usuarios_acceso!tableros_privados_propietario_id_fkey(nombre, apellido, nombre_usuario)
-      `)
+      .select('*')
       .eq('id', tableroId)
       .single(),
     supabase
       .from('tablero_miembros')
-      .select(`
-        *,
-        usuario:usuarios_acceso!tablero_miembros_user_id_fkey(nombre, apellido, nombre_usuario, app_role)
-      `)
+      .select('*')
       .eq('tablero_id', tableroId),
     supabase
       .from('tablero_columnas')
@@ -252,26 +267,93 @@ export async function fetchTableroDetail(tableroId: string) {
       .select(`
         *,
         checklists:tablero_tarjeta_checklists(*),
-        comentarios:tablero_tarjeta_comentarios(
-          *,
-          autor:usuarios_acceso!tablero_tarjeta_comentarios_autor_id_fkey(nombre, apellido, nombre_usuario)
-        )
+        comentarios:tablero_tarjeta_comentarios(*)
       `)
       .eq('tablero_id', tableroId)
       .order('orden', { ascending: true }),
   ]);
 
   if (boardRes.error) throw boardRes.error;
+  if (miembrosRes.error) throw miembrosRes.error;
+  if (colsRes.error) throw colsRes.error;
+  if (cardsRes.error) throw cardsRes.error;
 
   const board = boardRes.data;
-  const miembros = miembrosRes.data || [];
+  const rawMiembros = miembrosRes.data || [];
   const columnas = colsRes.data || [];
-  const tarjetas = (cardsRes.data || []).map((card: any) => ({
+  const rawCards = cardsRes.data || [];
+
+  // Recolectar todos los user_ids necesarios para poblar usuarios (propietario, miembros, autores de comentarios)
+  const userIds = new Set<string>();
+  if (board.propietario_id) userIds.add(board.propietario_id);
+  rawMiembros.forEach((m: any) => {
+    if (m.user_id) userIds.add(m.user_id);
+  });
+  rawCards.forEach((c: any) => {
+    (c.comentarios || []).forEach((com: any) => {
+      if (com.autor_id) userIds.add(com.autor_id);
+    });
+  });
+
+  const userIdsArray = Array.from(userIds);
+  const userProfileMap = new Map<string, { nombre: string; apellido: string; nombre_usuario: string; app_role?: string }>();
+
+  if (userIdsArray.length > 0) {
+    const { data: profiles } = await supabase
+      .from('usuarios_acceso')
+      .select('user_id, nombre, apellido, nombre_usuario, app_role')
+      .in('user_id', userIdsArray);
+
+    profiles?.forEach((p) => userProfileMap.set(p.user_id, p));
+  }
+
+  // Poblar propietario
+  const propietarioData = userProfileMap.get(board.propietario_id);
+  if (propietarioData) {
+    board.propietario = {
+      nombre: propietarioData.nombre,
+      apellido: propietarioData.apellido,
+      nombre_usuario: propietarioData.nombre_usuario,
+    };
+  }
+
+  // Poblar miembros con información de usuario
+  const miembros: TableroMiembro[] = rawMiembros.map((m: any) => {
+    const u = userProfileMap.get(m.user_id);
+    return {
+      ...m,
+      usuario: u
+        ? {
+            nombre: u.nombre,
+            apellido: u.apellido,
+            nombre_usuario: u.nombre_usuario,
+            app_role: u.app_role || '',
+          }
+        : undefined,
+    };
+  });
+
+  // Poblar tarjetas con comentarios y autor
+  const tarjetas: TableroTarjeta[] = rawCards.map((card: any) => ({
     ...card,
     checklists: (card.checklists || []).sort((a: any, b: any) => a.orden - b.orden),
-    comentarios: (card.comentarios || []).sort(
-      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    ),
+    comentarios: (card.comentarios || [])
+      .map((com: any) => {
+        const autorData = userProfileMap.get(com.autor_id);
+        return {
+          ...com,
+          autor: autorData
+            ? {
+                nombre: autorData.nombre,
+                apellido: autorData.apellido,
+                nombre_usuario: autorData.nombre_usuario,
+              }
+            : undefined,
+        };
+      })
+      .sort(
+        (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      ),
   }));
 
   // Determinar permisos del usuario actual
@@ -614,14 +696,31 @@ export async function addTarjetaComentario(
       autor_id: user?.id,
       contenido: contenido.trim(),
     })
-    .select(`
-      *,
-      autor:usuarios_acceso!tablero_tarjeta_comentarios_autor_id_fkey(nombre, apellido, nombre_usuario)
-    `)
+    .select('*')
     .single();
 
   if (error) throw error;
-  return data;
+
+  let autorInfo: any = undefined;
+  if (data?.autor_id) {
+    const { data: u } = await supabase
+      .from('usuarios_acceso')
+      .select('nombre, apellido, nombre_usuario')
+      .eq('user_id', data.autor_id)
+      .maybeSingle();
+    if (u) {
+      autorInfo = {
+        nombre: u.nombre,
+        apellido: u.apellido,
+        nombre_usuario: u.nombre_usuario,
+      };
+    }
+  }
+
+  return {
+    ...data,
+    autor: autorInfo,
+  };
 }
 
 /**
