@@ -1373,6 +1373,13 @@ describe('PedidoDetallePage Unit Tests', () => {
         expect.anything()
       );
     });
+
+    await waitFor(() => {
+      expect(screen.getByText('¿Querés compartir esta entrega por WhatsApp?')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Compartir por WhatsApp/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Ahora no/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Copiar resumen/i })).not.toBeInTheDocument();
+    });
   });
 
   describe('Modal Finalizar Pedido - Regla definitiva de finalización (Hotfix Funcional)', () => {

@@ -29,6 +29,8 @@ import { formatFileSize, formatArchivoEstado, formatLocalDate, formatHistoryDate
 import { WhatsAppPhoneLink } from '../components/WhatsAppPhoneLink';
 import { formatReworkHistoricalText } from '../utils/statusBadges';
 import { isValidHttpUrl } from '../validation/formValidation';
+import { CompartirWhatsAppModal } from '../components/gestion/CompartirWhatsAppModal';
+import { generateFinalizacionWhatsAppMessage, getFinalizacionWhatsAppUrl } from '../utils/whatsappFinalizacion';
 
 export function getHistorialEventInfo(evento: string, payload: any) {
   const norm = (evento || '').toLowerCase().replace(/[\.\_\s\-]+/g, '_');
@@ -185,6 +187,13 @@ export const PedidoDetallePage: React.FC = () => {
     error?: string;
   }>>([]);
 
+  // Share WhatsApp modal (Fase 4D)
+  const [whatsappShareData, setWhatsappShareData] = useState<{
+    isOpen: boolean;
+    message: string;
+    whatsappUrl: string;
+  } | null>(null);
+
   const handleDeliveryFileUpload = useCallback(
     async (fileItem: { id: string; file: File; name: string }) => {
       if (!pedido) return;
@@ -305,7 +314,7 @@ export const PedidoDetallePage: React.FC = () => {
   };
 
   const loadData = useCallback(async (isSilent = false) => {
-    if (!id || !isApproved) return;
+    if (!id || !isApproved) return null;
     if (!isSilent) setLoading(true);
     setError(null);
     try {
@@ -319,8 +328,10 @@ export const PedidoDetallePage: React.FC = () => {
 
       const h = await fetchPedidoHistorialOperativo(p.id).catch(() => []);
       setHistorial(h);
+      return p;
     } catch (err: any) {
       if (!isSilent) setError(err.message || 'Error cargando pedido.');
+      return null;
     } finally {
       if (!isSilent) setLoading(false);
     }
@@ -498,18 +509,68 @@ export const PedidoDetallePage: React.FC = () => {
 
     try {
       // Llamar RPC canónica pedido_finalize directamente con IDs de archivos ya verificados
-      await finalizePedido(pedido.id, pedido.version, {
+      const finalizeRes = await finalizePedido(pedido.id, pedido.version, {
         archivo_ids: completedArchivoIds.length > 0 ? completedArchivoIds : undefined,
         enlace_externo: cleanUrl || undefined,
         nota: entregaNota.trim() || undefined,
       });
+
+      const deliveryFilesSnapshot = [...deliveryFiles];
+      const cleanUrlSnapshot = cleanUrl;
 
       setShowFinalizeModal(false);
       setEntregaUrl('');
       setEntregaNota('');
       setDeliveryFiles([]);
       setSuccessMessage('Pedido finalizado y entrega registrada exitosamente.');
-      await loadData();
+
+      // Recargar datos actualizados de Supabase
+      const updatedPedido = await loadData(true);
+      const targetPedido = updatedPedido || pedido;
+
+      // Calcular número de versión finalizada
+      const finalVersionNumber =
+        finalizeRes?.version_number ||
+        targetPedido.versiones?.[0]?.version_number ||
+        (pedido.versiones?.length ? pedido.versiones.length + 1 : 1);
+
+      // Recopilar enlaces de entrega
+      const deliveryLinks = cleanUrlSnapshot
+        ? [cleanUrlSnapshot]
+        : targetPedido.versiones?.[0]?.enlace_externo
+        ? [targetPedido.versiones[0].enlace_externo]
+        : [];
+
+      // Recopilar archivos de entrega completados
+      const deliveryFileNames = deliveryFilesSnapshot
+        .filter((f) => f.status === 'completed')
+        .map((f) => f.name);
+
+      // Generar mensaje estructurado WhatsApp (Fase 4D)
+      const waMessage = generateFinalizacionWhatsAppMessage({
+        codigo: targetPedido.pedido_visible || targetPedido.id,
+        titulo: targetPedido.titulo,
+        solicitanteNombre: targetPedido.solicitante_nombre || targetPedido.envio?.nombre_apellido,
+        solicitanteArea: targetPedido.area_solicitante || targetPedido.envio?.area_solicitante,
+        solicitanteTelefono:
+          targetPedido.envio?.telefono ||
+          (targetPedido as any).solicitante_telefono ||
+          (targetPedido.informacion_especifica as any)?.solicitante?.telefono ||
+          (targetPedido.informacion_especifica as any)?.contacto_telefono,
+        versionNumber: finalVersionNumber,
+        enlacesEntrega: deliveryLinks,
+        archivosEntrega: deliveryFileNames,
+        pedidoId: targetPedido.id,
+      });
+
+      const waUrl = getFinalizacionWhatsAppUrl(waMessage);
+
+      // Abrir modal de compartir SOLO tras confirmación exitosa en Supabase
+      setWhatsappShareData({
+        isOpen: true,
+        message: waMessage,
+        whatsappUrl: waUrl,
+      });
     } catch (err: any) {
       const msg = err.message || 'Error al finalizar el pedido.';
       setModalError(msg);
@@ -2051,10 +2112,56 @@ export const PedidoDetallePage: React.FC = () => {
                         <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: isLatest ? 'var(--pedidos-status-finalizado-text, #15803d)' : 'var(--pedidos-text-muted, #64748b)' }}>
                           Versión {ver.version_number} {isLatest && '(Última finalización)'}
                         </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
-                          {ver.finalizado_por_nombre ? `${ver.finalizado_por_nombre} · ` : ''}
-                          {new Date(ver.finalizado_at).toLocaleDateString('es-AR')}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {!isObserver && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const waMsg = generateFinalizacionWhatsAppMessage({
+                                  codigo: pedido.pedido_visible || pedido.id,
+                                  titulo: pedido.titulo,
+                                  solicitanteNombre: pedido.solicitante_nombre || pedido.envio?.nombre_apellido,
+                                  solicitanteArea: pedido.area_solicitante || pedido.envio?.area_solicitante,
+                                  solicitanteTelefono:
+                                    pedido.envio?.telefono ||
+                                    (pedido as any).solicitante_telefono ||
+                                    (pedido.informacion_especifica as any)?.solicitante?.telefono ||
+                                    (pedido.informacion_especifica as any)?.contacto_telefono,
+                                  versionNumber: ver.version_number,
+                                  enlacesEntrega: ver.enlace_externo ? [ver.enlace_externo] : [],
+                                  archivosEntrega: ver.archivo_id ? (pedido.archivos?.find((a) => a.id === ver.archivo_id) ? [pedido.archivos.find((a) => a.id === ver.archivo_id)!.nombre_original] : []) : [],
+                                  pedidoId: pedido.id,
+                                });
+                                setWhatsappShareData({
+                                  isOpen: true,
+                                  message: waMsg,
+                                  whatsappUrl: getFinalizacionWhatsAppUrl(waMsg),
+                                });
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: '1px solid #16a34a',
+                                color: '#15803d',
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '0.25rem',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                              }}
+                              title="Compartir esta versión por WhatsApp"
+                            >
+                              <span>💬</span>
+                              <span>Compartir</span>
+                            </button>
+                          )}
+                          <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
+                            {ver.finalizado_por_nombre ? `${ver.finalizado_por_nombre} · ` : ''}
+                            {new Date(ver.finalizado_at).toLocaleDateString('es-AR')}
+                          </span>
+                        </div>
                       </div>
                       {ver.enlace_externo && (
                         <div style={{ marginBottom: '0.35rem' }}>
@@ -2828,6 +2935,16 @@ export const PedidoDetallePage: React.FC = () => {
           initialEtiqueta={pedido.etiqueta_interna || null}
           onSave={handleSaveEtiqueta}
           onSuccess={loadData}
+        />
+      )}
+
+      {/* Modal Compartir Entrega por WhatsApp (Fase 4D) */}
+      {whatsappShareData && (
+        <CompartirWhatsAppModal
+          isOpen={whatsappShareData.isOpen}
+          onClose={() => setWhatsappShareData(null)}
+          message={whatsappShareData.message}
+          whatsappUrl={whatsappShareData.whatsappUrl}
         />
       )}
     </div>
