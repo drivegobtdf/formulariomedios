@@ -2172,26 +2172,86 @@
   border: 1px dashed #cbd5e1;
 }
 
-/* Píldoras de Etiqueta Interna */
+/* Píldoras de Etiqueta Interna y Paleta de Colores (Fase 4B) */
 .pedidos-app .etiqueta-interna-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   font-size: 0.725rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   padding: 0.15rem 0.5rem;
   border-radius: 0.375rem;
-  background-color: #e0f2fe;
-  color: #0369a1;
-  border: 1px solid #bae6fd;
+  border: 1px solid;
   text-transform: uppercase;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+  line-height: 1.2;
 }
 
 .pedidos-app .etiqueta-interna-pill:hover {
   opacity: 0.85;
+}
+
+.pedidos-app .etiqueta-color-azul {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+.pedidos-app .etiqueta-color-verde {
+  background-color: #dcfce7;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+.pedidos-app .etiqueta-color-ambar {
+  background-color: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+.pedidos-app .etiqueta-color-rojo {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.pedidos-app .etiqueta-color-morado {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+.pedidos-app .etiqueta-color-rosa {
+  background-color: #fce7f3;
+  color: #be185d;
+  border-color: #fbcfe8;
+}
+.pedidos-app .etiqueta-color-indigo {
+  background-color: #e0e7ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+.pedidos-app .etiqueta-color-gris {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.pedidos-app .etiqueta-overflow-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  background-color: var(--pedidos-surface-sunken, #f1f5f9);
+  color: var(--pedidos-text-secondary, #475569);
+  border: 1px solid var(--pedidos-border-default, #cbd5e1);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s ease;
+}
+
+.pedidos-app .etiqueta-overflow-badge:hover {
+  background-color: var(--pedidos-border-subtle, #e2e8f0);
 }
 
 .pedidos-app .btn-add-etiqueta {
@@ -2202,15 +2262,68 @@
   padding: 0.15rem 0.45rem;
   border-radius: 0.375rem;
   background-color: transparent;
-  color: #64748b;
-  border: 1px dashed #cbd5e1;
+  color: var(--pedidos-text-muted, #64748b);
+  border: 1px dashed var(--pedidos-border-default, #cbd5e1);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .pedidos-app .btn-add-etiqueta:hover {
-  border-color: #0284c7;
-  color: #0284c7;
+  border-color: var(--pedidos-brand-accent, #0284c7);
+  color: var(--pedidos-brand-accent, #0284c7);
+}
+
+/* Checklist interno de tareas (Fase 4B) */
+.pedidos-checklist-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pedidos-checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--pedidos-border-subtle, #f1f5f9);
+  background-color: var(--pedidos-surface-default, #ffffff);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.pedidos-checklist-item:hover {
+  background-color: var(--pedidos-surface-sunken, #f8fafc);
+  border-color: var(--pedidos-border-default, #e2e8f0);
+}
+
+.pedidos-checklist-item.is-completed {
+  background-color: var(--pedidos-surface-sunken, #f8fafc);
+  opacity: 0.85;
+}
+
+.pedidos-checklist-item.is-completed .checklist-item-text {
+  text-decoration: line-through;
+  color: var(--pedidos-text-muted, #94a3b8);
+}
+
+.pedidos-checklist-item.is-dragging {
+  opacity: 0.5;
+  background-color: var(--pedidos-surface-sunken, #eff6ff);
+  border: 1.5px dashed var(--pedidos-brand-accent, #3b82f6);
+}
+
+.checklist-drag-handle {
+  cursor: grab;
+  color: var(--pedidos-text-muted, #94a3b8);
+  font-size: 0.9rem;
+  user-select: none;
+  padding: 0 0.2rem;
+  display: flex;
+  align-items: center;
+}
+
+.checklist-drag-handle:active {
+  cursor: grabbing;
 }
 
 /* ==========================================================================
@@ -2469,11 +2582,46 @@ body:has(.pedidos-app[data-theme="dark"]) {
   border-color: #334155;
 }
 
-/* Etiqueta Interna */
-.pedidos-app[data-theme="dark"] .etiqueta-interna-pill {
-  background-color: #0c4a6e;
+/* Etiqueta Interna Dark Mode (Fase 4B) */
+.pedidos-app[data-theme="dark"] .etiqueta-color-azul {
+  background-color: rgba(3, 105, 161, 0.25);
   color: #7dd3fc;
-  border-color: #0284c7;
+  border-color: rgba(56, 189, 248, 0.4);
+}
+.pedidos-app[data-theme="dark"] .etiqueta-color-verde {
+  background-color: rgba(21, 128, 61, 0.25);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.4);
+}
+.pedidos-app[data-theme="dark"] .etiqueta-color-ambar {
+  background-color: rgba(180, 83, 9, 0.25);
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.4);
+}
+.pedidos-app[data-theme="dark"] .etiqueta-color-rojo {
+  background-color: rgba(185, 28, 28, 0.25);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+.pedidos-app[data-theme="dark"] .etiqueta-color-morado {
+  background-color: rgba(126, 34, 206, 0.25);
+  color: #d8b4fe;
+  border-color: rgba(192, 132, 252, 0.4);
+}
+.pedidos-app[data-theme="dark"] .etiqueta-color-rosa {
+  background-color: rgba(190, 24, 93, 0.25);
+  color: #f472b6;
+  border-color: rgba(244, 114, 182, 0.4);
+}
+.pedidos-app[data-theme="dark"] .etiqueta-color-indigo {
+  background-color: rgba(67, 56, 202, 0.25);
+  color: #a5b4fc;
+  border-color: rgba(129, 140, 248, 0.4);
+}
+.pedidos-app[data-theme="dark"] .etiqueta-color-gris {
+  background-color: rgba(71, 85, 105, 0.25);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.4);
 }
 
 .pedidos-app[data-theme="dark"] .btn-add-etiqueta {
@@ -2485,6 +2633,25 @@ body:has(.pedidos-app[data-theme="dark"]) {
 .pedidos-app[data-theme="dark"] .btn-add-etiqueta:hover {
   border-color: #38bdf8;
   color: #38bdf8;
+}
+
+.pedidos-app[data-theme="dark"] .pedidos-checklist-item {
+  background-color: var(--pedidos-surface-overlay, #1e293b);
+  border-color: var(--pedidos-border-subtle, #334155);
+}
+
+.pedidos-app[data-theme="dark"] .pedidos-checklist-item:hover {
+  background-color: var(--pedidos-surface-sunken, #0f172a);
+  border-color: var(--pedidos-border-default, #475569);
+}
+
+.pedidos-app[data-theme="dark"] .pedidos-checklist-item.is-completed {
+  background-color: rgba(15, 23, 42, 0.6);
+}
+
+.pedidos-app[data-theme="dark"] .pedidos-checklist-item.is-dragging {
+  background-color: rgba(30, 58, 138, 0.4);
+  border-color: #60a5fa;
 }
 
 /* Inputs, Selects & Textareas */
@@ -2541,6 +2708,29 @@ body:has(.pedidos-app[data-theme="dark"]) {
   }
   100% {
     box-shadow: 0 0 0 0 rgba(2, 132, 199, 0);
+  }
+}
+
+/* ==============================================================================
+   FASE 4B: Kanban Card Title (Max 2 lines desktop, compact on mobile)
+   ============================================================================== */
+.kanban-card-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--pedidos-text-primary, #0f172a);
+  line-height: 1.25;
+  margin-top: 0.15rem;
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .kanban-card-title:not(.has-explicit-title) {
+    display: none;
   }
 }
 

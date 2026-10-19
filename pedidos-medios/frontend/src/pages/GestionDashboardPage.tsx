@@ -7,6 +7,8 @@ import { EliminarPedidosModal } from '../components/gestion/EliminarPedidosModal
 import { EditarEtiquetaModal } from '../components/gestion/EditarEtiquetaModal';
 import { CargaInternaModal } from '../components/CargaInternaModal';
 import { formatReworkHistoricalText } from '../utils/statusBadges';
+import { getPedidoCardTitle } from '../utils/kanbanCardUtils';
+import { KanbanEtiquetasBadge } from '../components/gestion/KanbanEtiquetasBadge';
 
 export type GestionTabFilter =
   | 'todos'
@@ -54,6 +56,8 @@ export const GestionDashboardPage: React.FC = () => {
   const [prioridadFilter, setPrioridadFilter] = useState<string>('todas');
   const [origenFilter, setOrigenFilter] = useState<'todos' | 'publico' | 'interno'>('todos');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedEtiquetasFilter, setSelectedEtiquetasFilter] = useState<string[]>([]);
+  const [showEtiquetasDropdown, setShowEtiquetasDropdown] = useState(false);
   const [showCargaInternaModal, setShowCargaInternaModal] = useState(false);
 
   // Pagination for table
@@ -219,11 +223,46 @@ export const GestionDashboardPage: React.FC = () => {
   const isTerminalOrArchivedTab =
     tabFilter === 'finalizados' || tabFilter === 'cancelados' || tabFilter === 'archivados';
 
+  // Available unique labels across current pedidos (Fase 4B)
+  const availableEtiquetas = useMemo(() => {
+    const map = new Map<string, string>();
+    pedidos.forEach((p) => {
+      if (p.etiquetas && p.etiquetas.length > 0) {
+        p.etiquetas.forEach((e) => {
+          const key = e.texto.toLowerCase().trim();
+          if (!map.has(key)) map.set(key, e.texto.trim());
+        });
+      } else if (p.etiqueta_interna && p.etiqueta_interna.trim()) {
+        const key = p.etiqueta_interna.toLowerCase().trim();
+        if (!map.has(key)) map.set(key, p.etiqueta_interna.trim());
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+  }, [pedidos]);
+
+  // Filtered pedidos according to multi-etiqueta filter with OR semantics (Fase 4B)
+  const filteredPedidos = useMemo(() => {
+    if (selectedEtiquetasFilter.length === 0) {
+      return pedidos;
+    }
+    const lowerFilters = selectedEtiquetasFilter.map((s) => s.toLowerCase().trim());
+    return pedidos.filter((p) => {
+      const matchEtiquetas = (p.etiquetas || []).some((e) =>
+        lowerFilters.includes(e.texto.toLowerCase().trim())
+      );
+      if (matchEtiquetas) return true;
+      if (p.etiqueta_interna) {
+        return lowerFilters.includes(p.etiqueta_interna.toLowerCase().trim());
+      }
+      return false;
+    });
+  }, [pedidos, selectedEtiquetasFilter]);
+
   // Paginated table data
-  const totalPages = Math.ceil(pedidos.length / pageSize) || 1;
+  const totalPages = Math.ceil(filteredPedidos.length / pageSize) || 1;
   const paginatedPedidos = useMemo(() => {
-    return pedidos.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [pedidos, currentPage, pageSize]);
+    return filteredPedidos.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [filteredPedidos, currentPage, pageSize]);
 
   // Elements actually rendered in the current view (strictly visible)
   const visibleSelectablePedidos = useMemo(() => {
@@ -231,10 +270,10 @@ export const GestionDashboardPage: React.FC = () => {
       return paginatedPedidos;
     }
     if (isTerminalOrArchivedTab) {
-      return pedidos;
+      return filteredPedidos;
     }
-    return pedidos.filter((p) => estadosKanban.includes(p.estado));
-  }, [viewMode, paginatedPedidos, isTerminalOrArchivedTab, pedidos, estadosKanban]);
+    return filteredPedidos.filter((p) => estadosKanban.includes(p.estado));
+  }, [viewMode, paginatedPedidos, isTerminalOrArchivedTab, filteredPedidos, estadosKanban]);
 
   // Reconcile selection with currently visible elements
   useEffect(() => {
@@ -772,6 +811,129 @@ export const GestionDashboardPage: React.FC = () => {
             <option value="sin_prioridad">Sin prioridad</option>
           </select>
 
+          {/* Selector Multi-Etiqueta (Fase 4B) */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setShowEtiquetasDropdown((prev) => !prev)}
+              style={{
+                padding: '0.35rem 0.65rem',
+                borderRadius: '0.375rem',
+                border: selectedEtiquetasFilter.length > 0 ? '1px solid var(--pedidos-brand-accent, #0284c7)' : '1px solid var(--pedidos-border-default, #cbd5e1)',
+                fontSize: '0.825rem',
+                backgroundColor: selectedEtiquetasFilter.length > 0 ? 'var(--pedidos-surface-sunken, #eff6ff)' : 'var(--pedidos-control-bg, #ffffff)',
+                color: selectedEtiquetasFilter.length > 0 ? 'var(--pedidos-brand-accent, #0284c7)' : 'var(--pedidos-text-primary, #334155)',
+                fontWeight: selectedEtiquetasFilter.length > 0 ? 700 : 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+              aria-label="Filtrar por etiquetas"
+              title="Filtrar por etiquetas (OR)"
+            >
+              <span>🏷️</span>
+              <span>
+                {selectedEtiquetasFilter.length === 0
+                  ? 'Etiquetas'
+                  : `${selectedEtiquetasFilter.length} etiqueta${selectedEtiquetasFilter.length > 1 ? 's' : ''}`}
+              </span>
+              <span style={{ fontSize: '0.65rem' }}>{showEtiquetasDropdown ? '▲' : '▼'}</span>
+            </button>
+
+            {showEtiquetasDropdown && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: '0.35rem',
+                  backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)',
+                  border: '1px solid var(--pedidos-border-default, #cbd5e1)',
+                  borderRadius: '0.5rem',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                  zIndex: 50,
+                  minWidth: '220px',
+                  maxWidth: '300px',
+                  padding: '0.5rem',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.5rem',
+                    paddingBottom: '0.35rem',
+                    borderBottom: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
+                  }}
+                >
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #1e293b)' }}>
+                    Filtrar por etiqueta (OR)
+                  </span>
+                  {selectedEtiquetasFilter.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEtiquetasFilter([])}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '0.7rem',
+                        color: '#dc2626',
+                        cursor: 'pointer',
+                        padding: 0,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+
+                {availableEtiquetas.length === 0 ? (
+                  <div style={{ fontSize: '0.775rem', color: 'var(--pedidos-text-muted, #94a3b8)', fontStyle: 'italic', padding: '0.5rem' }}>
+                    No hay etiquetas disponibles.
+                  </div>
+                ) : (
+                  <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    {availableEtiquetas.map((tag) => {
+                      const isChecked = selectedEtiquetasFilter.includes(tag);
+                      return (
+                        <label
+                          key={tag}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.25rem 0.35rem',
+                            borderRadius: '0.25rem',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            backgroundColor: isChecked ? 'var(--pedidos-surface-sunken, #eff6ff)' : 'transparent',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setSelectedEtiquetasFilter((prev) =>
+                                isChecked ? prev.filter((t) => t !== tag) : [...prev, tag]
+                              );
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <span style={{ fontWeight: isChecked ? 700 : 500, color: 'var(--pedidos-text-primary, #1e293b)' }}>
+                            {tag}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
             <input
               type="text"
@@ -896,13 +1058,13 @@ export const GestionDashboardPage: React.FC = () => {
               </button>
             </div>
 
-            {pedidos.length === 0 ? (
+            {filteredPedidos.length === 0 ? (
               <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--pedidos-text-muted, #94a3b8)', border: '1px dashed var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem' }}>
                 No hay pedidos en este estado.
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                {pedidos.map((ped) => {
+                {filteredPedidos.map((ped) => {
                   const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)', border: 'var(--pedidos-border-default, #cbd5e1)' };
                   const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
                   return (
@@ -911,7 +1073,7 @@ export const GestionDashboardPage: React.FC = () => {
                       className="kanban-card"
                       onClick={(e) => {
                         const target = e.target as HTMLElement;
-                        if (target.closest('input, select, button, .etiqueta-interna-pill, a, label')) {
+                        if (target.closest('input, select, button, .etiqueta-interna-pill, a, label, .etiqueta-overflow-badge')) {
                           return;
                         }
                         navigate(`/gestion/pedidos/${ped.id}`);
@@ -1021,11 +1183,12 @@ export const GestionDashboardPage: React.FC = () => {
                           RETRABAJADO · {formatReworkHistoricalText(ped.revision_count || 0)}
                         </div>
                       ) : null}
-                      {ped.titulo && (
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)', lineHeight: 1.25 }}>
-                          {ped.titulo}
-                        </div>
-                      )}
+                      <div
+                        className={`kanban-card-title ${ped.titulo ? 'has-explicit-title' : ''}`}
+                        title={getPedidoCardTitle(ped)}
+                      >
+                        {getPedidoCardTitle(ped)}
+                      </div>
                       <div style={{ fontSize: '0.825rem', color: 'var(--pedidos-text-secondary, #334155)', fontWeight: 500 }}>
                         {ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categoría' : 'General')} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                       </div>
@@ -1062,7 +1225,7 @@ export const GestionDashboardPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Metadatos: Prioridad y Etiqueta Interna */}
+                      {/* Metadatos: Prioridad y Múltiples Etiquetas */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
                         {canEditMetadata && !isTerminal ? (
                           <select
@@ -1090,34 +1253,16 @@ export const GestionDashboardPage: React.FC = () => {
                           </span>
                         )}
 
-                        {ped.etiqueta_interna ? (
-                          <span
-                            className="etiqueta-interna-pill"
-                            title={canEditMetadata && !isTerminal ? 'Clic para editar etiqueta' : undefined}
-                            onClick={(e) => {
-                              if (canEditMetadata && !isTerminal) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setSelectedPedidoForEtiqueta(ped);
-                              }
-                            }}
-                          >
-                            🏷️ {ped.etiqueta_interna}
-                          </span>
-                        ) : canEditMetadata && !isTerminal ? (
-                          <button
-                            type="button"
-                            className="btn-add-etiqueta"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setSelectedPedidoForEtiqueta(ped);
-                            }}
-                            title="Agregar etiqueta interna"
-                          >
-                            + Etiqueta
-                          </button>
-                        ) : null}
+                        <KanbanEtiquetasBadge
+                          etiquetas={ped.etiquetas}
+                          legacyEtiqueta={ped.etiqueta_interna}
+                          canEdit={canEditMetadata && !isTerminal}
+                          onOpenModal={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedPedidoForEtiqueta(ped);
+                          }}
+                        />
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)' }}>
@@ -1153,7 +1298,7 @@ export const GestionDashboardPage: React.FC = () => {
             }}
           >
             {estadosKanban.map((estado) => {
-              const columnPedidos = pedidos.filter((p) => p.estado === estado);
+              const columnPedidos = filteredPedidos.filter((p) => p.estado === estado);
               const styleInfo = estadoTitles[estado] || { label: estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)', border: 'var(--pedidos-border-default, #cbd5e1)' };
 
               return (
@@ -1232,7 +1377,7 @@ export const GestionDashboardPage: React.FC = () => {
                           className="kanban-card"
                           onClick={(e) => {
                             const target = e.target as HTMLElement;
-                            if (target.closest('input, select, button, .etiqueta-interna-pill, a, label')) {
+                            if (target.closest('input, select, button, .etiqueta-interna-pill, a, label, .etiqueta-overflow-badge')) {
                               return;
                             }
                             navigate(`/gestion/pedidos/${ped.id}`);
@@ -1322,20 +1467,13 @@ export const GestionDashboardPage: React.FC = () => {
                             </div>
                           )}
 
-                          {/* Titulo destacado para pedidos internos o con titulo */}
-                          {ped.titulo && (
-                            <div
-                              style={{
-                                fontSize: '0.85rem',
-                                fontWeight: 700,
-                                color: 'var(--pedidos-text-primary, #0f172a)',
-                                lineHeight: 1.25,
-                                marginTop: '0.1rem',
-                              }}
-                            >
-                              {ped.titulo}
-                            </div>
-                          )}
+                          {/* Título de la tarjeta (Desktop: máx 2 líneas; Mobile: compacto) */}
+                          <div
+                            className={`kanban-card-title ${ped.titulo ? 'has-explicit-title' : ''}`}
+                            title={getPedidoCardTitle(ped)}
+                          >
+                            {getPedidoCardTitle(ped)}
+                          </div>
 
                           {/* Service Category & Type */}
                           <div style={{ fontSize: '0.8rem', color: 'var(--pedidos-text-secondary, #334155)', fontWeight: 500 }}>
@@ -1374,7 +1512,7 @@ export const GestionDashboardPage: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Metadatos: Prioridad y Etiqueta Interna */}
+                          {/* Metadatos: Prioridad y Múltiples Etiquetas */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
                             {canEditMetadata && !isTerminal ? (
                               <select
@@ -1404,36 +1542,16 @@ export const GestionDashboardPage: React.FC = () => {
                               </span>
                             )}
 
-                            {ped.etiqueta_interna ? (
-                              <span
-                                className="etiqueta-interna-pill"
-                                title={canEditMetadata && !isTerminal ? 'Clic para editar etiqueta' : undefined}
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onClick={(e) => {
-                                  if (canEditMetadata && !isTerminal) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setSelectedPedidoForEtiqueta(ped);
-                                  }
-                                }}
-                              >
-                                🏷️ {ped.etiqueta_interna}
-                              </span>
-                            ) : canEditMetadata && !isTerminal ? (
-                              <button
-                                type="button"
-                                className="btn-add-etiqueta"
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setSelectedPedidoForEtiqueta(ped);
-                                }}
-                                title="Agregar etiqueta interna"
-                              >
-                                + Etiqueta
-                              </button>
-                            ) : null}
+                            <KanbanEtiquetasBadge
+                              etiquetas={ped.etiquetas}
+                              legacyEtiqueta={ped.etiqueta_interna}
+                              canEdit={canEditMetadata && !isTerminal}
+                              onOpenModal={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedPedidoForEtiqueta(ped);
+                              }}
+                            />
                           </div>
 
                           {/* 48h Info Request Badge if applicable */}
@@ -1559,11 +1677,22 @@ export const GestionDashboardPage: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        {ped.titulo && (
-                          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--pedidos-text-secondary, #475569)', marginTop: '0.15rem' }}>
-                            {ped.titulo}
-                          </div>
-                        )}
+                        <div
+                          style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            color: 'var(--pedidos-text-secondary, #475569)',
+                            marginTop: '0.15rem',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                          title={getPedidoCardTitle(ped)}
+                        >
+                          {getPedidoCardTitle(ped)}
+                        </div>
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: 'var(--pedidos-text-secondary, #334155)' }}>
                         <div style={{ fontWeight: 500 }}>{ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categoría' : 'General')}</div>
@@ -1592,30 +1721,12 @@ export const GestionDashboardPage: React.FC = () => {
                         )}
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
-                        {ped.etiqueta_interna ? (
-                          <span
-                            className="etiqueta-interna-pill"
-                            title={canEditMetadata && !isTerminal ? 'Clic para editar etiqueta' : undefined}
-                            onClick={() => {
-                              if (canEditMetadata && !isTerminal) {
-                                setSelectedPedidoForEtiqueta(ped);
-                              }
-                            }}
-                          >
-                            🏷️ {ped.etiqueta_interna}
-                          </span>
-                        ) : canEditMetadata && !isTerminal ? (
-                          <button
-                            type="button"
-                            className="btn-add-etiqueta"
-                            onClick={() => setSelectedPedidoForEtiqueta(ped)}
-                            title="Agregar etiqueta interna"
-                          >
-                            + Etiqueta
-                          </button>
-                        ) : (
-                          <span style={{ color: 'var(--pedidos-text-muted, #94a3b8)', fontSize: '0.8rem' }}>—</span>
-                        )}
+                        <KanbanEtiquetasBadge
+                          etiquetas={ped.etiquetas}
+                          legacyEtiqueta={ped.etiqueta_interna}
+                          canEdit={canEditMetadata && !isTerminal}
+                          onOpenModal={() => setSelectedPedidoForEtiqueta(ped)}
+                        />
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
@@ -1700,13 +1811,19 @@ export const GestionDashboardPage: React.FC = () => {
         />
       )}
 
-      {/* Editar Etiqueta Modal */}
+      {/* Editar Etiqueta Modal (Fase 4B Multi-etiquetas) */}
       {selectedPedidoForEtiqueta && (
         <EditarEtiquetaModal
           isOpen={Boolean(selectedPedidoForEtiqueta)}
           onClose={() => setSelectedPedidoForEtiqueta(null)}
+          pedidoId={selectedPedidoForEtiqueta.id}
           pedidoVisible={selectedPedidoForEtiqueta.pedido_visible}
+          initialEtiquetas={selectedPedidoForEtiqueta.etiquetas}
           initialEtiqueta={selectedPedidoForEtiqueta.etiqueta_interna || null}
+          onSuccess={() => {
+            setSelectedPedidoForEtiqueta(null);
+            loadData();
+          }}
           onSave={handleSaveEtiqueta}
         />
       )}

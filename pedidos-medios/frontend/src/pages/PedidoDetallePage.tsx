@@ -24,6 +24,7 @@ import {
 } from '../services/gestionApi';
 import { InformacionEspecificaViewer } from '../components/gestion/InformacionEspecificaViewer';
 import { EditarEtiquetaModal } from '../components/gestion/EditarEtiquetaModal';
+import { PedidoChecklistSection } from '../components/gestion/PedidoChecklistSection';
 import { formatFileSize, formatArchivoEstado, formatLocalDate, formatHistoryDate } from '../utils/formatUtils';
 import { WhatsAppPhoneLink } from '../components/WhatsAppPhoneLink';
 import { formatReworkHistoricalText } from '../utils/statusBadges';
@@ -968,10 +969,37 @@ export const PedidoDetallePage: React.FC = () => {
                 </span>
               )}
 
-              {/* Píldora o Botón de Etiqueta Interna */}
-              {pedido.etiqueta_interna ? (
+              {/* Etiquetas múltiples con colores (Fase 4B) */}
+              {pedido.etiquetas && pedido.etiquetas.length > 0 ? (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  {pedido.etiquetas.map((etq) => (
+                    <span
+                      key={etq.id || etq.texto}
+                      className={`etiqueta-interna-pill etiqueta-color-${etq.color}`}
+                      title={!isObserver && !pedido.archivado && pedido.estado !== 'Finalizado' && pedido.estado !== 'Cancelado' ? 'Clic para gestionar etiquetas' : undefined}
+                      onClick={() => {
+                        if (!isObserver && !pedido.archivado && pedido.estado !== 'Finalizado' && pedido.estado !== 'Cancelado') {
+                          setShowEtiquetaModal(true);
+                        }
+                      }}
+                    >
+                      🏷️ {etq.texto}
+                    </span>
+                  ))}
+                  {!isObserver && !pedido.archivado && pedido.estado !== 'Finalizado' && pedido.estado !== 'Cancelado' && (
+                    <button
+                      type="button"
+                      className="btn-add-etiqueta"
+                      onClick={() => setShowEtiquetaModal(true)}
+                      title="Gestionar etiquetas internas"
+                    >
+                      +
+                    </button>
+                  )}
+                </div>
+              ) : pedido.etiqueta_interna ? (
                 <span
-                  className="etiqueta-interna-pill"
+                  className="etiqueta-interna-pill etiqueta-color-azul"
                   title={!isObserver && !pedido.archivado && pedido.estado !== 'Finalizado' && pedido.estado !== 'Cancelado' ? 'Clic para editar etiqueta' : undefined}
                   onClick={() => {
                     if (!isObserver && !pedido.archivado && pedido.estado !== 'Finalizado' && pedido.estado !== 'Cancelado') {
@@ -1679,6 +1707,14 @@ export const PedidoDetallePage: React.FC = () => {
               codigoCategoria={pedido.codigo_categoria}
             />
           </div>
+
+          {/* Checklist de tareas interno (Fase 4B) */}
+          <PedidoChecklistSection
+            pedidoId={pedido.id}
+            initialItems={pedido.checklist_items}
+            isObserver={isObserver}
+            onUpdate={loadData}
+          />
         </div>
 
         {/* ===================================================================
@@ -2786,9 +2822,12 @@ export const PedidoDetallePage: React.FC = () => {
         <EditarEtiquetaModal
           isOpen={showEtiquetaModal}
           onClose={() => setShowEtiquetaModal(false)}
+          pedidoId={pedido.id}
           pedidoVisible={pedido.pedido_visible}
+          initialEtiquetas={pedido.etiquetas}
           initialEtiqueta={pedido.etiqueta_interna || null}
           onSave={handleSaveEtiqueta}
+          onSuccess={loadData}
         />
       )}
     </div>

@@ -26,6 +26,30 @@ export interface AdminUserListItem {
   email?: string;
 }
 
+export type EtiquetaColor = 'azul' | 'verde' | 'ambar' | 'rojo' | 'morado' | 'rosa' | 'indigo' | 'gris';
+
+export interface PedidoEtiquetaItem {
+  id: string;
+  pedido_id: string;
+  texto: string;
+  color: EtiquetaColor;
+  created_at: string;
+}
+
+export interface PedidoChecklistItem {
+  id: string;
+  pedido_id: string;
+  texto: string;
+  completado: boolean;
+  orden: number;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  completado_por?: string | null;
+  completado_at?: string | null;
+  completado_por_nombre?: string | null;
+}
+
 export interface PedidoListItem {
   id: string;
   pedido_visible: string;
@@ -38,6 +62,7 @@ export interface PedidoListItem {
   created_by_user_id?: string;
   prioridad?: 'alta' | 'media' | 'baja' | null;
   etiqueta_interna?: string | null;
+  etiquetas?: PedidoEtiquetaItem[];
   retrabajo_activo?: boolean;
   revision_requested_at?: string | null;
   revision_count?: number;
@@ -221,6 +246,8 @@ export interface PedidoDetailItem extends PedidoListItem {
       created_at?: string;
     }>;
   }>;
+  etiquetas?: PedidoEtiquetaItem[];
+  checklist_items?: PedidoChecklistItem[];
 }
 
 export async function fetchInternalUsers(): Promise<InternalUser[]> {
@@ -388,6 +415,12 @@ export async function fetchPedidos(filters?: {
         id,
         nombre_apellido,
         area_solicitante
+      ),
+      pedido_etiquetas (
+        id,
+        texto,
+        color,
+        created_at
       )
     `);
 
@@ -452,6 +485,13 @@ export async function fetchPedidos(filters?: {
     created_by_user_id: p.created_by_user_id || undefined,
     prioridad: p.prioridad || null,
     etiqueta_interna: p.etiqueta_interna || null,
+    etiquetas: ((p.pedido_etiquetas || []) as any[]).map((e: any) => ({
+      id: e.id,
+      pedido_id: p.id,
+      texto: e.texto,
+      color: (e.color || 'azul') as EtiquetaColor,
+      created_at: e.created_at,
+    })),
     retrabajo_activo: Boolean(p.retrabajo_activo),
     revision_requested_at: p.revision_requested_at,
     revision_count: p.revision_count || 0,
@@ -506,7 +546,8 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       updated_at,
       categorias_servicio!pedidos_categoria_id_fkey ( nombre ),
       tipos_servicio!pedidos_tipo_servicio_id_fkey ( nombre ),
-      envios_formulario ( id, nombre_apellido, telefono, correo, area_solicitante )
+      envios_formulario ( id, nombre_apellido, telefono, correo, area_solicitante ),
+      pedido_etiquetas ( id, texto, color, created_at )
     `);
 
   if (isUuid) {
@@ -609,6 +650,11 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     `)
     .eq('pedido_id', pedidoId)
     .order('revision_number', { ascending: false });
+
+  // Checklist
+  const { data: checklistData } = await supabase.rpc('pedido_checklist_list', {
+    p_pedido_id: pedidoId,
+  });
 
   return {
     id: p.id,
@@ -790,6 +836,26 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       archivos: (r.revision_archivos || [])
         .map((ra: any) => ra.archivos)
         .filter(Boolean),
+    })),
+    etiquetas: (((p as any).pedido_etiquetas || []) as any[]).map((e: any) => ({
+      id: e.id,
+      pedido_id: pedidoId,
+      texto: e.texto,
+      color: (e.color || 'azul') as EtiquetaColor,
+      created_at: e.created_at,
+    })),
+    checklist_items: (((checklistData as any) || []) as any[]).map((ci: any) => ({
+      id: ci.id,
+      pedido_id: ci.pedido_id,
+      texto: ci.texto,
+      completado: Boolean(ci.completado),
+      orden: ci.orden,
+      created_by: ci.created_by,
+      created_at: ci.created_at,
+      updated_at: ci.updated_at,
+      completado_por: ci.completado_por,
+      completado_at: ci.completado_at,
+      completado_por_nombre: ci.completado_por_nombre || undefined,
     })),
   };
 }
@@ -1351,3 +1417,176 @@ export async function createInternalPedido(params: CreateInternalPedidoParams): 
   return data;
 }
 
+// ============================================================================
+// FASE 4B: CHECKLIST DE TAREAS INTERNAS
+// ============================================================================
+
+export async function fetchPedidoChecklist(pedidoId: string): Promise<PedidoChecklistItem[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_checklist_list', { p_pedido_id: pedidoId });
+  if (error) throw new Error(error.message);
+  return ((data as any[]) || []).map((ci: any) => ({
+    id: ci.id,
+    pedido_id: ci.pedido_id,
+    texto: ci.texto,
+    completado: Boolean(ci.completado),
+    orden: ci.orden,
+    created_by: ci.created_by,
+    created_at: ci.created_at,
+    updated_at: ci.updated_at,
+    completado_por: ci.completado_por,
+    completado_at: ci.completado_at,
+    completado_por_nombre: ci.completado_por_nombre || undefined,
+  }));
+}
+
+export async function createChecklistItem(pedidoId: string, texto: string): Promise<PedidoChecklistItem> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_checklist_item_create', {
+    p_pedido_id: pedidoId,
+    p_texto: texto.trim(),
+  });
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    pedido_id: data.pedido_id,
+    texto: data.texto,
+    completado: Boolean(data.completado),
+    orden: data.orden,
+    created_by: data.created_by,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    completado_por: data.completado_por,
+    completado_at: data.completado_at,
+    completado_por_nombre: data.completado_por_nombre || undefined,
+  };
+}
+
+export async function updateChecklistItem(itemId: string, texto: string): Promise<PedidoChecklistItem> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_checklist_item_update', {
+    p_item_id: itemId,
+    p_texto: texto.trim(),
+  });
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    pedido_id: data.pedido_id,
+    texto: data.texto,
+    completado: Boolean(data.completado),
+    orden: data.orden,
+    created_by: data.created_by,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    completado_por: data.completado_por,
+    completado_at: data.completado_at,
+    completado_por_nombre: data.completado_por_nombre || undefined,
+  };
+}
+
+export async function toggleChecklistItem(itemId: string, completado: boolean): Promise<PedidoChecklistItem> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_checklist_item_toggle', {
+    p_item_id: itemId,
+    p_completado: completado,
+  });
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    pedido_id: data.pedido_id,
+    texto: data.texto,
+    completado: Boolean(data.completado),
+    orden: data.orden,
+    created_by: data.created_by,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    completado_por: data.completado_por,
+    completado_at: data.completado_at,
+    completado_por_nombre: data.completado_por_nombre || undefined,
+  };
+}
+
+export async function deleteChecklistItem(itemId: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_checklist_item_delete', {
+    p_item_id: itemId,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
+export async function reorderChecklistItems(pedidoId: string, itemIds: string[]): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_checklist_reorder', {
+    p_pedido_id: pedidoId,
+    p_item_ids: itemIds,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
+// ============================================================================
+// FASE 4B: ETIQUETAS MÚLTIPLES CON COLORES
+// ============================================================================
+
+export async function fetchPedidoEtiquetas(pedidoId: string): Promise<PedidoEtiquetaItem[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_etiquetas_list', { p_pedido_id: pedidoId });
+  if (error) throw new Error(error.message);
+  return ((data as any[]) || []).map((e: any) => ({
+    id: e.id,
+    pedido_id: e.pedido_id,
+    texto: e.texto,
+    color: (e.color || 'azul') as EtiquetaColor,
+    created_at: e.created_at,
+  }));
+}
+
+export async function addPedidoEtiqueta(
+  pedidoId: string,
+  texto: string,
+  color: EtiquetaColor = 'azul'
+): Promise<PedidoEtiquetaItem> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_etiquetas_add', {
+    p_pedido_id: pedidoId,
+    p_texto: texto.trim(),
+    p_color: color,
+  });
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    pedido_id: data.pedido_id,
+    texto: data.texto,
+    color: (data.color || 'azul') as EtiquetaColor,
+    created_at: data.created_at,
+  };
+}
+
+export async function removePedidoEtiqueta(etiquetaId: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_etiquetas_remove', {
+    p_etiqueta_id: etiquetaId,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
+export async function setPedidoEtiquetas(
+  pedidoId: string,
+  etiquetas: Array<{ texto: string; color: EtiquetaColor }>
+): Promise<PedidoEtiquetaItem[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('pedido_etiquetas_set', {
+    p_pedido_id: pedidoId,
+    p_etiquetas: etiquetas.map((e) => ({ texto: e.texto.trim(), color: e.color })),
+  });
+  if (error) throw new Error(error.message);
+  return ((data as any[]) || []).map((e: any) => ({
+    id: e.id,
+    pedido_id: e.pedido_id,
+    texto: e.texto,
+    color: (e.color || 'azul') as EtiquetaColor,
+    created_at: e.created_at,
+  }));
+}
