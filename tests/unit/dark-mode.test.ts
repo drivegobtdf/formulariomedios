@@ -9,16 +9,16 @@ describe('Modo Oscuro (Dark Mode)', () => {
     localStorage.clear();
   });
 
-  it('1. Debe inicializar en "light" por defecto cuando no hay valor previo en localStorage', () => {
+  it('1. Debe inicializar en "dark" por defecto cuando no hay valor previo en localStorage', () => {
     const saved = localStorage.getItem('pedidos:theme');
-    const theme = saved === 'dark' ? 'dark' : 'light';
-    expect(theme).toBe('light');
+    const theme = saved === 'light' ? 'light' : 'dark';
+    expect(theme).toBe('dark');
   });
 
   it('2. Debe recuperar "dark" si está guardado en localStorage', () => {
     localStorage.setItem('pedidos:theme', 'dark');
     const saved = localStorage.getItem('pedidos:theme');
-    const theme = saved === 'dark' ? 'dark' : 'light';
+    const theme = saved === 'light' ? 'light' : 'dark';
     expect(theme).toBe('dark');
   });
 

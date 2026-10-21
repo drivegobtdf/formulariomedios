@@ -15,7 +15,7 @@ export const Layout: React.FC = () => {
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('pedidos:theme');
-    return saved === 'dark' ? 'dark' : 'light';
+    return saved === 'light' ? 'light' : 'dark';
   });
 
   const toggleTheme = () => {

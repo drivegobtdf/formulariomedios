@@ -113,4 +113,18 @@ describe('Logo por Tema y Dark Mode Header Suite', () => {
     // El contenedor raíz tiene data-theme="dark"
     expect(container.querySelector('.pedidos-app')).toHaveAttribute('data-theme', 'dark');
   });
+
+  it('F. sin localStorage -> inicializa en dark por defecto con logo blanco institucional', () => {
+    // localStorage está limpio (sin pedidos:theme)
+    const { container } = render(
+      <MemoryRouter initialEntries={['/gestion']}>
+        <Layout />
+      </MemoryRouter>
+    );
+
+    const logoImg = screen.getByAltText(/Gobierno de Tierra del Fuego AIAS/i) as HTMLImageElement;
+    expect(logoImg).toBeInTheDocument();
+    expect(logoImg.src).toContain('GOB-TDF-BLANCO-scaled-e1777050842342');
+    expect(container.querySelector('.pedidos-app')).toHaveAttribute('data-theme', 'dark');
+  });
 });

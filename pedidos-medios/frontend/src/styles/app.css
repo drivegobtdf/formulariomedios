@@ -133,6 +133,35 @@
   --pedidos-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --pedidos-shadow-md: 0 4px 6px -1px rgba(0, 51, 102, 0.07), 0 2px 4px -1px rgba(0, 51, 102, 0.04);
   --pedidos-shadow-lg: 0 10px 15px -3px rgba(0, 51, 102, 0.09), 0 4px 6px -2px rgba(0, 51, 102, 0.04);
+
+  /* Linear Design Tokens (DESIGN.md) */
+  --color-void: #08090a;
+  --color-carbon: #0f1011;
+  --color-obsidian: #161718;
+  --color-graphite: #23252a;
+  --color-smoke: #383b3f;
+  --color-ash: #62666d;
+  --color-fog: #8a8f98;
+  --color-mist: #d0d6e0;
+  --color-bone: #e5e5e6;
+  --color-paper: #ffffff;
+  --color-acid-lime: #e4f222;
+  --color-pulse-green: #27a644;
+  --color-coral-red: #eb5757;
+  --color-signal-teal: #02b8cc;
+  --color-iris-violet: #6366f1;
+  --color-lavender: #8b5cf6;
+
+  --font-inter-variable: 'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-berkeley-mono: 'Berkeley Mono', JetBrains Mono, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --radius-cards: 12px;
+  --radius-buttons: 6px;
+  --radius-inputs: 6px;
+  --radius-badges: 4px;
+  --radius-pills: 9999px;
+
+  --shadow-hairline: 0 0 0 1px var(--color-graphite);
 }
 
 #pedidos-app {
@@ -2746,4 +2775,164 @@ body:has(.pedidos-app[data-theme="dark"]) {
     width: auto !important;
     max-width: calc(100vw - 1.5rem) !important;
   }
+}
+
+
+/* ==============================================================================
+   Linear Design System Tokens & Surfaces — Exclusivo Gestión de Pedidos (DESIGN.md)
+   Aislado para la vista amplia de gestión interna (.pedidos-app-wide)
+   ============================================================================== */
+.pedidos-app.pedidos-app-wide[data-theme="dark"] {
+  /* Linear Surfaces (DESIGN.md) */
+  --pedidos-surface-canvas: var(--color-void, #08090a);
+  --pedidos-surface-sunken: var(--color-void, #08090a);
+  --pedidos-surface-default: var(--color-carbon, #0f1011);
+  --pedidos-surface-raised: var(--color-obsidian, #161718);
+  --pedidos-surface-overlay: var(--color-obsidian, #161718);
+  --pedidos-surface-card: var(--color-carbon, #0f1011);
+
+  /* Linear Accent (Acid Lime) */
+  --pedidos-brand-accent: var(--color-acid-lime, #e4f222);
+  --pedidos-brand-accent-hover: #d2df1b;
+
+  /* Text & Typography */
+  --pedidos-text-primary: var(--color-paper, #ffffff);
+  --pedidos-text-secondary: var(--color-mist, #d0d6e0);
+  --pedidos-text-muted: var(--color-fog, #8a8f98);
+  --pedidos-text-inverse: var(--color-void, #08090a);
+
+  /* Borders (Linear hairline 0.5px / 1px) */
+  --pedidos-border-subtle: var(--color-obsidian, #161718);
+  --pedidos-border-default: var(--color-graphite, #23252a);
+  --pedidos-border-strong: var(--color-smoke, #383b3f);
+  --pedidos-focus-ring: var(--color-mist, #d0d6e0);
+
+  /* Controls & Inputs */
+  --pedidos-control-bg: var(--color-carbon, #0f1011);
+  --pedidos-control-bg-hover: var(--color-obsidian, #161718);
+  --pedidos-control-bg-active: var(--color-graphite, #23252a);
+  --pedidos-control-border: var(--color-graphite, #23252a);
+  --pedidos-control-text: var(--color-mist, #d0d6e0);
+
+  /* Tables */
+  --pedidos-table-header-bg: var(--color-carbon, #0f1011);
+  --pedidos-table-row-hover: var(--color-obsidian, #161718);
+  --pedidos-table-row-border: var(--color-graphite, #23252a);
+
+  /* Estados Operativos Linear */
+  --pedidos-status-nuevo-bg: rgba(2, 184, 204, 0.14);
+  --pedidos-status-nuevo-text: #02b8cc;
+  --pedidos-status-nuevo-border: rgba(2, 184, 204, 0.35);
+
+  --pedidos-status-revision-bg: rgba(245, 158, 11, 0.14);
+  --pedidos-status-revision-text: #fbbf24;
+  --pedidos-status-revision-border: rgba(245, 158, 11, 0.35);
+
+  --pedidos-status-proceso-bg: rgba(99, 102, 241, 0.14);
+  --pedidos-status-proceso-text: #a5b4fc;
+  --pedidos-status-proceso-border: rgba(99, 102, 241, 0.35);
+
+  --pedidos-status-esperando-bg: rgba(245, 158, 11, 0.14);
+  --pedidos-status-esperando-text: #fde047;
+  --pedidos-status-esperando-border: rgba(245, 158, 11, 0.35);
+
+  --pedidos-status-finalizado-bg: rgba(39, 166, 68, 0.14);
+  --pedidos-status-finalizado-text: #27a644;
+  --pedidos-status-finalizado-border: rgba(39, 166, 68, 0.35);
+
+  --pedidos-status-cancelado-bg: rgba(235, 87, 87, 0.14);
+  --pedidos-status-cancelado-text: #eb5757;
+  --pedidos-status-cancelado-border: rgba(235, 87, 87, 0.35);
+
+  background-color: var(--pedidos-surface-canvas, #08090a);
+  color: var(--pedidos-text-primary, #ffffff);
+  scrollbar-color: #23252a #08090a;
+}
+
+body:has(.pedidos-app.pedidos-app-wide[data-theme="dark"]) {
+  background-color: #08090a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-header,
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-footer {
+  background-color: var(--color-carbon, #0f1011);
+  border-color: var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-header-title {
+  color: #ffffff;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-btn-theme-toggle {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--color-mist, #d0d6e0);
+  border-color: var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-btn-theme-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-mist, #d0d6e0);
+  color: #ffffff;
+}
+
+/* ==============================================================================
+   Linear Component Classes (DESIGN.md) — Exclusivo Gestión de Pedidos
+   ============================================================================== */
+.pedidos-app .pedidos-linear-btn-primary {
+  background-color: var(--color-acid-lime, #e4f222);
+  color: #08090a;
+  border-radius: var(--radius-buttons, 6px);
+  padding: 8px 16px;
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 510;
+  letter-spacing: -0.011em;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.pedidos-app .pedidos-linear-btn-primary:hover {
+  opacity: 0.92;
+}
+
+.pedidos-app .pedidos-linear-btn-ghost {
+  background-color: transparent;
+  color: var(--pedidos-text-secondary, #d0d6e0);
+  border: 1px solid var(--pedidos-border-default, #23252a);
+  border-radius: var(--radius-buttons, 6px);
+  padding: 6px 12px;
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pedidos-app .pedidos-linear-btn-ghost:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--pedidos-text-muted, #8a8f98);
+  color: var(--pedidos-text-primary, #ffffff);
+}
+
+.pedidos-app .pedidos-linear-pill {
+  border-radius: var(--radius-pills, 9999px);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pedidos-app .pedidos-mono-id {
+  font-family: var(--font-berkeley-mono, monospace);
+  letter-spacing: -0.013em;
+  font-weight: 500;
 }
