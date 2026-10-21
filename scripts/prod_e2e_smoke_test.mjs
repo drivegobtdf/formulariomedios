@@ -8,7 +8,10 @@ const PROD_URL = `https://${PROD_REF}.supabase.co`;
 const userProfile = process.env.USERPROFILE || process.env.HOME || '';
 const prodSecrets = JSON.parse(fs.readFileSync(path.join(userProfile, '.pedidos', 'prod-secrets.json'), 'utf8'));
 
-const configPath = path.join(process.cwd(), 'pedidos-medios', 'frontend', 'public', 'pedidos-config.js');
+const standaloneConfig = path.join(process.cwd(), 'pedidos-standalone', 'web', 'pedidos-config.js');
+const configPath = fs.existsSync(standaloneConfig)
+  ? standaloneConfig
+  : path.join(process.cwd(), 'pedidos-medios', 'frontend', 'public', 'pedidos-config.js');
 let ANON_KEY = '';
 if (fs.existsSync(configPath)) {
   const cfgContent = fs.readFileSync(configPath, 'utf8');

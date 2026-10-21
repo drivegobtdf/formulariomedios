@@ -22,7 +22,10 @@ describe('F10 Admin Requeue Mechanism for Failed Communications (Migration 052)'
           supabaseAdmin = createClient(PROD_URL, secrets.SUPABASE_SERVICE_ROLE_KEY, {
             auth: { persistSession: false, autoRefreshToken: false },
           });
-          const configPath = path.join(process.cwd(), 'pedidos-medios', 'frontend', 'public', 'pedidos-config.js');
+          const standaloneConfig = path.join(process.cwd(), 'pedidos-standalone', 'web', 'pedidos-config.js');
+          const configPath = fs.existsSync(standaloneConfig)
+            ? standaloneConfig
+            : path.join(process.cwd(), 'pedidos-medios', 'frontend', 'public', 'pedidos-config.js');
           let anonKey = '';
           if (fs.existsSync(configPath)) {
             const cfg = fs.readFileSync(configPath, 'utf8');

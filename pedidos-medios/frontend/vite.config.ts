@@ -3,11 +3,18 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isStandalone = mode === 'standalone' || process.env.BUILD_TARGET === 'standalone';
+  const isDev = mode === 'development' || command === 'serve';
 
-  const base = isStandalone ? (env.VITE_BASE_PATH || '/') : '/formulariomedios/';
+  // En desarrollo local o modo standalone, el base path por defecto es '/'
+  // para permitir acceso directo a rutas canónicas (/gestion, /login, etc.).
+  // En compilación estándar de producción para WordPress/subdirectorio se mantiene '/formulariomedios/'.
+  const defaultBase = (isStandalone || isDev) ? '/' : '/formulariomedios/';
+  const rawBase = env.VITE_BASE_PATH || defaultBase;
+  const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+
   const outDir = isStandalone
     ? path.resolve(import.meta.dirname, '../../pedidos-standalone/web')
     : '../dist';

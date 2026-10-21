@@ -1,6 +1,6 @@
 /**
  * Módulo de configuración pública del cliente frontend.
- * Lee las opciones inyectadas por WordPress vía window.__PEDIDOS_CONFIG__
+ * Lee las opciones inyectadas por WordPress o Standalone vía window.__PEDIDOS_CONFIG__
  * o recurre a las variables de entorno de Vite en desarrollo local.
  */
 
@@ -21,9 +21,13 @@ declare global {
   }
 }
 
-const DEFAULT_CONFIG: PedidosPublicConfig = {
+export const PROD_SUPABASE_REF = 'uwzgyirilafgnbpmrkic';
+export const TEST_SUPABASE_REF = 'yqfkzgqvezarzhlwiilo';
+
+export const DEFAULT_CONFIG: PedidosPublicConfig = {
   supabaseUrl: 'https://yqfkzgqvezarzhlwiilo.supabase.co',
-  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZmt6Z3F2ZXphcnpobHdpaWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMjYyMjcsImV4cCI6MjEwNDgwMjIyN30.HtH8wtoexhpHLz4IHYtGkMWBF3_WuthkR_XroB4ODfU',
+  supabaseAnonKey:
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZmt6Z3F2ZXphcnpobHdpaWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMjYyMjcsImV4cCI6MjEwNDgwMjIyN30.HtH8wtoexhpHLz4IHYtGkMWBF3_WuthkR_XroB4ODfU',
   environment: 'development',
   uiMode: 'development',
   basePath: '/formulariomedios',
@@ -77,56 +81,144 @@ export function normalizeBasePath(raw?: string | null): string {
   return cleaned || '/formulariomedios';
 }
 
-export function getPublicConfig(): PedidosPublicConfig {
+/**
+ * Resuelve la configuración efectiva evaluando la precedencia según el entorno de ejecución
+ * e imponiendo una guarda estricta para impedir conexiones a Supabase Producción desde local/dev.
+ */
+export function resolvePublicConfig(options?: {
+  isDev?: boolean;
+  envOverrides?: Partial<Record<string, string>>;
+}): PedidosPublicConfig {
   const wpConfig = typeof window !== 'undefined' ? window.__PEDIDOS_CONFIG__ || {} : {};
 
-  const supabaseUrl =
-    wpConfig.supabaseUrl ||
-    import.meta.env.VITE_SUPABASE_URL ||
-    DEFAULT_CONFIG.supabaseUrl;
+  // Detección de entorno: modo desarrollo de Vite o ejecución en localhost/127.0.0.1
+  const isDev =
+    options?.isDev ??
+    Boolean(
+      import.meta.env?.MODE === 'development' ||
+        (typeof window !== 'undefined' &&
+          ['localhost', '127.0.0.1', '::1', '[::1]'].includes(window.location?.hostname || '') &&
+          import.meta.env?.MODE !== 'test')
+    );
 
-  const supabaseAnonKey =
-    wpConfig.supabaseAnonKey ||
-    import.meta.env.VITE_SUPABASE_ANON_KEY ||
-    DEFAULT_CONFIG.supabaseAnonKey;
+  const env = options?.envOverrides || (typeof import.meta !== 'undefined' ? import.meta.env || {} : {});
 
-  const environment = (wpConfig.environment ||
-    import.meta.env.VITE_ENVIRONMENT ||
-    DEFAULT_CONFIG.environment) as PedidosPublicConfig['environment'];
+  let rawSupabaseUrl: string;
+  let rawSupabaseAnonKey: string;
+  let rawEnvironment: string;
+  let rawUiMode: string;
+  let rawBasePath: string;
 
-  const rawUiMode =
-    wpConfig.uiMode ||
-    import.meta.env.VITE_UI_MODE ||
-    (environment === 'production' ? 'production-preview' : DEFAULT_CONFIG.uiMode);
+  if (isDev) {
+    // ENTORNO DESARROLLO LOCAL:
+    // Las variables de entorno locales (.env.development / .env.local) tienen precedencia sobre
+    // window.__PEDIDOS_CONFIG__ para evitar que una configuración estática de producción contamine local.
+    rawSupabaseUrl =
+      env.VITE_SUPABASE_URL ||
+      wpConfig.supabaseUrl ||
+      DEFAULT_CONFIG.supabaseUrl;
+
+    rawSupabaseAnonKey =
+      env.VITE_SUPABASE_ANON_KEY ||
+      wpConfig.supabaseAnonKey ||
+      DEFAULT_CONFIG.supabaseAnonKey;
+
+    rawEnvironment =
+      env.VITE_ENVIRONMENT ||
+      (wpConfig.environment && wpConfig.environment !== 'production' ? wpConfig.environment : undefined) ||
+      'development';
+
+    rawUiMode =
+      env.VITE_UI_MODE ||
+      wpConfig.uiMode ||
+      'development';
+
+    // En desarrollo local el basePath por defecto es '/' (o lo indicado en VITE_BASE_PATH)
+    rawBasePath =
+      env.VITE_BASE_PATH ||
+      wpConfig.basePath ||
+      '/';
+  } else {
+    // ENTORNO PRODUCCIÓN / COMPILACIÓN / WORDPRESS RUNTIME:
+    // window.__PEDIDOS_CONFIG__ tiene máxima prioridad para permitir parametrización dinámica sin recompilar.
+    rawSupabaseUrl =
+      wpConfig.supabaseUrl ||
+      env.VITE_SUPABASE_URL ||
+      DEFAULT_CONFIG.supabaseUrl;
+
+    rawSupabaseAnonKey =
+      wpConfig.supabaseAnonKey ||
+      env.VITE_SUPABASE_ANON_KEY ||
+      DEFAULT_CONFIG.supabaseAnonKey;
+
+    rawEnvironment =
+      wpConfig.environment ||
+      env.VITE_ENVIRONMENT ||
+      DEFAULT_CONFIG.environment;
+
+    rawUiMode =
+      wpConfig.uiMode ||
+      env.VITE_UI_MODE ||
+      (rawEnvironment === 'production' ? 'production-preview' : DEFAULT_CONFIG.uiMode);
+
+    rawBasePath =
+      wpConfig.basePath ||
+      env.VITE_BASE_PATH ||
+      DEFAULT_CONFIG.basePath;
+  }
+
+  // GUARDA DE SEGURIDAD ESTRICTA:
+  // Si estamos en entorno local/desarrollo (isDev o hostname localhost), JAMÁS se permite conectar a PROD.
+  const isLocalHost =
+    typeof window !== 'undefined' &&
+    ['localhost', '127.0.0.1', '::1', '[::1]'].includes(window.location?.hostname || '');
+
+  if ((isDev || isLocalHost) && rawSupabaseUrl.includes(PROD_SUPABASE_REF)) {
+    console.warn(
+      `[PEDIDOS Config Guard] Intento de conexión bloqueado: Entorno local/desarrollo no puede conectarse a Supabase Producción (${PROD_SUPABASE_REF}). Redirigiendo a entorno seguro (TEST/LOCAL).`
+    );
+    rawSupabaseUrl =
+      env.VITE_SUPABASE_URL && !env.VITE_SUPABASE_URL.includes(PROD_SUPABASE_REF)
+        ? env.VITE_SUPABASE_URL
+        : DEFAULT_CONFIG.supabaseUrl;
+
+    rawSupabaseAnonKey =
+      env.VITE_SUPABASE_ANON_KEY && !rawSupabaseUrl.includes(PROD_SUPABASE_REF)
+        ? env.VITE_SUPABASE_ANON_KEY
+        : DEFAULT_CONFIG.supabaseAnonKey;
+
+    rawEnvironment = 'development';
+  }
+
+  const environment = (rawEnvironment === 'production'
+    ? 'production'
+    : rawEnvironment === 'staging'
+      ? 'staging'
+      : 'development') as PedidosPublicConfig['environment'];
 
   const uiMode =
     rawUiMode === 'production-preview' || rawUiMode === 'production'
       ? 'production-preview'
       : 'development';
 
-  const rawBasePath =
-    wpConfig.basePath ||
-    import.meta.env.VITE_BASE_PATH ||
-    DEFAULT_CONFIG.basePath;
-
   const basePath = normalizeBasePath(rawBasePath);
 
   const publicAppUrl =
     wpConfig.publicAppUrl ||
     (typeof window !== 'undefined' && window.location?.origin
-      ? `${window.location.origin}${basePath}`
+      ? `${window.location.origin}${basePath === '/' ? '' : basePath}`
       : undefined);
 
   const contractVersion =
     wpConfig.contractVersion ||
-    import.meta.env.VITE_CONTRACT_VERSION ||
+    env.VITE_CONTRACT_VERSION ||
     DEFAULT_CONFIG.contractVersion;
 
   const pluginVersion = wpConfig.pluginVersion || DEFAULT_CONFIG.pluginVersion;
 
   return {
-    supabaseUrl,
-    supabaseAnonKey,
+    supabaseUrl: rawSupabaseUrl,
+    supabaseAnonKey: rawSupabaseAnonKey,
     environment,
     uiMode,
     basePath,
@@ -136,3 +228,6 @@ export function getPublicConfig(): PedidosPublicConfig {
   };
 }
 
+export function getPublicConfig(): PedidosPublicConfig {
+  return resolvePublicConfig();
+}
