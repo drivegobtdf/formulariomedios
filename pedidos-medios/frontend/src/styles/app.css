@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 /**
  * Estilos base del sistema PEDIDOS (Revisión 3.0).
  * Todos los estilos se mantienen estrictamente bajo el namespace .pedidos-app
@@ -2935,4 +2937,3137 @@ body:has(.pedidos-app.pedidos-app-wide[data-theme="dark"]) {
   font-family: var(--font-berkeley-mono, monospace);
   letter-spacing: -0.013em;
   font-weight: 500;
+}
+
+/* ==============================================================================
+   Linear Gestión — Header, Stats, Actions & Filters (Etapa 2 — DESIGN.md)
+   ============================================================================== */
+
+/* Encabezado Principal */
+.pedidos-app.pedidos-app-wide .pedidos-gestion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-gestion-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-gestion-title {
+  margin: 0;
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 22px;
+  font-weight: 510;
+  letter-spacing: -0.012em;
+  color: var(--pedidos-text-primary, #0f172a);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-gestion-role-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-badges, 4px);
+  border: 1px solid var(--pedidos-border-default, #e2e8f0);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-realtime-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-pills, 9999px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--pedidos-border-default, #e2e8f0);
+  background-color: var(--pedidos-surface-sunken, #f8fafc);
+  color: var(--pedidos-text-secondary, #475569);
+  transition: all 0.2s ease;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-realtime-badge.is-connected {
+  background-color: rgba(39, 166, 68, 0.08);
+  border-color: rgba(39, 166, 68, 0.28);
+  color: var(--color-pulse-green, #166534);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-realtime-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-realtime-dot.is-connected {
+  background-color: var(--color-pulse-green, #22c55e);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-realtime-dot.is-disconnected {
+  background-color: #94a3b8;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-gestion-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Botón Carga Interna (High-Emphasis CTA Linear) */
+.pedidos-app.pedidos-app-wide .pedidos-btn-carga-interna {
+  padding: 7px 14px;
+  border-radius: var(--radius-buttons, 6px);
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 510;
+  letter-spacing: -0.011em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.1s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid transparent;
+}
+
+/* En modo claro: high contrast */
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-btn-carga-interna {
+  background-color: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-btn-carga-interna:hover {
+  background-color: #1e293b;
+  transform: translateY(-1px);
+}
+
+/* En modo oscuro: Acid Lime #e4f222 con texto #08090a */
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-btn-carga-interna {
+  background-color: var(--color-acid-lime, #e4f222);
+  color: #08090a;
+  border-color: var(--color-acid-lime, #e4f222);
+  box-shadow: 0 0 12px rgba(228, 242, 34, 0.18);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-btn-carga-interna:hover {
+  opacity: 0.94;
+  box-shadow: 0 0 16px rgba(228, 242, 34, 0.32);
+  transform: translateY(-1px);
+}
+
+/* Segmented Control: Vista Kanban / Tabla */
+.pedidos-app.pedidos-app-wide .pedidos-view-switcher {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--pedidos-control-bg, #ffffff);
+  border: 1px solid var(--pedidos-border-default, #cbd5e1);
+  border-radius: var(--radius-buttons, 6px);
+  padding: 2px;
+  gap: 2px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-view-switcher-btn {
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--pedidos-text-muted, #64748b);
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-view-switcher-btn:hover {
+  color: var(--pedidos-text-primary, #0f172a);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-view-switcher-btn.is-active {
+  background-color: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-view-switcher {
+  background-color: var(--color-carbon, #0f1011);
+  border-color: var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-view-switcher-btn {
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-view-switcher-btn:hover {
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-view-switcher-btn.is-active {
+  background-color: var(--color-graphite, #23252a);
+  color: var(--color-paper, #ffffff);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Botón Ghost: Tableros Privados */
+.pedidos-app.pedidos-app-wide .pedidos-btn-tableros {
+  padding: 6px 12px;
+  border-radius: var(--radius-buttons, 6px);
+  border: 1px solid var(--pedidos-border-default, #cbd5e1);
+  background-color: var(--pedidos-control-bg, #ffffff);
+  color: var(--pedidos-control-text, #334155);
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-btn-tableros:hover {
+  background-color: var(--pedidos-control-bg-hover, #f8fafc);
+  border-color: var(--pedidos-text-muted, #64748b);
+  color: var(--pedidos-text-primary, #0f172a);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-btn-tableros {
+  background-color: transparent;
+  border-color: var(--color-graphite, #23252a);
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-btn-tableros:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-fog, #8a8f98);
+  color: #ffffff;
+}
+
+/* ==============================================================================
+   Tarjetas de Estadísticas (Banner de 9 Indicadores con Jerarquía Linear)
+   ============================================================================== */
+.pedidos-app.pedidos-app-wide .pedidos-linear-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-stat-card {
+  border-radius: var(--radius-cards, 12px);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justifyContent: space-between;
+  min-height: 62px;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-stat-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-stat-card:hover {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-stat-card-activos {
+  background: #f8fafc;
+  border-color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-stat-card {
+  background-color: var(--color-carbon, #0f1011);
+  border: 1px solid var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-stat-card:hover {
+  border-color: var(--color-smoke, #383b3f);
+  background-color: var(--color-obsidian, #161718);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-stat-card-activos {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%), var(--color-carbon, #0f1011);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-stat-header {
+  display: flex;
+  align-items: center;
+  justifyContent: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-stat-label {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pedidos-text-muted, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-stat-label {
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-stat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-stat-value {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 20px;
+  font-weight: 590;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--pedidos-text-primary, #0f172a);
+  margin: 0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-stat-value {
+  color: var(--color-paper, #ffffff);
+}
+
+/* Indicadores Cromáticos Funcionales de Estadísticas */
+.pedidos-app.pedidos-app-wide .dot-activos { background-color: #0284c7; }
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .dot-activos { background-color: var(--color-acid-lime, #e4f222); box-shadow: 0 0 5px rgba(228, 242, 34, 0.5); }
+
+.pedidos-app.pedidos-app-wide .dot-nuevos { background-color: #0284c7; }
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .dot-nuevos { background-color: var(--color-signal-teal, #02b8cc); }
+
+.pedidos-app.pedidos-app-wide .dot-revision { background-color: #d97706; }
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .dot-revision { background-color: #fbbf24; }
+
+.pedidos-app.pedidos-app-wide .dot-proceso { background-color: #4f46e5; }
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .dot-proceso { background-color: var(--color-iris-violet, #818cf8); }
+
+.pedidos-app.pedidos-app-wide .dot-esperando { background-color: #ca8a04; }
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .dot-esperando { background-color: #fde047; }
+
+.pedidos-app.pedidos-app-wide .dot-sin-asignar { background-color: #dc2626; }
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .dot-sin-asignar { background-color: var(--color-coral-red, #f43f5e); }
+
+.pedidos-app.pedidos-app-wide .dot-finalizados { background-color: #16a34a; }
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .dot-finalizados { background-color: var(--color-pulse-green, #27a644); }
+
+.pedidos-app.pedidos-app-wide .dot-cancelados { background-color: #64748b; }
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .dot-cancelados { background-color: var(--color-fog, #8a8f98); }
+
+.pedidos-app.pedidos-app-wide .dot-archivados { background-color: #94a3b8; }
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .dot-archivados { background-color: var(--color-ash, #62666d); }
+
+/* ==============================================================================
+   Barra de Filtros y Búsqueda (Linear Filter Shelf)
+   ============================================================================== */
+.pedidos-app.pedidos-app-wide .pedidos-linear-filter-shelf {
+  border-radius: var(--radius-cards, 12px);
+  padding: 10px 14px;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-filter-shelf {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-filter-shelf {
+  background-color: var(--color-carbon, #0f1011);
+  border: 1px solid var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-filter-shelf-top {
+  display: flex;
+  align-items: center;
+  justifyContent: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-tabs-track {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-tab-btn {
+  padding: 5px 12px;
+  border-radius: var(--radius-pills, 9999px);
+  border: 1px solid transparent;
+  background: transparent;
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-tab-btn {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-tab-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-tab-btn.is-active {
+  background-color: #0f172a;
+  color: #ffffff;
+  font-weight: 510;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-tab-btn {
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-tab-btn:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-tab-btn.is-active {
+  background-color: var(--color-graphite, #23252a);
+  border-color: var(--color-smoke, #383b3f);
+  color: var(--color-paper, #ffffff);
+  font-weight: 510;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-filter-shelf-bottom {
+  display: flex;
+  align-items: center;
+  justifyContent: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-filter-shelf-bottom {
+  border-top-color: var(--color-obsidian, #161718);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-filters-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-select {
+  padding: 6px 10px;
+  border-radius: var(--radius-inputs, 6px);
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-select {
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-select:focus {
+  border-color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-select {
+  border: 1px solid var(--color-graphite, #23252a);
+  background-color: var(--color-carbon, #0f1011);
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-select:focus {
+  border-color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-tag-btn {
+  padding: 6px 10px;
+  border-radius: var(--radius-inputs, 6px);
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-tag-btn {
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-tag-btn:hover {
+  border-color: #64748b;
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-tag-btn.has-selected {
+  border-color: #0284c7;
+  background-color: #eff6ff;
+  color: #0284c7;
+  font-weight: 600;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-tag-btn {
+  border: 1px solid var(--color-graphite, #23252a);
+  background-color: var(--color-carbon, #0f1011);
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-tag-btn:hover {
+  border-color: var(--color-fog, #8a8f98);
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-tag-btn.has-selected {
+  border-color: var(--color-iris-violet, #6366f1);
+  background-color: rgba(99, 102, 241, 0.14);
+  color: #c7d2fe;
+  font-weight: 510;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  border-radius: 8px;
+  z-index: 50;
+  min-width: 220px;
+  max-width: 300px;
+  padding: 8px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-dropdown-menu {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-dropdown-menu {
+  background-color: var(--color-obsidian, #161718);
+  border: 1px solid var(--color-graphite, #23252a);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-search-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-search-input {
+  padding: 6px 12px;
+  border-radius: var(--radius-inputs, 6px);
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  min-width: 200px;
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-search-input {
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-search-input:focus {
+  border-color: #0f172a;
+  background-color: #ffffff;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-search-input {
+  border: 1px solid var(--color-graphite, #23252a);
+  background-color: rgba(255, 255, 255, 0.02);
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-search-input:focus {
+  border-color: var(--color-mist, #d0d6e0);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-search-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-buttons, 6px);
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-search-btn {
+  background-color: #0f172a;
+  border: 1px solid #0f172a;
+  color: #ffffff;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-search-btn:hover {
+  background-color: #1e293b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-search-btn {
+  background-color: var(--color-obsidian, #161718);
+  border: 1px solid var(--color-graphite, #23252a);
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-search-btn:hover {
+  background-color: var(--color-graphite, #23252a);
+  border-color: var(--color-fog, #8a8f98);
+}
+
+/* ==============================================================================
+   Barra de Selección Masiva (Linear Bulk Bar)
+   ============================================================================== */
+.pedidos-app.pedidos-app-wide .pedidos-linear-bulk-bar {
+  border-radius: var(--radius-buttons, 6px);
+  padding: 8px 14px;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-bulk-bar {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-bulk-bar.has-selection {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-bulk-bar {
+  background-color: var(--color-obsidian, #161718);
+  border: 1px solid var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-bulk-bar.has-selection {
+  background-color: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-bulk-pill {
+  padding: 2px 8px;
+  border-radius: var(--radius-pills, 9999px);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-bulk-pill {
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-bulk-pill.is-active {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-bulk-pill {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-bulk-pill.is-active {
+  background-color: rgba(99, 102, 241, 0.22);
+  color: #c7d2fe;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-btn-danger {
+  padding: 6px 14px;
+  border-radius: var(--radius-buttons, 6px);
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-btn-danger {
+  background-color: #dc2626;
+  border: 1px solid #dc2626;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.2);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-btn-danger:hover {
+  background-color: #b91c1c;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-btn-danger {
+  background-color: rgba(235, 87, 87, 0.15);
+  border: 1px solid rgba(235, 87, 87, 0.4);
+  color: var(--color-coral-red, #eb5757);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-btn-danger:hover {
+  background-color: #eb5757;
+  color: #ffffff;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-alert-success {
+  padding: 10px 14px;
+  border-radius: var(--radius-buttons, 6px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1rem;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-alert-success {
+  background-color: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-alert-success {
+  background-color: rgba(39, 166, 68, 0.12);
+  border: 1px solid rgba(39, 166, 68, 0.35);
+  color: var(--color-pulse-green, #27a644);
+}
+
+/* ==============================================================================
+   Linear Kanban Board & Cards (Etapa 3B — Refinamiento Visual y Jerarquía)
+   ============================================================================== */
+
+/* Tipografía e Inter Variable OpenType para Gestión */
+.pedidos-app.pedidos-app-wide {
+  font-family: var(--font-inter-variable);
+  font-feature-settings: 'cv01' on, 'ss03' on, 'zero' on;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tablero Kanban (Grid horizontal fluido con scroll) */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(290px, 1fr));
+  gap: 16px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+}
+
+/* Columna Kanban — Estructura ligera de carril */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-col {
+  border-radius: var(--radius-cards, 12px);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 275px);
+  min-width: 290px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-col {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-col {
+  background-color: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Cabecera de Columna */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-col-header {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-col-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-col-header {
+  background-color: var(--color-carbon, #0f1011);
+  border-bottom: 1px solid var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-col-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-col-title {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 510;
+  letter-spacing: -0.01em;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-col-title {
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-col-title {
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-col-count {
+  font-family: var(--font-berkeley-mono, monospace);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  padding: 2px 7px;
+  border-radius: var(--radius-pills, 9999px);
+  line-height: 1.2;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-col-count {
+  background-color: #e2e8f0;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-col-count {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-fog, #8a8f98);
+  border: 1px solid var(--color-graphite, #23252a);
+}
+
+/* Cuerpo de la Columna con scroll vertical */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-col-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 160px;
+  scrollbar-width: thin;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-col-body {
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-col-body {
+  scrollbar-color: var(--color-graphite, #23252a) transparent;
+}
+
+/* Estado Vacío de Columna */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  font-size: 12px;
+  border-radius: var(--radius-buttons, 6px);
+  margin: auto 0;
+  border: 1px dashed;
+  font-family: var(--font-inter-variable, inherit);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-empty {
+  color: #94a3b8;
+  border-color: #cbd5e1;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-empty {
+  color: var(--color-ash, #62666d);
+  border-color: var(--color-graphite, #23252a);
+}
+
+/* ==============================================================================
+   Tarjetas Kanban (.kanban-card — Precision Machined 12px Radius)
+   ============================================================================== */
+.pedidos-app.pedidos-app-wide .kanban-card {
+  border-radius: var(--radius-cards, 12px) !important;
+  padding: 13px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  user-select: text;
+}
+
+/* Tarjeta Modo Claro */
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .kanban-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .kanban-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .kanban-card.is-selected {
+  border-color: #93c5fd;
+  background-color: #f8fbff;
+}
+
+/* Tarjeta Modo Oscuro (Linear Carbon surface #0f1011 + Graphite hairline #23252a) */
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .kanban-card {
+  background-color: var(--color-carbon, #0f1011);
+  border: 1px solid var(--color-graphite, #23252a);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .kanban-card:hover {
+  background-color: var(--color-obsidian, #161718);
+  border-color: var(--color-smoke, #383b3f);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .kanban-card.is-selected {
+  border-color: rgba(99, 102, 241, 0.5);
+  background-color: rgba(99, 102, 241, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.2);
+}
+
+/* Acentos visuales de la tarjeta (Retrabajo & Origen Interno) */
+.pedidos-app.pedidos-app-wide .kanban-card.is-retrabajo {
+  border-left-width: 4px !important;
+  border-left-style: solid !important;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .kanban-card.is-retrabajo {
+  border-left-color: #d97706 !important;
+  background-color: #fffdf5;
+  border-top-color: #fde68a;
+  border-right-color: #fde68a;
+  border-bottom-color: #fde68a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .kanban-card.is-retrabajo {
+  border-left-color: #f59e0b !important;
+  border-color: rgba(245, 158, 11, 0.32);
+  background-color: rgba(245, 158, 11, 0.03);
+}
+
+.pedidos-app.pedidos-app-wide .kanban-card.is-interno:not(.is-retrabajo) {
+  border-left-width: 4px !important;
+  border-left-style: solid !important;
+  border-left-color: var(--pedidos-interno-accent, #f43f5e) !important;
+}
+
+/* Header de la tarjeta */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-card-id-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-card-checkbox {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  accent-color: #6366f1;
+}
+
+/* Código PED en Monoespaciado Berkeley Mono / JetBrains Mono */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-card-id {
+  font-family: var(--font-berkeley-mono, monospace);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: -0.013em;
+  padding: 2px 6px;
+  border-radius: var(--radius-badges, 4px);
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-card-id {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-card-id {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-graphite, #23252a);
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-card-date {
+  font-size: 11px;
+  font-family: var(--font-inter-variable, inherit);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-card-date {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-card-date {
+  color: var(--color-ash, #62666d);
+}
+
+/* Badge INTERNO */
+.pedidos-app.pedidos-app-wide .pedidos-badge-interno {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: var(--radius-badges, 4px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-badge-interno {
+  background-color: #ffe4e6;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-badge-interno {
+  background-color: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+/* Badge RETRABAJAR */
+.pedidos-app.pedidos-app-wide .pedidos-badge-retrabajo {
+  font-size: 11px;
+  font-weight: 590;
+  letter-spacing: -0.01em;
+  border-radius: var(--radius-badges, 4px);
+  padding: 3px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  border: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-badge-retrabajo {
+  color: #b45309;
+  background-color: #fef3c7;
+  border-color: #fde68a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-badge-retrabajo {
+  color: #fbbf24;
+  background-color: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.32);
+}
+
+/* Badge Retrabajado Histórico (en terminal/archivados) */
+.pedidos-app.pedidos-app-wide .pedidos-badge-retrabajado-hist {
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: var(--radius-badges, 4px);
+  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  border: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-badge-retrabajado-hist {
+  color: #475569;
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-badge-retrabajado-hist {
+  color: var(--color-fog, #8a8f98);
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: var(--color-graphite, #23252a);
+}
+
+/* Título de la tarjeta (PROTAGONISTA REAL DE LA JERARQUÍA) */
+.pedidos-app.pedidos-app-wide .kanban-card .kanban-card-title {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 15px !important;
+  font-weight: 590 !important;
+  line-height: 1.4 !important;
+  letter-spacing: -0.014em !important;
+  margin: 4px 0 2px 0 !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .kanban-card .kanban-card-title {
+  color: #0f172a !important;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .kanban-card .kanban-card-title {
+  color: var(--color-paper, #ffffff) !important;
+}
+
+/* Servicio: Categoría y Tipo */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-service {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  margin-bottom: 2px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-service {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-service {
+  color: var(--color-fog, #8a8f98);
+}
+
+/* Solicitante y Área (Cápsula de Metadatos Limpia) */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-parties {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 9px;
+  border-radius: var(--radius-buttons, 6px);
+  margin: 3px 0 4px 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-parties {
+  background-color: #f8fafc;
+  border: 1px solid #eef2f6;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-parties {
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-requester {
+  font-size: 11.5px;
+  font-weight: 510;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-requester {
+  color: #1e293b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-requester {
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-area {
+  font-size: 11px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-area {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-area {
+  color: var(--color-fog, #8a8f98);
+}
+
+/* Metadatos: Prioridad y Etiquetas */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+/* Selectores y Badges de Prioridad Linear */
+.pedidos-app.pedidos-app-wide .prioridad-badge-select,
+.pedidos-app.pedidos-app-wide .prioridad-badge {
+  border-radius: var(--radius-badges, 4px) !important;
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 11px !important;
+  font-weight: 510 !important;
+  letter-spacing: -0.008em;
+  padding: 3px 8px !important;
+  line-height: 1.2 !important;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+/* Prioridad en Modo Claro */
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .prioridad-alta {
+  background-color: #fef2f2 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .prioridad-media {
+  background-color: #fffbeb !important;
+  color: #b45309 !important;
+  border-color: #fde68a !important;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .prioridad-baja {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .prioridad-sin-prioridad {
+  background-color: #f8fafc !important;
+  color: #94a3b8 !important;
+  border-color: #cbd5e1 !important;
+  border-style: dashed !important;
+}
+
+/* Prioridad en Modo Oscuro */
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .prioridad-alta {
+  background-color: rgba(235, 87, 87, 0.14) !important;
+  color: #f87171 !important;
+  border-color: rgba(235, 87, 87, 0.38) !important;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .prioridad-media {
+  background-color: rgba(245, 158, 11, 0.14) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.38) !important;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .prioridad-baja {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  color: var(--color-mist, #d0d6e0) !important;
+  border-color: var(--color-graphite, #23252a) !important;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .prioridad-sin-prioridad {
+  background-color: transparent !important;
+  color: var(--color-ash, #62666d) !important;
+  border-color: var(--color-graphite, #23252a) !important;
+  border-style: dashed !important;
+}
+
+/* Píldoras de Etiquetas Linear */
+.pedidos-app.pedidos-app-wide .etiqueta-interna-pill {
+  border-radius: var(--radius-badges, 4px) !important;
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  padding: 3px 8px !important;
+  line-height: 1.2 !important;
+  border: 1px solid transparent;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .etiqueta-color-azul {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .etiqueta-color-verde {
+  background-color: #dcfce7;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .etiqueta-color-ambar {
+  background-color: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .etiqueta-color-rojo {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .etiqueta-color-morado {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .etiqueta-color-rosa {
+  background-color: #ffe4e6;
+  color: #be185d;
+  border-color: #fecdd3;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .etiqueta-color-azul {
+  background-color: rgba(2, 184, 204, 0.12);
+  color: #38bdf8;
+  border-color: rgba(2, 184, 204, 0.3);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .etiqueta-color-verde {
+  background-color: rgba(39, 166, 68, 0.12);
+  color: #4ade80;
+  border-color: rgba(39, 166, 68, 0.3);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .etiqueta-color-ambar {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .etiqueta-color-rojo {
+  background-color: rgba(235, 87, 87, 0.12);
+  color: #f87171;
+  border-color: rgba(235, 87, 87, 0.3);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .etiqueta-color-morado {
+  background-color: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .etiqueta-color-rosa {
+  background-color: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+.pedidos-app.pedidos-app-wide .btn-add-etiqueta {
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: var(--radius-badges, 4px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--font-inter-variable, inherit);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .btn-add-etiqueta {
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .btn-add-etiqueta:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .btn-add-etiqueta {
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--color-graphite, #23252a);
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .btn-add-etiqueta:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-smoke, #383b3f);
+  color: var(--color-paper, #ffffff);
+}
+
+/* Badge 48h Info Pendiente */
+.pedidos-app.pedidos-app-wide .pedidos-badge-info-pendiente {
+  font-size: 11px;
+  font-weight: 590;
+  padding: 2px 7px;
+  border-radius: var(--radius-badges, 4px);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  border: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-badge-info-pendiente {
+  color: #a16207;
+  background-color: #fefce8;
+  border-color: #fef08a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-badge-info-pendiente {
+  color: #fde047;
+  background-color: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.32);
+}
+
+/* Footer de Tarjeta (Responsable y Enlace Neutro) */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-card-footer {
+  border-top-color: #f1f5f9;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-card-footer {
+  border-top-color: var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-assignee {
+  font-size: 11.5px;
+  font-weight: 510;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-assignee.is-assigned {
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-assignee.is-unassigned {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-assignee.is-assigned {
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-assignee.is-unassigned {
+  color: var(--color-coral-red, #eb5757);
+  font-weight: 600;
+}
+
+/* Enlace secundario "Ver detalle →" convertido en Micro-Botón Ghost Linear */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-detail-link {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 11.5px;
+  font-weight: 510;
+  letter-spacing: -0.01em;
+  text-decoration: none !important;
+  padding: 3px 9px;
+  border-radius: var(--radius-buttons, 6px);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-detail-link {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-kanban-detail-link:hover {
+  background-color: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-detail-link {
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-graphite, #23252a);
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-kanban-detail-link:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-fog, #8a8f98);
+  color: var(--color-paper, #ffffff);
+}
+
+/* Pastilla de Estado en Vista Terminal */
+.pedidos-app.pedidos-app-wide .pedidos-kanban-status-pill {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 11px;
+  font-weight: 510;
+  letter-spacing: -0.005em;
+  padding: 2px 8px;
+  border-radius: var(--radius-pills, 9999px);
+  border: 1px solid transparent;
+  line-height: 1.2;
+}
+
+/* Panel Terminal / Archivados */
+.pedidos-app.pedidos-app-wide .pedidos-terminal-panel {
+  border-radius: var(--radius-cards, 12px);
+  padding: 1.25rem;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-terminal-panel {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-terminal-panel {
+  background-color: var(--color-obsidian, #161718);
+  border: 1px solid var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-terminal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* ==============================================================================
+   Linear Gestión — Vista Tabla y Paginación (Etapa 4 — DESIGN.md)
+   ============================================================================== */
+
+/* Contenedor Principal de la Tarjeta Tabla */
+.pedidos-app.pedidos-app-wide .pedidos-gestion-table-card {
+  border-radius: var(--radius-cards, 12px);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-gestion-table-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-gestion-table-card {
+  background-color: var(--color-carbon, #0f1011);
+  border: 1px solid var(--color-graphite, #23252a);
+}
+
+/* Envoltorio con Scroll Horizontal Controlado */
+.pedidos-app.pedidos-app-wide .pedidos-gestion-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-gestion-table-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-gestion-table-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-gestion-table-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-gestion-table-scroll::-webkit-scrollbar-track {
+  background: var(--color-void, #08090a);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-gestion-table-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-graphite, #23252a);
+  border-radius: 9999px;
+}
+
+/* Tabla Estructura Base */
+.pedidos-app.pedidos-app-wide .pedidos-gestion-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  text-align: left;
+  font-family: var(--font-inter-variable, inherit);
+  font-feature-settings: "cv01" on, "ss03" on, "zero" on;
+}
+
+/* Fila de Encabezados */
+.pedidos-app.pedidos-app-wide .pedidos-gestion-table-header-row {
+  border-bottom: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-gestion-table-header-row {
+  background-color: #f8fafc;
+  border-bottom-color: #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-gestion-table-header-row {
+  background-color: var(--color-obsidian, #161718);
+  border-bottom-color: var(--color-graphite, #23252a);
+}
+
+/* Celdas de Encabezado th */
+.pedidos-app.pedidos-app-wide .pedidos-table-th {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 590;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-th {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-th {
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-th-checkbox {
+  width: 40px;
+  padding: 10px 8px 10px 14px;
+  text-align: center;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-th-id {
+  width: 270px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-th-service {
+  min-width: 140px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-th-priority {
+  width: 130px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-th-tags {
+  min-width: 120px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-th-status {
+  min-width: 130px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-th-assignee {
+  min-width: 140px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-th-date {
+  width: 110px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-th-actions {
+  width: 120px;
+  text-align: right;
+  padding-right: 16px;
+}
+
+/* Filas del Cuerpo */
+.pedidos-app.pedidos-app-wide .pedidos-gestion-table-row {
+  border-bottom: 1px solid;
+  transition: background-color 0.12s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-gestion-table-row {
+  border-bottom-color: #f1f5f9;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-gestion-table-row {
+  border-bottom-color: var(--color-graphite, #23252a);
+}
+
+/* Hover de Filas */
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-gestion-table-row:hover {
+  background-color: #f8fafc;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-gestion-table-row:hover {
+  background-color: rgba(255, 255, 255, 0.028);
+}
+
+/* Fila Seleccionada */
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-gestion-table-row.is-selected {
+  background-color: #f1f5f9 !important;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-gestion-table-row.is-selected {
+  background-color: rgba(255, 255, 255, 0.055) !important;
+}
+
+/* Fila con Retrabajo Activo */
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-gestion-table-row.is-retrabajo {
+  background-color: #fffbeb;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-gestion-table-row.is-retrabajo {
+  background-color: rgba(245, 158, 11, 0.06);
+}
+
+/* Celdas td */
+.pedidos-app.pedidos-app-wide .pedidos-table-td {
+  padding: 10px 14px;
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-td {
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-td {
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-td-checkbox {
+  padding: 10px 8px 10px 14px;
+  width: 40px;
+  text-align: center;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-td-actions {
+  text-align: right;
+  padding-right: 16px;
+}
+
+/* Checkbox estilizado y accesible */
+.pedidos-app.pedidos-app-wide .pedidos-table-checkbox {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  accent-color: #27a644;
+  vertical-align: middle;
+}
+
+/* Fila de Código PED e INTERNO */
+.pedidos-app.pedidos-app-wide .pedidos-table-id-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-ped-code {
+  font-family: var(--font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-ped-code {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-ped-code {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--color-mist, #d0d6e0);
+  border: 1px solid var(--color-graphite, #23252a);
+}
+
+/* Título de Pedido en Tabla */
+.pedidos-app.pedidos-app-wide .pedidos-table-title {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13.5px;
+  font-weight: 550;
+  line-height: 1.35;
+  letter-spacing: -0.012em;
+  margin-top: 3px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-title {
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-title {
+  color: var(--color-paper, #ffffff);
+}
+
+/* Categoría y Tipo */
+.pedidos-app.pedidos-app-wide .pedidos-table-category {
+  font-size: 13px;
+  font-weight: 510;
+  line-height: 1.3;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-category {
+  color: #1e293b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-category {
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-type {
+  font-size: 11.5px;
+  font-weight: 400;
+  margin-top: 1px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-type {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-type {
+  color: var(--color-fog, #8a8f98);
+}
+
+/* Pila de Estado y Retrabajo en Tabla */
+.pedidos-app.pedidos-app-wide .pedidos-table-status-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+/* Badge Retrabajo en Tabla */
+.pedidos-app.pedidos-app-wide .pedidos-table-rework-badge {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  padding: 2px 6px;
+  border-radius: var(--radius-badges, 4px);
+  line-height: 1.2;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-rework-badge {
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-rework-badge {
+  background-color: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-reworked-hist-badge {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-badges, 4px);
+  line-height: 1.2;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-reworked-hist-badge {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-reworked-hist-badge {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--color-fog, #8a8f98);
+  border: 1px solid var(--color-graphite, #23252a);
+}
+
+/* Responsable */
+.pedidos-app.pedidos-app-wide .pedidos-table-assignee-text {
+  font-size: 12px;
+  font-weight: 510;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-assignee-text.is-assigned {
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-assignee-text.is-unassigned {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-assignee-text.is-assigned {
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-assignee-text.is-unassigned {
+  color: var(--color-coral-red, #eb5757);
+  font-weight: 600;
+}
+
+/* Fecha Ingreso */
+.pedidos-app.pedidos-app-wide .pedidos-table-date-text {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-date-text {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-date-text {
+  color: var(--color-fog, #8a8f98);
+}
+
+/* Botón Ghost de Acción "Ver detalle →" en Tabla */
+.pedidos-app.pedidos-app-wide .pedidos-table-detail-link {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 11.5px;
+  font-weight: 510;
+  letter-spacing: -0.01em;
+  text-decoration: none !important;
+  padding: 4px 10px;
+  border-radius: var(--radius-buttons, 6px);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-detail-link {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-detail-link:hover {
+  background-color: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-detail-link {
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-graphite, #23252a);
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-detail-link:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-fog, #8a8f98);
+  color: var(--color-paper, #ffffff);
+}
+
+/* Estado Vacío de Tabla */
+.pedidos-app.pedidos-app-wide .pedidos-table-empty {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  font-size: 13px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-empty {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-empty {
+  color: var(--color-fog, #8a8f98);
+}
+
+/* ==============================================================================
+   Paginación Modernizada Linear
+   ============================================================================== */
+.pedidos-app.pedidos-app-wide .pedidos-table-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-pagination {
+  background-color: #f8fafc;
+  border-top-color: #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-pagination {
+  background-color: var(--color-obsidian, #161718);
+  border-top-color: var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-pagination-info {
+  font-size: 12.5px;
+  font-weight: 450;
+  letter-spacing: -0.005em;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-table-pagination-info {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-table-pagination-info {
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-pagination-btn {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 12px;
+  font-weight: 510;
+  letter-spacing: -0.008em;
+  padding: 6px 14px;
+  border-radius: var(--radius-buttons, 6px);
+  border: 1px solid;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-pagination-btn {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-pagination-btn:hover:not(:disabled) {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-pagination-btn:disabled {
+  background-color: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-pagination-btn {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: var(--color-graphite, #23252a);
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-pagination-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-fog, #8a8f98);
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-pagination-btn:disabled {
+  background-color: transparent;
+  border-color: rgba(255, 255, 255, 0.06);
+  color: var(--color-ash, #62666d);
+  cursor: not-allowed;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-pagination-btn:focus-visible,
+.pedidos-app.pedidos-app-wide .pedidos-table-checkbox:focus-visible,
+.pedidos-app.pedidos-app-wide .pedidos-table-detail-link:focus-visible {
+  outline: 2px solid var(--color-acid-lime, #e4f222);
+  outline-offset: 2px;
+}
+/* ==============================================================================
+   Linear Gestión — Modales de Gestión (Etapa 5 — DESIGN.md)
+   ============================================================================== */
+
+/* Backdrop / Overlay */
+.pedidos-app.pedidos-app-wide .pedidos-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 1rem;
+  overflow-y: auto;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: pedidos-fade-in 0.15s ease-out;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-overlay {
+  background-color: rgba(15, 23, 42, 0.45);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-overlay {
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+/* Modal Dialog Card */
+.pedidos-app.pedidos-app-wide .pedidos-modal-dialog {
+  position: relative;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-cards, 12px);
+  overflow: hidden;
+  font-family: var(--font-inter-variable, inherit);
+  font-feature-settings: "cv01" on, "ss03" on, "zero" on;
+  animation: pedidos-scale-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-dialog {
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-dialog {
+  background-color: var(--color-carbon, #0f1011);
+  color: var(--color-mist, #d0d6e0);
+  border: 1px solid var(--color-graphite, #23252a);
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+}
+
+/* Tamaños de Diálogo */
+.pedidos-app.pedidos-app-wide .pedidos-modal-dialog-sm {
+  max-width: 480px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-dialog-md {
+  max-width: 560px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-dialog-lg {
+  max-width: 740px;
+}
+
+/* Header del Modal */
+.pedidos-app.pedidos-app-wide .pedidos-modal-header {
+  padding: 1.15rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid;
+  gap: 12px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-header {
+  background-color: #f8fafc;
+  border-bottom-color: #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-header {
+  background-color: var(--color-obsidian, #161718);
+  border-bottom-color: var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-title {
+  margin: 0;
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 16px;
+  font-weight: 550;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-title {
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-title {
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-subtitle {
+  font-size: 12px;
+  font-weight: 400;
+  display: block;
+  margin-top: 2px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-subtitle {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-subtitle {
+  color: var(--color-fog, #8a8f98);
+}
+
+/* Botón de Cierre (Micro-Ghost) */
+.pedidos-app.pedidos-app-wide .pedidos-modal-close-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-buttons, 6px);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  line-height: 1;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-close-btn {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-close-btn:hover:not(:disabled) {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-close-btn {
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-close-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-graphite, #23252a);
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-close-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Header Destructivo de Advertencia */
+.pedidos-app.pedidos-app-wide .pedidos-modal-header-danger {
+  border-bottom: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-header-danger {
+  background-color: #fef2f2;
+  border-bottom-color: #fee2e2;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-header-danger {
+  background-color: rgba(235, 87, 87, 0.12);
+  border-bottom-color: rgba(235, 87, 87, 0.32);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-title-danger {
+  color: #991b1b;
+  font-weight: 700;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-title-danger {
+  color: #fca5a5;
+  font-weight: 700;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-danger-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+/* Cuerpo del Modal */
+.pedidos-app.pedidos-app-wide .pedidos-modal-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-body-padded {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Formularios */
+.pedidos-app.pedidos-app-wide .pedidos-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-form-scrollable {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Secciones y Encabezados Internos */
+.pedidos-app.pedidos-app-wide .pedidos-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-section-divided {
+  border-top: 1px solid;
+  padding-top: 1rem;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-section-divided {
+  border-top-color: #f1f5f9;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-section-divided {
+  border-top-color: var(--color-graphite, #23252a);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-section-title {
+  color: #0284c7;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-section-title {
+  color: #38bdf8;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-fields-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .pedidos-app.pedidos-app-wide .pedidos-modal-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 510;
+  letter-spacing: -0.005em;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-label {
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-label {
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-required-mark {
+  color: var(--color-coral-red, #eb5757);
+  font-weight: 700;
+}
+
+/* Inputs, Textareas y Selects de Modales */
+.pedidos-app.pedidos-app-wide .pedidos-modal-input,
+.pedidos-app.pedidos-app-wide .pedidos-modal-textarea,
+.pedidos-app.pedidos-app-wide .pedidos-modal-select {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: var(--radius-inputs, 6px);
+  border: 1px solid;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  outline: none;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-input,
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-textarea,
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-select {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-input:focus,
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-textarea:focus,
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-select:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 1px #0284c7;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-input,
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-textarea,
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-select {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: var(--color-graphite, #23252a);
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-input:focus,
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-textarea:focus,
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-select:focus {
+  border-color: var(--color-fog, #8a8f98);
+  box-shadow: 0 0 0 1px var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+/* Sub-tarjetas dentro de modales (ej. agregar etiqueta) */
+.pedidos-app.pedidos-app-wide .pedidos-modal-subcard {
+  padding: 1rem;
+  border-radius: var(--radius-buttons, 6px);
+  border: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-subcard {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-subcard {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-color: var(--color-graphite, #23252a);
+}
+
+/* Grupos de Input con Botón lateral */
+.pedidos-app.pedidos-app-wide .pedidos-modal-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+/* Botón Añadir Etiqueta */
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-add {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 12px;
+  font-weight: 510;
+  padding: 8px 14px;
+  border-radius: var(--radius-buttons, 6px);
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-btn-add {
+  background-color: #0284c7;
+  color: #ffffff;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-btn-add:hover:not(:disabled) {
+  background-color: #0369a1;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-btn-add {
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-graphite, #23252a);
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-btn-add:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Filas de Texto de Ayuda / Hint */
+.pedidos-app.pedidos-app-wide .pedidos-modal-hint-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-hint-row {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-hint-row {
+  color: var(--color-ash, #62666d);
+}
+
+/* Selector de Color de Etiquetas */
+.pedidos-app.pedidos-app-wide .pedidos-modal-color-title {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 510;
+  margin-bottom: 6px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-color-title {
+  color: #475569;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-color-title {
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-color-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  cursor: pointer;
+  padding: 0;
+  border: 2px solid transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-color-dot.is-selected {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px #ffffff;
+  transform: scale(1.15);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-color-dot.is-selected {
+  border-color: var(--color-paper, #ffffff);
+  box-shadow: 0 0 0 2px var(--color-carbon, #0f1011);
+  transform: scale(1.15);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-color-label {
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-color-label {
+  color: #475569;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-color-label {
+  color: var(--color-mist, #d0d6e0);
+}
+
+/* Enlaces Dinámicos */
+.pedidos-app.pedidos-app-wide .pedidos-modal-links-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-link-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-link-action {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 510;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-btn-link-action {
+  color: #0284c7;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-btn-link-action:hover {
+  background-color: #f1f5f9;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-btn-link-action {
+  color: #38bdf8;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-btn-link-action:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-icon-danger {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: opacity 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-icon-danger:hover {
+  opacity: 0.75;
+}
+
+/* Secciones de Etiquetas asignadas */
+.pedidos-app.pedidos-app-wide .pedidos-modal-section-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-section-label {
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-section-label {
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-tag-remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0 0 2px;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.65;
+  color: inherit;
+  font-weight: 700;
+  transition: opacity 0.1s ease;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-tag-remove-btn:hover {
+  opacity: 1;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-empty-box {
+  font-size: 12px;
+  font-style: italic;
+  padding: 8px 12px;
+  border-radius: var(--radius-buttons, 6px);
+  border: 1px dashed;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-empty-box {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-empty-box {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-color: var(--color-graphite, #23252a);
+  color: var(--color-ash, #62666d);
+}
+
+/* Modal de Eliminación Masiva: Cuadro de Impacto */
+.pedidos-app.pedidos-app-wide .pedidos-modal-purge-intro {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-purge-intro {
+  color: #1e293b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-purge-intro {
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-impact-box {
+  border-radius: var(--radius-buttons, 6px);
+  padding: 12px 16px;
+  font-size: 12.5px;
+  border: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-impact-box {
+  background-color: #fff1f2;
+  border-color: #ffe4e6;
+  color: #881337;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-impact-box {
+  background-color: rgba(235, 87, 87, 0.08);
+  border-color: rgba(235, 87, 87, 0.25);
+  color: #fca5a5;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-impact-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-impact-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Lista de Códigos Afectados */
+.pedidos-app.pedidos-app-wide .pedidos-modal-ped-list {
+  max-height: 80px;
+  overflow-y: auto;
+  border-radius: var(--radius-inputs, 6px);
+  padding: 6px 10px;
+  font-size: 11.5px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  border: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-ped-list {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-ped-list {
+  background-color: var(--color-obsidian, #161718);
+  border-color: var(--color-graphite, #23252a);
+  color: var(--color-mist, #d0d6e0);
+}
+
+/* Confirmación con palabra ELIMINAR */
+.pedidos-app.pedidos-app-wide .pedidos-modal-confirm-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-confirm-label {
+  color: #991b1b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-confirm-label {
+  color: #fca5a5;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-confirm-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: var(--radius-inputs, 6px);
+  border: 1px solid;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-confirm-input {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #991b1b;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-confirm-input.is-confirmed {
+  border: 2px solid #dc2626;
+  background-color: #fff1f2;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-confirm-input {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: var(--color-graphite, #23252a);
+  color: #fca5a5;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-confirm-input.is-confirmed {
+  border: 2px solid var(--color-coral-red, #eb5757);
+  background-color: rgba(235, 87, 87, 0.1);
+}
+
+/* Mensajes de Error en Modales */
+.pedidos-app.pedidos-app-wide .pedidos-modal-error-banner {
+  padding: 10px 14px;
+  border-radius: var(--radius-inputs, 6px);
+  font-size: 12.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-error-banner {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-error-banner {
+  background-color: rgba(235, 87, 87, 0.12);
+  border-color: rgba(235, 87, 87, 0.35);
+  color: #fca5a5;
+}
+
+/* Footer de Acciones del Modal */
+.pedidos-app.pedidos-app-wide .pedidos-modal-footer {
+  padding: 12px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-footer {
+  background-color: #f8fafc;
+  border-top-color: #e2e8f0;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-footer {
+  background-color: var(--color-obsidian, #161718);
+  border-top-color: var(--color-graphite, #23252a);
+}
+
+/* Botones del Modal */
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-cancel {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 12.5px;
+  font-weight: 510;
+  letter-spacing: -0.005em;
+  padding: 8px 16px;
+  border-radius: var(--radius-buttons, 6px);
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-btn-cancel {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-btn-cancel:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-btn-cancel {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: var(--color-graphite, #23252a);
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-btn-cancel:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-fog, #8a8f98);
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-cancel:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Botón Primario Normal */
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-primary {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 12.5px;
+  font-weight: 550;
+  letter-spacing: -0.005em;
+  padding: 8px 18px;
+  border-radius: var(--radius-buttons, 6px);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-btn-primary {
+  background-color: #0284c7;
+  color: #ffffff;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-btn-primary:hover:not(:disabled) {
+  background-color: #0369a1;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-btn-primary {
+  background-color: #ffffff;
+  color: #08090a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-btn-primary:hover:not(:disabled) {
+  background-color: var(--color-bone, #e5e5e6);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Botón Crear Pedido Interno */
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-create {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 8px 20px;
+  border-radius: var(--radius-buttons, 6px);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-btn-create {
+  background-color: #e11d48;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(225, 29, 72, 0.25);
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-btn-create:hover:not(:disabled) {
+  background-color: #be123c;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-btn-create {
+  background-color: var(--color-acid-lime, #e4f222);
+  color: var(--color-void, #08090a);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-btn-create:hover:not(:disabled) {
+  background-color: #d8e61b;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-create:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Botón Peligroso / Destructivo */
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-danger {
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  padding: 8px 18px;
+  border-radius: var(--radius-buttons, 6px);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-danger:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-danger:disabled {
+  background-color: #fca5a5 !important;
+  color: #ffffff !important;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Diálogo de Confirmación de Descarte (Alertdialog anidado) */
+.pedidos-app.pedidos-app-wide .pedidos-modal-alertdialog-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 1.25rem;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: pedidos-fade-in 0.15s ease-out;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-alertdialog-backdrop {
+  background-color: rgba(15, 23, 42, 0.5);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-alertdialog-backdrop {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-alertdialog-card {
+  max-width: 440px;
+  width: 100%;
+  border-radius: var(--radius-cards, 12px);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border: 1px solid;
+  animation: pedidos-scale-in 0.15s ease-out;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-alertdialog-card {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-alertdialog-card {
+  background-color: var(--color-obsidian, #161718);
+  border-color: var(--color-graphite, #23252a);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-alertdialog-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-alertdialog-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-alertdialog-title {
+  color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-alertdialog-title {
+  color: var(--color-paper, #ffffff);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-alertdialog-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-modal-alertdialog-desc {
+  color: #475569;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-modal-alertdialog-desc {
+  color: var(--color-fog, #8a8f98);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-modal-alertdialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* Animaciones sutiles Linear */
+@keyframes pedidos-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pedidos-scale-in {
+  from { opacity: 0; transform: scale(0.97) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Focus Visible */
+.pedidos-app.pedidos-app-wide .pedidos-modal-close-btn:focus-visible,
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-cancel:focus-visible,
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-primary:focus-visible,
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-create:focus-visible,
+.pedidos-app.pedidos-app-wide .pedidos-modal-btn-danger:focus-visible {
+  outline: 2px solid var(--color-acid-lime, #e4f222);
+  outline-offset: 2px;
 }

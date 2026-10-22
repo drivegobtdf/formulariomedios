@@ -149,15 +149,14 @@ export const GestionDashboardPage: React.FC = () => {
             : p
         )
       );
-      setSelectedPedidoForEtiqueta(null);
     } catch (err: any) {
       if (err?.code === '22000' && err?.message?.includes('VERSION_CONFLICT')) {
         alert('Conflicto de versión: el pedido fue modificado concurrentemente por otro usuario. Se recargarán los datos actualizados.');
       } else {
         alert(err.message || 'Error al actualizar la etiqueta interna');
       }
-      setSelectedPedidoForEtiqueta(null);
       loadData();
+      throw err;
     }
   };
 
@@ -471,123 +470,64 @@ export const GestionDashboardPage: React.FC = () => {
   }
 
   return (
-    <div style={{ width: '100%', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ width: '100%', margin: '0 auto', fontFamily: 'var(--font-inter-variable, system-ui, -apple-system, sans-serif)' }}>
       {/* Header & Role Info */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)', margin: 0 }}>
-              Gestión de pedidos
-            </h1>
+      <div className="pedidos-gestion-header">
+        <div className="pedidos-gestion-title-row">
+          <h1 className="pedidos-gestion-title">
+            Gestión de pedidos
+          </h1>
+          <span
+            className={`pedidos-role-badge pedidos-gestion-role-badge ${
+              isAdmin ? 'pedidos-role-admin' : isObserver ? 'pedidos-role-obs' : 'pedidos-role-equipo'
+            }`}
+          >
+            {isObserver ? 'Observador' : isAdmin ? 'Administrador' : 'Equipo'}
+          </span>
+          <span
+            title={lastRealtimeUpdate ? `Última sincronización: ${lastRealtimeUpdate.toLocaleTimeString()}` : 'Suscrito a cambios en tiempo real'}
+            className={`pedidos-realtime-badge ${realtimeConnected ? 'is-connected' : 'is-disconnected'}`}
+          >
             <span
-              className={`pedidos-role-badge ${
-                isAdmin ? 'pedidos-role-admin' : isObserver ? 'pedidos-role-obs' : 'pedidos-role-equipo'
-              }`}
-            >
-              {isObserver ? 'Observador' : isAdmin ? 'Administrador' : 'Equipo'}
-            </span>
-            <span
-              title={lastRealtimeUpdate ? `Última sincronización: ${lastRealtimeUpdate.toLocaleTimeString()}` : 'Suscrito a cambios en tiempo real'}
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                padding: '0.2rem 0.55rem',
-                borderRadius: '9999px',
-                backgroundColor: realtimeConnected ? 'var(--pedidos-status-finalizado-bg, #f0fdf4)' : 'var(--pedidos-surface-sunken, #f8fafc)',
-                color: realtimeConnected ? 'var(--pedidos-status-finalizado-text, #166534)' : 'var(--pedidos-text-muted, #64748b)',
-                border: `1px solid ${realtimeConnected ? 'var(--pedidos-status-finalizado-border, #bbf7d0)' : 'var(--pedidos-border-default, #cbd5e1)'}`,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-              }}
-            >
-              <span
-                style={{
-                  width: '7px',
-                  height: '7px',
-                  borderRadius: '50%',
-                  backgroundColor: realtimeConnected ? '#22c55e' : '#94a3b8',
-                  display: 'inline-block',
-                }}
-              />
-              {realtimeConnected ? 'En vivo' : 'Desconectado'}
-            </span>
-          </div>
+              className={`pedidos-realtime-dot ${realtimeConnected ? 'is-connected' : 'is-disconnected'}`}
+            />
+            {realtimeConnected ? 'En vivo' : 'Desconectado'}
+          </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="pedidos-gestion-actions">
           {canEditMetadata && (
             <button
               type="button"
               onClick={() => setShowCargaInternaModal(true)}
-              style={{
-                padding: '0.45rem 0.9rem',
-                borderRadius: '0.375rem',
-                border: '1px solid #f43f5e',
-                background: '#e11d48',
-                color: '#ffffff',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                boxShadow: '0 1px 2px rgba(225, 29, 72, 0.2)',
-              }}
+              className="pedidos-btn-carga-interna"
             >
               <span>➕</span>
               <span>Carga interna</span>
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setViewMode('board')}
-            style={{
-              padding: '0.45rem 0.9rem',
-              borderRadius: '0.375rem',
-              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-              background: viewMode === 'board' ? 'var(--pedidos-brand-accent, #0284c7)' : 'var(--pedidos-control-bg, #ffffff)',
-              color: viewMode === 'board' ? '#ffffff' : 'var(--pedidos-control-text, #334155)',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '0.85rem',
-            }}
-          >
-            Kanban
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('table')}
-            style={{
-              padding: '0.45rem 0.9rem',
-              borderRadius: '0.375rem',
-              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-              background: viewMode === 'table' ? 'var(--pedidos-brand-accent, #0284c7)' : 'var(--pedidos-control-bg, #ffffff)',
-              color: viewMode === 'table' ? '#ffffff' : 'var(--pedidos-control-text, #334155)',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '0.85rem',
-            }}
-          >
-            Tabla
-          </button>
+
+          <div className="pedidos-view-switcher">
+            <button
+              type="button"
+              onClick={() => setViewMode('board')}
+              className={`pedidos-view-switcher-btn ${viewMode === 'board' ? 'is-active' : ''}`}
+            >
+              Kanban
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`pedidos-view-switcher-btn ${viewMode === 'table' ? 'is-active' : ''}`}
+            >
+              Tabla
+            </button>
+          </div>
+
           {!isObserver && (
             <Link
               to="/gestion/tableros"
-              style={{
-                padding: '0.45rem 0.9rem',
-                borderRadius: '0.375rem',
-                border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                background: 'var(--pedidos-control-bg, #ffffff)',
-                color: 'var(--pedidos-control-text, #334155)',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-              }}
+              className="pedidos-btn-tableros"
             >
               <span>📋</span>
               <span>Tableros privados</span>
@@ -598,21 +538,7 @@ export const GestionDashboardPage: React.FC = () => {
 
       {/* Delete Success Alert */}
       {deleteSuccessMessage && (
-        <div
-          style={{
-            padding: '0.85rem 1.25rem',
-            backgroundColor: 'var(--pedidos-status-finalizado-bg, #f0fdf4)',
-            border: '1px solid var(--pedidos-status-finalizado-border, #86efac)',
-            borderRadius: '0.5rem',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: 'var(--pedidos-status-finalizado-text, #166534)',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-          }}
-        >
+        <div className="pedidos-linear-alert-success">
           <span>✓</span>
           <span>{deleteSuccessMessage}</span>
         </div>
@@ -620,33 +546,12 @@ export const GestionDashboardPage: React.FC = () => {
 
       {/* Bulk Selection Action Bar for Admins */}
       {isAdmin && (
-        <div
-          style={{
-            backgroundColor: selectedPedidoIds.size > 0 ? 'var(--pedidos-surface-sunken, #eff6ff)' : 'var(--pedidos-surface-default, #f8fafc)',
-            border: selectedPedidoIds.size > 0 ? '1px solid var(--pedidos-brand-accent, #bfdbfe)' : '1px solid var(--pedidos-border-default, #e2e8f0)',
-            borderRadius: '0.5rem',
-            padding: '0.6rem 1rem',
-            marginBottom: '1rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '0.75rem',
-          }}
-        >
+        <div className={`pedidos-linear-bulk-bar ${selectedPedidoIds.size > 0 ? 'has-selection' : ''}`}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
-            <span style={{ fontWeight: 600, color: 'var(--pedidos-text-primary, #1e293b)' }}>
+            <span style={{ fontWeight: 600, color: 'var(--pedidos-text-primary)' }}>
               Selección masiva:
             </span>
-            <span
-              style={{
-                fontWeight: 700,
-                color: selectedPedidoIds.size > 0 ? '#1d4ed8' : 'var(--pedidos-text-muted, #64748b)',
-                backgroundColor: selectedPedidoIds.size > 0 ? 'rgba(59, 130, 246, 0.15)' : 'var(--pedidos-surface-sunken, #f1f5f9)',
-                padding: '0.15rem 0.55rem',
-                borderRadius: '9999px',
-              }}
-            >
+            <span className={`pedidos-linear-bulk-pill ${selectedPedidoIds.size > 0 ? 'is-active' : ''}`}>
               {selectedPedidoIds.size} seleccionados
             </span>
             {visibleSelectablePedidos.length > 0 && (
@@ -656,9 +561,9 @@ export const GestionDashboardPage: React.FC = () => {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#0284c7',
+                  color: 'var(--pedidos-brand-accent, #0284c7)',
                   fontSize: '0.825rem',
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
                   padding: 0,
                   textDecoration: 'underline',
@@ -674,9 +579,9 @@ export const GestionDashboardPage: React.FC = () => {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#64748b',
+                  color: 'var(--pedidos-text-muted, #8a8f98)',
                   fontSize: '0.825rem',
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
                   padding: 0,
                   textDecoration: 'underline',
@@ -691,20 +596,7 @@ export const GestionDashboardPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowDeleteModal(true)}
-              style={{
-                padding: '0.45rem 1rem',
-                backgroundColor: '#dc2626',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '0.375rem',
-                fontSize: '0.825rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                boxShadow: '0 1px 2px rgba(220, 38, 38, 0.2)',
-              }}
+              className="pedidos-linear-btn-danger"
             >
               <span>🗑️</span>
               <span>Eliminar {selectedPedidoIds.size} seleccionado{selectedPedidoIds.size > 1 ? 's' : ''}</span>
@@ -715,275 +607,256 @@ export const GestionDashboardPage: React.FC = () => {
 
       {/* Metric Cards Banner (only if no error) */}
       {!error && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.65rem', marginBottom: '1.25rem' }}>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 600, textTransform: 'uppercase' }}>Activos</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-text-primary, #0f172a)', margin: '0.1rem 0 0 0' }}>
+        <div className="pedidos-linear-stats-grid">
+          {/* 1. Activos (Métrica Focal Primaria) */}
+          <div className="pedidos-linear-stat-card pedidos-linear-stat-card-activos">
+            <div className="pedidos-linear-stat-header">
+              <span className="pedidos-linear-stat-label">Activos</span>
+              <span className="pedidos-linear-stat-dot dot-activos" />
+            </div>
+            <p className="pedidos-linear-stat-value">
               {stats.nuevos + stats.enRevision + stats.enProceso + stats.esperandoInfo}
             </p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-nuevo-text, #0369a1)', fontWeight: 600, textTransform: 'uppercase' }}>Nuevos</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-nuevo-text, #0369a1)', margin: '0.1rem 0 0 0' }}>{stats.nuevos}</p>
+
+          {/* 2. Nuevos */}
+          <div className="pedidos-linear-stat-card">
+            <div className="pedidos-linear-stat-header">
+              <span className="pedidos-linear-stat-label">Nuevos</span>
+              <span className="pedidos-linear-stat-dot dot-nuevos" />
+            </div>
+            <p className="pedidos-linear-stat-value">{stats.nuevos}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-revision-text, #b45309)', fontWeight: 600, textTransform: 'uppercase' }}>En revisión</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-revision-text, #b45309)', margin: '0.1rem 0 0 0' }}>{stats.enRevision}</p>
+
+          {/* 3. En revisión */}
+          <div className="pedidos-linear-stat-card">
+            <div className="pedidos-linear-stat-header">
+              <span className="pedidos-linear-stat-label">En revisión</span>
+              <span className="pedidos-linear-stat-dot dot-revision" />
+            </div>
+            <p className="pedidos-linear-stat-value">{stats.enRevision}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-proceso-text, #4338ca)', fontWeight: 600, textTransform: 'uppercase' }}>En proceso</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-proceso-text, #4338ca)', margin: '0.1rem 0 0 0' }}>{stats.enProceso}</p>
+
+          {/* 4. En proceso */}
+          <div className="pedidos-linear-stat-card">
+            <div className="pedidos-linear-stat-header">
+              <span className="pedidos-linear-stat-label">En proceso</span>
+              <span className="pedidos-linear-stat-dot dot-proceso" />
+            </div>
+            <p className="pedidos-linear-stat-value">{stats.enProceso}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-esperando-text, #a16207)', fontWeight: 600, textTransform: 'uppercase' }}>Esperando información</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-esperando-text, #a16207)', margin: '0.1rem 0 0 0' }}>{stats.esperandoInfo}</p>
+
+          {/* 5. Esperando información */}
+          <div className="pedidos-linear-stat-card">
+            <div className="pedidos-linear-stat-header">
+              <span className="pedidos-linear-stat-label">Esperando información</span>
+              <span className="pedidos-linear-stat-dot dot-esperando" />
+            </div>
+            <p className="pedidos-linear-stat-value">{stats.esperandoInfo}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-cancelado-text, #b91c1c)', fontWeight: 600, textTransform: 'uppercase' }}>Sin asignar</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-cancelado-text, #b91c1c)', margin: '0.1rem 0 0 0' }}>{stats.sinAsignar}</p>
+
+          {/* 6. Sin asignar */}
+          <div className="pedidos-linear-stat-card">
+            <div className="pedidos-linear-stat-header">
+              <span className="pedidos-linear-stat-label">Sin asignar</span>
+              <span className="pedidos-linear-stat-dot dot-sin-asignar" />
+            </div>
+            <p className="pedidos-linear-stat-value">{stats.sinAsignar}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-status-finalizado-text, #15803d)', fontWeight: 600, textTransform: 'uppercase' }}>Finalizados</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-status-finalizado-text, #15803d)', margin: '0.1rem 0 0 0' }}>{stats.finalizados}</p>
+
+          {/* 7. Finalizados */}
+          <div className="pedidos-linear-stat-card">
+            <div className="pedidos-linear-stat-header">
+              <span className="pedidos-linear-stat-label">Finalizados</span>
+              <span className="pedidos-linear-stat-dot dot-finalizados" />
+            </div>
+            <p className="pedidos-linear-stat-value">{stats.finalizados}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 600, textTransform: 'uppercase' }}>Cancelados</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-text-muted, #64748b)', margin: '0.1rem 0 0 0' }}>{stats.cancelados}</p>
+
+          {/* 8. Cancelados */}
+          <div className="pedidos-linear-stat-card">
+            <div className="pedidos-linear-stat-header">
+              <span className="pedidos-linear-stat-label">Cancelados</span>
+              <span className="pedidos-linear-stat-dot dot-cancelados" />
+            </div>
+            <p className="pedidos-linear-stat-value">{stats.cancelados}</p>
           </div>
-          <div style={{ padding: '0.65rem 0.85rem', backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--pedidos-text-secondary, #475569)', fontWeight: 600, textTransform: 'uppercase' }}>Archivados</span>
-            <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--pedidos-text-secondary, #475569)', margin: '0.1rem 0 0 0' }}>{stats.archivados}</p>
+
+          {/* 9. Archivados */}
+          <div className="pedidos-linear-stat-card">
+            <div className="pedidos-linear-stat-header">
+              <span className="pedidos-linear-stat-label">Archivados</span>
+              <span className="pedidos-linear-stat-dot dot-archivados" />
+            </div>
+            <p className="pedidos-linear-stat-value">{stats.archivados}</p>
           </div>
         </div>
       )}
 
-      {/* Filter Tabs & Search Controls */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem', backgroundColor: 'var(--pedidos-surface-default, #ffffff)', padding: '0.65rem 1rem', borderRadius: '0.5rem', border: '1px solid var(--pedidos-border-default, #e2e8f0)' }}>
-        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-          {[
-            { id: 'todos', label: 'Todos' },
-            { id: 'mis_pedidos', label: 'Mis pedidos' },
-            { id: 'sin_asignar', label: 'Sin asignar' },
-            { id: 'requieren_atencion', label: 'Esperando información' },
-            { id: 'finalizados', label: 'Finalizados' },
-            { id: 'cancelados', label: 'Cancelados' },
-            { id: 'archivados', label: 'Archivados' },
-          ].map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTabFilter(t.id as GestionTabFilter)}
-              style={{
-                padding: '0.35rem 0.75rem',
-                borderRadius: '0.375rem',
-                border: 'none',
-                background: tabFilter === t.id ? 'var(--pedidos-brand-accent, #0284c7)' : 'transparent',
-                color: tabFilter === t.id ? '#ffffff' : 'var(--pedidos-text-muted, #64748b)',
-                fontWeight: 600,
-                fontSize: '0.825rem',
-                cursor: 'pointer',
-                transition: 'background 0.15s ease, color 0.15s ease',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+      {/* Filter Tabs & Search Controls (Linear Shelf) */}
+      <div className="pedidos-linear-filter-shelf">
+        {/* Fila 1: Pestañas de Filtrado Principal */}
+        <div className="pedidos-linear-filter-shelf-top">
+          <div className="pedidos-linear-tabs-track">
+            {[
+              { id: 'todos', label: 'Todos' },
+              { id: 'mis_pedidos', label: 'Mis pedidos' },
+              { id: 'sin_asignar', label: 'Sin asignar' },
+              { id: 'requieren_atencion', label: 'Esperando información' },
+              { id: 'finalizados', label: 'Finalizados' },
+              { id: 'cancelados', label: 'Cancelados' },
+              { id: 'archivados', label: 'Archivados' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTabFilter(t.id as GestionTabFilter)}
+                className={`pedidos-linear-tab-btn ${tabFilter === t.id ? 'is-active' : ''}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Selector de Origen */}
-          <select
-            value={origenFilter}
-            onChange={(e) => setOrigenFilter(e.target.value as 'todos' | 'publico' | 'interno')}
-            style={{
-              padding: '0.35rem 0.65rem',
-              borderRadius: '0.375rem',
-              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-              fontSize: '0.825rem',
-              backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-              color: 'var(--pedidos-text-primary, #334155)',
-              cursor: 'pointer',
-            }}
-            aria-label="Filtrar por origen"
-          >
-            <option value="todos">Todos los orígenes</option>
-            <option value="publico">🌐 Público</option>
-            <option value="interno">🏢 Interno</option>
-          </select>
-
-          {/* Selector de Prioridad */}
-          <select
-            value={prioridadFilter}
-            onChange={(e) => setPrioridadFilter(e.target.value)}
-            style={{
-              padding: '0.35rem 0.65rem',
-              borderRadius: '0.375rem',
-              border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-              fontSize: '0.825rem',
-              backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-              color: 'var(--pedidos-text-primary, #334155)',
-              cursor: 'pointer',
-            }}
-            aria-label="Filtrar por prioridad"
-          >
-            <option value="todas">Todas las prioridades</option>
-            <option value="alta">🔴 Alta</option>
-            <option value="media">🟡 Media</option>
-            <option value="baja">🟢 Baja</option>
-            <option value="sin_prioridad">Sin prioridad</option>
-          </select>
-
-          {/* Selector Multi-Etiqueta (Fase 4B) */}
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setShowEtiquetasDropdown((prev) => !prev)}
-              style={{
-                padding: '0.35rem 0.65rem',
-                borderRadius: '0.375rem',
-                border: selectedEtiquetasFilter.length > 0 ? '1px solid var(--pedidos-brand-accent, #0284c7)' : '1px solid var(--pedidos-border-default, #cbd5e1)',
-                fontSize: '0.825rem',
-                backgroundColor: selectedEtiquetasFilter.length > 0 ? 'var(--pedidos-surface-sunken, #eff6ff)' : 'var(--pedidos-control-bg, #ffffff)',
-                color: selectedEtiquetasFilter.length > 0 ? 'var(--pedidos-brand-accent, #0284c7)' : 'var(--pedidos-text-primary, #334155)',
-                fontWeight: selectedEtiquetasFilter.length > 0 ? 700 : 500,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-              }}
-              aria-label="Filtrar por etiquetas"
-              title="Filtrar por etiquetas (OR)"
+        {/* Fila 2: Selectores de Origen, Prioridad, Etiquetas y Búsqueda */}
+        <div className="pedidos-linear-filter-shelf-bottom">
+          <div className="pedidos-linear-filters-left">
+            {/* Selector de Origen */}
+            <select
+              value={origenFilter}
+              onChange={(e) => setOrigenFilter(e.target.value as 'todos' | 'publico' | 'interno')}
+              className="pedidos-linear-select"
+              aria-label="Filtrar por origen"
             >
-              <span>🏷️</span>
-              <span>
-                {selectedEtiquetasFilter.length === 0
-                  ? 'Etiquetas'
-                  : `${selectedEtiquetasFilter.length} etiqueta${selectedEtiquetasFilter.length > 1 ? 's' : ''}`}
-              </span>
-              <span style={{ fontSize: '0.65rem' }}>{showEtiquetasDropdown ? '▲' : '▼'}</span>
-            </button>
+              <option value="todos">Todos los orígenes</option>
+              <option value="publico">🌐 Público</option>
+              <option value="interno">🏢 Interno</option>
+            </select>
 
-            {showEtiquetasDropdown && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  marginTop: '0.35rem',
-                  backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)',
-                  border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                  zIndex: 50,
-                  minWidth: '220px',
-                  maxWidth: '300px',
-                  padding: '0.5rem',
-                }}
+            {/* Selector de Prioridad */}
+            <select
+              value={prioridadFilter}
+              onChange={(e) => setPrioridadFilter(e.target.value)}
+              className="pedidos-linear-select"
+              aria-label="Filtrar por prioridad"
+            >
+              <option value="todas">Todas las prioridades</option>
+              <option value="alta">🔴 Alta</option>
+              <option value="media">🟡 Media</option>
+              <option value="baja">🟢 Baja</option>
+              <option value="sin_prioridad">Sin prioridad</option>
+            </select>
+
+            {/* Selector Multi-Etiqueta (Fase 4B) */}
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setShowEtiquetasDropdown((prev) => !prev)}
+                className={`pedidos-linear-tag-btn ${selectedEtiquetasFilter.length > 0 ? 'has-selected' : ''}`}
+                aria-label="Filtrar por etiquetas"
+                title="Filtrar por etiquetas (OR)"
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '0.5rem',
-                    paddingBottom: '0.35rem',
-                    borderBottom: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
-                  }}
-                >
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #1e293b)' }}>
-                    Filtrar por etiqueta (OR)
-                  </span>
-                  {selectedEtiquetasFilter.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedEtiquetasFilter([])}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        fontSize: '0.7rem',
-                        color: '#dc2626',
-                        cursor: 'pointer',
-                        padding: 0,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Limpiar
-                    </button>
+                <span>🏷️</span>
+                <span>
+                  {selectedEtiquetasFilter.length === 0
+                    ? 'Etiquetas'
+                    : `${selectedEtiquetasFilter.length} etiqueta${selectedEtiquetasFilter.length > 1 ? 's' : ''}`}
+                </span>
+                <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>{showEtiquetasDropdown ? '▲' : '▼'}</span>
+              </button>
+
+              {showEtiquetasDropdown && (
+                <div className="pedidos-linear-dropdown-menu">
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '0.5rem',
+                      paddingBottom: '0.35rem',
+                      borderBottom: '1px solid var(--pedidos-border-subtle, rgba(255,255,255,0.06))',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--pedidos-text-primary)' }}>
+                      Filtrar por etiqueta (OR)
+                    </span>
+                    {selectedEtiquetasFilter.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEtiquetasFilter([])}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '0.7rem',
+                          color: 'var(--color-coral-red, #eb5757)',
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
+
+                  {availableEtiquetas.length === 0 ? (
+                    <div style={{ fontSize: '0.775rem', color: 'var(--pedidos-text-muted)', fontStyle: 'italic', padding: '0.5rem' }}>
+                      No hay etiquetas disponibles.
+                    </div>
+                  ) : (
+                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      {availableEtiquetas.map((tag) => {
+                        const isChecked = selectedEtiquetasFilter.includes(tag);
+                        return (
+                          <label
+                            key={tag}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              padding: '0.25rem 0.35rem',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              backgroundColor: isChecked ? 'rgba(99, 102, 241, 0.12)' : 'transparent',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setSelectedEtiquetasFilter((prev) =>
+                                  isChecked ? prev.filter((t) => t !== tag) : [...prev, tag]
+                                );
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <span style={{ fontWeight: isChecked ? 600 : 400, color: 'var(--pedidos-text-primary)' }}>
+                              {tag}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
-
-                {availableEtiquetas.length === 0 ? (
-                  <div style={{ fontSize: '0.775rem', color: 'var(--pedidos-text-muted, #94a3b8)', fontStyle: 'italic', padding: '0.5rem' }}>
-                    No hay etiquetas disponibles.
-                  </div>
-                ) : (
-                  <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    {availableEtiquetas.map((tag) => {
-                      const isChecked = selectedEtiquetasFilter.includes(tag);
-                      return (
-                        <label
-                          key={tag}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.25rem 0.35rem',
-                            borderRadius: '0.25rem',
-                            cursor: 'pointer',
-                            fontSize: '0.8rem',
-                            backgroundColor: isChecked ? 'var(--pedidos-surface-sunken, #eff6ff)' : 'transparent',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              setSelectedEtiquetasFilter((prev) =>
-                                isChecked ? prev.filter((t) => t !== tag) : [...prev, tag]
-                              );
-                            }}
-                            style={{ cursor: 'pointer' }}
-                          />
-                          <span style={{ fontWeight: isChecked ? 700 : 500, color: 'var(--pedidos-text-primary, #1e293b)' }}>
-                            {tag}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
+          {/* Formulario de Búsqueda Compacto */}
+          <form onSubmit={handleSearchSubmit} className="pedidos-linear-search-form">
             <input
               type="text"
               placeholder="Buscar por código o título..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                padding: '0.35rem 0.65rem',
-                borderRadius: '0.375rem',
-                border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                fontSize: '0.825rem',
-                minWidth: '200px',
-                backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                color: 'var(--pedidos-text-primary, #1e293b)',
-              }}
+              className="pedidos-linear-search-input"
             />
             <button
               type="submit"
-              style={{
-                padding: '0.35rem 0.75rem',
-                backgroundColor: '#0284c7',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '0.375rem',
-                fontWeight: 600,
-                fontSize: '0.825rem',
-                cursor: 'pointer',
-              }}
+              className="pedidos-linear-search-btn"
             >
               Buscar
             </button>
@@ -1039,11 +912,11 @@ export const GestionDashboardPage: React.FC = () => {
           Cargando pedidos...
         </div>
       ) : viewMode === 'board' ? (
-        /* Board View */
+        /* Board View (Linear Kanban - Etapa 3) */
         isTerminalOrArchivedTab ? (
           /* Dedicated Terminal / Archived Panel */
-          <div style={{ backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', padding: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div className="pedidos-terminal-panel">
+            <div className="pedidos-terminal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--pedidos-text-primary, #0f172a)' }}>
                   {tabFilter === 'finalizados' && 'Finalizados'}
@@ -1065,34 +938,26 @@ export const GestionDashboardPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setTabFilter('todos')}
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '0.375rem',
-                  border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                  backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                  color: 'var(--pedidos-brand-accent, #0284c7)',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
+                className="pedidos-linear-btn-ghost"
               >
                 ← Volver
               </button>
             </div>
 
             {filteredPedidos.length === 0 ? (
-              <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--pedidos-text-muted, #94a3b8)', border: '1px dashed var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem' }}>
+              <div className="pedidos-kanban-empty">
                 No hay pedidos en este estado.
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+              <div className="pedidos-terminal-grid">
                 {filteredPedidos.map((ped) => {
                   const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)', border: 'var(--pedidos-border-default, #cbd5e1)' };
                   const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
+                  const isSelected = selectedPedidoIds.has(ped.id);
                   return (
                     <article
                       key={ped.id}
-                      className="kanban-card"
+                      className={`kanban-card ${isSelected ? 'is-selected' : ''} ${ped.retrabajo_activo ? 'is-retrabajo' : ''} ${ped.origen === 'interno' ? 'is-interno' : ''}`}
                       onClick={(e) => {
                         const target = e.target as HTMLElement;
                         if (target.closest('input, select, button, .etiqueta-interna-pill, a, label, .etiqueta-overflow-badge')) {
@@ -1100,108 +965,42 @@ export const GestionDashboardPage: React.FC = () => {
                         }
                         navigate(`/gestion/pedidos/${ped.id}`);
                       }}
-                      style={{
-                        backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : 'var(--pedidos-surface-raised, #ffffff)',
-                        border: ped.retrabajo_activo ? '1px solid var(--pedidos-rework-border, #fde68a)' : '1px solid var(--pedidos-border-default, #e2e8f0)',
-                        borderLeft: ped.retrabajo_activo
-                          ? '4px solid var(--pedidos-rework-accent, #d97706)'
-                          : ped.origen === 'interno'
-                          ? '4px solid var(--pedidos-interno-accent, #f43f5e)'
-                          : undefined,
-                        borderRadius: '0.5rem',
-                        padding: '1rem',
-                        textDecoration: 'none',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.5rem',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                        cursor: 'pointer',
-                        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#d97706' : '#0284c7';
-                        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.08)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = ped.retrabajo_activo ? 'var(--pedidos-rework-border, #fde68a)' : 'var(--pedidos-border-default, #e2e8f0)';
-                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
-                      }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div className="pedidos-kanban-card-top">
+                        <div className="pedidos-kanban-card-id-row">
                           {isAdmin && (
                             <input
                               type="checkbox"
-                              checked={selectedPedidoIds.has(ped.id)}
+                              checked={isSelected}
                               onChange={() => toggleSelectPedido(ped.id)}
                               onClick={(e) => e.stopPropagation()}
-                              style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                              className="pedidos-kanban-card-checkbox"
                             />
                           )}
-                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--pedidos-text-primary, #0f172a)' }}>{ped.pedido_visible}</span>
+                          <span className="pedidos-kanban-card-id">{ped.pedido_visible}</span>
                           {ped.origen === 'interno' && (
-                            <span
-                              style={{
-                                fontSize: '0.65rem',
-                                fontWeight: 700,
-                                padding: '0.1rem 0.4rem',
-                                borderRadius: '4px',
-                                backgroundColor: 'var(--pedidos-badge-interno-bg, #ffe4e6)',
-                                color: 'var(--pedidos-badge-interno-text, #e11d48)',
-                                border: '1px solid var(--pedidos-badge-interno-border, #fecdd3)',
-                                letterSpacing: '0.02em',
-                              }}
-                            >
+                            <span className="pedidos-badge-interno">
                               INTERNO
                             </span>
                           )}
                         </div>
-                        <span style={{
-                          fontSize: '0.725rem',
-                          fontWeight: 600,
-                          padding: '0.15rem 0.45rem',
-                          borderRadius: '9999px',
-                          backgroundColor: styleInfo.bg,
-                          color: styleInfo.color,
-                          border: `1px solid ${styleInfo.border}`,
-                        }}>
+                        <span
+                          className="pedidos-kanban-status-pill"
+                          style={{
+                            backgroundColor: styleInfo.bg,
+                            color: styleInfo.color,
+                            borderColor: styleInfo.border,
+                          }}
+                        >
                           {styleInfo.label}
                         </span>
                       </div>
                       {ped.retrabajo_activo ? (
-                        <div
-                          style={{
-                            fontSize: '0.7rem',
-                            fontWeight: 800,
-                            color: 'var(--pedidos-rework-text, #b45309)',
-                            backgroundColor: 'var(--pedidos-rework-bg, #fef3c7)',
-                            border: '1px solid var(--pedidos-rework-border, #fde68a)',
-                            borderRadius: '0.25rem',
-                            padding: '0.2rem 0.45rem',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            width: 'fit-content',
-                          }}
-                        >
+                        <div className="pedidos-badge-retrabajo">
                           🔄 DEVUELTO - RETRABAJAR {ped.revision_count ? `· Rev #${ped.revision_count}` : ''}
                         </div>
                       ) : !ped.retrabajo_activo && ped.estado === 'Finalizado' && (ped.revision_count || 0) > 0 ? (
-                        <div
-                          style={{
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            color: 'var(--pedidos-text-secondary, #475569)',
-                            backgroundColor: 'var(--pedidos-surface-sunken, #f1f5f9)',
-                            border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                            borderRadius: '0.25rem',
-                            padding: '0.2rem 0.45rem',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            width: 'fit-content',
-                          }}
-                        >
+                        <div className="pedidos-badge-retrabajado-hist">
                           RETRABAJADO · {formatReworkHistoricalText(ped.revision_count || 0)}
                         </div>
                       ) : null}
@@ -1211,35 +1010,21 @@ export const GestionDashboardPage: React.FC = () => {
                       >
                         {getPedidoCardTitle(ped)}
                       </div>
-                      <div style={{ fontSize: '0.825rem', color: 'var(--pedidos-text-secondary, #334155)', fontWeight: 500 }}>
+                      <div className="pedidos-kanban-service">
                         {ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categoría' : 'General')} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                       </div>
 
                       {/* Solicitante y Área */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: '0.1rem' }}>
+                      <div className="pedidos-kanban-parties">
                         <div
-                          style={{
-                            fontSize: '0.75rem',
-                            color: 'var(--pedidos-text-primary, #0f172a)',
-                            fontWeight: 600,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
+                          className="pedidos-kanban-requester"
                           title={`Solicitante: ${ped.solicitante_nombre || (ped.origen === 'interno' ? 'No informado' : 'Sin solicitante')}`}
                         >
                           <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 500, marginRight: '0.25rem' }}>👤</span>
                           {ped.solicitante_nombre || (ped.origen === 'interno' ? 'No informado' : 'Sin solicitante')}
                         </div>
                         <div
-                          style={{
-                            fontSize: '0.725rem',
-                            color: 'var(--pedidos-text-secondary, #475569)',
-                            fontWeight: 400,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
+                          className="pedidos-kanban-area"
                           title={`Área: ${ped.area_solicitante || (ped.origen === 'interno' ? 'No informada' : 'Sin área')}`}
                         >
                           <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 500, marginRight: '0.25rem' }}>🏛️</span>
@@ -1248,7 +1033,7 @@ export const GestionDashboardPage: React.FC = () => {
                       </div>
 
                       {/* Metadatos: Prioridad y Múltiples Etiquetas */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
+                      <div className="pedidos-kanban-meta-row">
                         {canEditMetadata && !isTerminal ? (
                           <select
                             value={ped.prioridad || ''}
@@ -1287,14 +1072,14 @@ export const GestionDashboardPage: React.FC = () => {
                         />
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)' }}>
-                        <span style={{ color: ped.responsable_nombre ? 'var(--pedidos-text-secondary, #334155)' : '#b91c1c', fontWeight: 500 }}>
+                      <div className="pedidos-kanban-card-footer">
+                        <span className={`pedidos-kanban-assignee ${ped.responsable_nombre ? 'is-assigned' : 'is-unassigned'}`}>
                           {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
                         </span>
                         <Link
                           to={`/gestion/pedidos/${ped.id}`}
                           onClick={(e) => e.stopPropagation()}
-                          style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600, textDecoration: 'none' }}
+                          className="pedidos-kanban-detail-link"
                         >
                           Ver detalle &rarr;
                         </Link>
@@ -1307,18 +1092,7 @@ export const GestionDashboardPage: React.FC = () => {
           </div>
         ) : (
           /* Active Kanban Board View - 4 Columns Single Horizontal Row with Internal Scroll */
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, minmax(280px, 1fr))',
-              gap: '1rem',
-              alignItems: 'flex-start',
-              overflowX: 'auto',
-              paddingBottom: '1rem',
-              width: '100%',
-              boxSizing: 'border-box',
-            }}
-          >
+          <div className="pedidos-kanban-board">
             {estadosKanban.map((estado) => {
               const columnPedidos = filteredPedidos.filter((p) => p.estado === estado);
               const styleInfo = estadoTitles[estado] || { label: estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)', border: 'var(--pedidos-border-default, #cbd5e1)' };
@@ -1326,77 +1100,33 @@ export const GestionDashboardPage: React.FC = () => {
               return (
                 <div
                   key={estado}
-                  style={{
-                    backgroundColor: 'var(--pedidos-surface-sunken, #f8fafc)',
-                    border: `1px solid ${styleInfo.border}`,
-                    borderRadius: '0.5rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    maxHeight: 'calc(100vh - 280px)',
-                    minWidth: '280px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                  }}
+                  className="pedidos-kanban-col"
                 >
                   {/* Column Header (Fixed) */}
-                  <div
-                    style={{
-                      padding: '0.75rem 1rem',
-                      borderBottom: '1px solid var(--pedidos-border-default, #e2e8f0)',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      backgroundColor: 'var(--pedidos-surface-raised, #ffffff)',
-                      borderTopLeftRadius: '0.5rem',
-                      borderTopRightRadius: '0.5rem',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="pedidos-kanban-col-header">
+                    <div className="pedidos-kanban-col-header-left">
                       <span
-                        style={{
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '50%',
-                          backgroundColor: styleInfo.color,
-                          display: 'inline-block',
-                        }}
+                        className="pedidos-kanban-status-dot"
+                        style={{ backgroundColor: styleInfo.color }}
                       />
-                      <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>
+                      <span className="pedidos-kanban-col-title">
                         {styleInfo.label}
                       </span>
                     </div>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        backgroundColor: styleInfo.bg,
-                        color: styleInfo.color,
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '9999px',
-                        border: `1px solid ${styleInfo.border}`,
-                      }}
-                    >
+                    <span className="pedidos-kanban-col-count">
                       {columnPedidos.length}
                     </span>
                   </div>
 
                   {/* Column Cards (Vertical Scroll) */}
-                  <div
-                    style={{
-                      padding: '0.75rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.75rem',
-                      overflowY: 'auto',
-                      flex: 1,
-                      minHeight: '160px',
-                    }}
-                  >
+                  <div className="pedidos-kanban-col-body">
                     {columnPedidos.map((ped) => {
                       const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
+                      const isSelected = selectedPedidoIds.has(ped.id);
                       return (
                         <article
                           key={ped.id}
-                          className="kanban-card"
+                          className={`kanban-card ${isSelected ? 'is-selected' : ''} ${ped.retrabajo_activo ? 'is-retrabajo' : ''} ${ped.origen === 'interno' ? 'is-interno' : ''}`}
                           onClick={(e) => {
                             const target = e.target as HTMLElement;
                             if (target.closest('input, select, button, .etiqueta-interna-pill, a, label, .etiqueta-overflow-badge')) {
@@ -1404,87 +1134,37 @@ export const GestionDashboardPage: React.FC = () => {
                             }
                             navigate(`/gestion/pedidos/${ped.id}`);
                           }}
-                          style={{
-                            backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : 'var(--pedidos-surface-raised, #ffffff)',
-                            border: ped.retrabajo_activo ? '1px solid var(--pedidos-rework-border, #fde68a)' : '1px solid var(--pedidos-border-default, #cbd5e1)',
-                            borderLeft: ped.retrabajo_activo
-                              ? '4px solid var(--pedidos-rework-accent, #d97706)'
-                              : ped.origen === 'interno'
-                              ? '4px solid var(--pedidos-interno-accent, #f43f5e)'
-                              : undefined,
-                            borderRadius: '0.5rem',
-                            padding: '0.85rem',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.45rem',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                            cursor: 'pointer',
-                            transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = ped.retrabajo_activo ? '#d97706' : '#0284c7';
-                            e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.08)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = ped.retrabajo_activo ? 'var(--pedidos-rework-border, #fde68a)' : 'var(--pedidos-border-default, #cbd5e1)';
-                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
-                          }}
                         >
                           {/* Top Bar: PED & Date */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                          <div className="pedidos-kanban-card-top">
+                            <div className="pedidos-kanban-card-id-row">
                               {isAdmin && (
                                 <input
                                   type="checkbox"
-                                  checked={selectedPedidoIds.has(ped.id)}
+                                  checked={isSelected}
                                   onChange={() => toggleSelectPedido(ped.id)}
                                   onPointerDown={(e) => e.stopPropagation()}
                                   onClick={(e) => e.stopPropagation()}
-                                  style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                                  className="pedidos-kanban-card-checkbox"
                                 />
                               )}
-                              <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #0f172a)' }}>
+                              <span className="pedidos-kanban-card-id">
                                 {ped.pedido_visible}
                               </span>
                               {ped.origen === 'interno' && (
-                                <span
-                                  style={{
-                                    fontSize: '0.65rem',
-                                    fontWeight: 700,
-                                    padding: '0.1rem 0.4rem',
-                                    borderRadius: '4px',
-                                    backgroundColor: 'var(--pedidos-badge-interno-bg, #ffe4e6)',
-                                    color: 'var(--pedidos-badge-interno-text, #e11d48)',
-                                    border: '1px solid var(--pedidos-badge-interno-border, #fecdd3)',
-                                    letterSpacing: '0.02em',
-                                  }}
-                                >
+                                <span className="pedidos-badge-interno">
                                   INTERNO
                                 </span>
                               )}
                             </div>
-                            <span style={{ fontSize: '0.725rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
+                            <span className="pedidos-kanban-card-date">
                               {new Date(ped.created_at).toLocaleDateString()}
                             </span>
                           </div>
 
                           {/* DEVUELTO - RETRABAJAR Badge if applicable */}
                           {ped.retrabajo_activo && (
-                            <div
-                              style={{
-                                fontSize: '0.7rem',
-                                fontWeight: 800,
-                                color: 'var(--pedidos-rework-text, #b45309)',
-                                backgroundColor: 'var(--pedidos-rework-bg, #fef3c7)',
-                                border: '1px solid var(--pedidos-rework-border, #fde68a)',
-                                borderRadius: '0.25rem',
-                                padding: '0.2rem 0.45rem',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.25rem',
-                                width: 'fit-content',
-                              }}
-                            >
+                            <div className="pedidos-badge-retrabajo">
                               🔄 DEVUELTO - RETRABAJAR {ped.revision_count ? `· Rev #${ped.revision_count}` : ''}
                             </div>
                           )}
@@ -1498,35 +1178,21 @@ export const GestionDashboardPage: React.FC = () => {
                           </div>
 
                           {/* Service Category & Type */}
-                          <div style={{ fontSize: '0.8rem', color: 'var(--pedidos-text-secondary, #334155)', fontWeight: 500 }}>
+                          <div className="pedidos-kanban-service">
                             {ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categoría' : 'General')} {ped.tipo_nombre ? `· ${ped.tipo_nombre}` : ''}
                           </div>
 
                           {/* Solicitante y Área */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: '0.2rem' }}>
+                          <div className="pedidos-kanban-parties">
                             <div
-                              style={{
-                                fontSize: '0.75rem',
-                                color: 'var(--pedidos-text-primary, #0f172a)',
-                                fontWeight: 600,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
+                              className="pedidos-kanban-requester"
                               title={`Solicitante: ${ped.solicitante_nombre || (ped.origen === 'interno' ? 'No informado' : 'Sin solicitante')}`}
                             >
                               <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 500, marginRight: '0.25rem' }}>👤</span>
                               {ped.solicitante_nombre || (ped.origen === 'interno' ? 'No informado' : 'Sin solicitante')}
                             </div>
                             <div
-                              style={{
-                                fontSize: '0.725rem',
-                                color: 'var(--pedidos-text-secondary, #475569)',
-                                fontWeight: 400,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
+                              className="pedidos-kanban-area"
                               title={`Área: ${ped.area_solicitante || (ped.origen === 'interno' ? 'No informada' : 'Sin área')}`}
                             >
                               <span style={{ color: 'var(--pedidos-text-muted, #64748b)', fontWeight: 500, marginRight: '0.25rem' }}>🏛️</span>
@@ -1535,7 +1201,7 @@ export const GestionDashboardPage: React.FC = () => {
                           </div>
 
                           {/* Metadatos: Prioridad y Múltiples Etiquetas */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.15rem' }}>
+                          <div className="pedidos-kanban-meta-row">
                             {canEditMetadata && !isTerminal ? (
                               <select
                                 value={ped.prioridad || ''}
@@ -1578,34 +1244,20 @@ export const GestionDashboardPage: React.FC = () => {
 
                           {/* 48h Info Request Badge if applicable */}
                           {ped.estado === 'Esperando información' && (
-                            <div
-                              style={{
-                                fontSize: '0.7rem',
-                                fontWeight: 700,
-                                color: 'var(--pedidos-status-esperando-text, #a16207)',
-                                backgroundColor: 'var(--pedidos-status-esperando-bg, #fefce8)',
-                                border: '1px solid var(--pedidos-status-esperando-border, #fef08a)',
-                                borderRadius: '0.25rem',
-                                padding: '0.2rem 0.4rem',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.25rem',
-                                width: 'fit-content',
-                              }}
-                            >
+                            <div className="pedidos-badge-info-pendiente">
                               ⏳ 48h Info Pendiente
                             </div>
                           )}
 
                           {/* Footer: Responsable & Action */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.75rem', paddingTop: '0.4rem', borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)' }}>
-                            <span style={{ color: ped.responsable_nombre ? 'var(--pedidos-text-secondary, #334155)' : '#b91c1c', fontWeight: 500 }}>
+                          <div className="pedidos-kanban-card-footer">
+                            <span className={`pedidos-kanban-assignee ${ped.responsable_nombre ? 'is-assigned' : 'is-unassigned'}`}>
                               {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
                             </span>
                             <Link
                               to={`/gestion/pedidos/${ped.id}`}
                               onClick={(e) => e.stopPropagation()}
-                              style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600, textDecoration: 'none' }}
+                              className="pedidos-kanban-detail-link"
                             >
                               Ver detalle &rarr;
                             </Link>
@@ -1615,7 +1267,7 @@ export const GestionDashboardPage: React.FC = () => {
                     })}
 
                     {columnPedidos.length === 0 && (
-                      <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--pedidos-text-muted, #94a3b8)', fontSize: '0.8rem', border: '1px dashed var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.375rem', margin: 'auto 0' }}>
+                      <div className="pedidos-kanban-empty">
                         Sin pedidos en este estado
                       </div>
                     )}
@@ -1626,14 +1278,14 @@ export const GestionDashboardPage: React.FC = () => {
           </div>
         )
       ) : (
-        /* Table View */
-        <div style={{ backgroundColor: 'var(--pedidos-surface-raised, #ffffff)', border: '1px solid var(--pedidos-border-default, #e2e8f0)', borderRadius: '0.5rem', overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+        /* Table View — Rediseño Linear Etapa 4 */
+        <div className="pedidos-gestion-table-card">
+          <div className="pedidos-gestion-table-scroll">
+            <table className="pedidos-gestion-table">
               <thead>
-                <tr style={{ backgroundColor: 'var(--pedidos-table-header-bg, #f8fafc)', borderBottom: '1px solid var(--pedidos-border-default, #e2e8f0)', color: 'var(--pedidos-text-secondary, #475569)', fontWeight: 600 }}>
+                <tr className="pedidos-gestion-table-header-row">
                   {isAdmin && (
-                    <th style={{ padding: '0.75rem 0.5rem 0.75rem 1rem', width: '36px' }}>
+                    <th className="pedidos-table-th pedidos-table-th-checkbox">
                       <input
                         type="checkbox"
                         checked={paginatedPedidos.length > 0 && paginatedPedidos.every(p => selectedPedidoIds.has(p.id))}
@@ -1648,79 +1300,65 @@ export const GestionDashboardPage: React.FC = () => {
                             setSelectedPedidoIds(newSet);
                           }
                         }}
-                        style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                        className="pedidos-table-checkbox"
                         title="Seleccionar página visible"
+                        aria-label="Seleccionar todos los pedidos de la página visible"
                       />
                     </th>
                   )}
-                  <th style={{ padding: '0.75rem 1rem' }}>Código PED</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Categoría / Tipo</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Prioridad</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Etiqueta</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Estado</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Responsable</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Fecha Ingreso</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Acción</th>
+                  <th className="pedidos-table-th pedidos-table-th-id">Código PED</th>
+                  <th className="pedidos-table-th pedidos-table-th-service">Categoría / Tipo</th>
+                  <th className="pedidos-table-th pedidos-table-th-priority">Prioridad</th>
+                  <th className="pedidos-table-th pedidos-table-th-tags">Etiqueta</th>
+                  <th className="pedidos-table-th pedidos-table-th-status">Estado</th>
+                  <th className="pedidos-table-th pedidos-table-th-assignee">Responsable</th>
+                  <th className="pedidos-table-th pedidos-table-th-date">Fecha Ingreso</th>
+                  <th className="pedidos-table-th pedidos-table-th-actions">Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedPedidos.map((ped) => {
-                  const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)' };
+                  const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)', border: 'var(--pedidos-border-default, #cbd5e1)' };
                   const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
+                  const isSelected = selectedPedidoIds.has(ped.id);
+
                   return (
-                    <tr key={ped.id} style={{ borderBottom: '1px solid var(--pedidos-table-row-border, #f1f5f9)', backgroundColor: ped.retrabajo_activo ? 'var(--pedidos-rework-bg, #fffbeb)' : undefined }}>
+                    <tr
+                      key={ped.id}
+                      className={`pedidos-gestion-table-row ${isSelected ? 'is-selected' : ''} ${ped.retrabajo_activo ? 'is-retrabajo' : ''}`}
+                    >
                       {isAdmin && (
-                        <td style={{ padding: '0.75rem 0.5rem 0.75rem 1rem' }}>
+                        <td className="pedidos-table-td pedidos-table-td-checkbox">
                           <input
                             type="checkbox"
-                            checked={selectedPedidoIds.has(ped.id)}
+                            checked={isSelected}
                             onChange={() => toggleSelectPedido(ped.id)}
-                            style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                            className="pedidos-table-checkbox"
+                            aria-label={`Seleccionar pedido ${ped.pedido_visible}`}
                           />
                         </td>
                       )}
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #0f172a)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                          <span>{ped.pedido_visible}</span>
+                      <td className="pedidos-table-td pedidos-table-td-id">
+                        <div className="pedidos-table-id-row">
+                          <span className="pedidos-table-ped-code">{ped.pedido_visible}</span>
                           {ped.origen === 'interno' && (
-                            <span
-                              style={{
-                                fontSize: '0.65rem',
-                                fontWeight: 700,
-                                padding: '0.1rem 0.4rem',
-                                borderRadius: '4px',
-                                backgroundColor: 'var(--pedidos-badge-interno-bg, #ffe4e6)',
-                                color: 'var(--pedidos-badge-interno-text, #e11d48)',
-                                border: '1px solid var(--pedidos-badge-interno-border, #fecdd3)',
-                                letterSpacing: '0.02em',
-                              }}
-                            >
+                            <span className="pedidos-badge-interno">
                               INTERNO
                             </span>
                           )}
                         </div>
                         <div
-                          style={{
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            color: 'var(--pedidos-text-secondary, #475569)',
-                            marginTop: '0.15rem',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
+                          className={`pedidos-table-title ${ped.titulo ? 'has-explicit-title' : ''}`}
                           title={getPedidoCardTitle(ped)}
                         >
                           {getPedidoCardTitle(ped)}
                         </div>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--pedidos-text-secondary, #334155)' }}>
-                        <div style={{ fontWeight: 500 }}>{ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categoría' : 'General')}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>{ped.tipo_nombre || (ped.origen === 'interno' ? 'General' : 'Pieza')}</div>
+                      <td className="pedidos-table-td pedidos-table-td-service">
+                        <div className="pedidos-table-category">{ped.categoria_nombre || (ped.origen === 'interno' ? 'Sin categoría' : 'General')}</div>
+                        <div className="pedidos-table-type">{ped.tipo_nombre || (ped.origen === 'interno' ? 'General' : 'Pieza')}</div>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
+                      <td className="pedidos-table-td pedidos-table-td-priority">
                         {canEditMetadata && !isTerminal ? (
                           <select
                             value={ped.prioridad || ''}
@@ -1742,7 +1380,7 @@ export const GestionDashboardPage: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
+                      <td className="pedidos-table-td pedidos-table-td-tags">
                         <KanbanEtiquetasBadge
                           etiquetas={ped.etiquetas}
                           legacyEtiqueta={ped.etiqueta_interna}
@@ -1750,32 +1388,43 @@ export const GestionDashboardPage: React.FC = () => {
                           onOpenModal={() => setSelectedPedidoForEtiqueta(ped)}
                         />
                       </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '9999px', backgroundColor: styleInfo.bg, color: styleInfo.color }}>
+                      <td className="pedidos-table-td pedidos-table-td-status">
+                        <div className="pedidos-table-status-stack">
+                          <span
+                            className="pedidos-kanban-status-pill"
+                            style={{
+                              backgroundColor: styleInfo.bg,
+                              color: styleInfo.color,
+                              borderColor: styleInfo.border,
+                            }}
+                          >
                             {styleInfo.label}
                           </span>
                           {ped.retrabajo_activo ? (
-                            <span style={{ fontSize: '0.675rem', fontWeight: 800, padding: '0.15rem 0.4rem', borderRadius: '0.25rem', backgroundColor: 'var(--pedidos-rework-bg, #fef3c7)', color: 'var(--pedidos-rework-text, #b45309)', border: '1px solid var(--pedidos-rework-border, #fde68a)' }}>
+                            <span className="pedidos-table-rework-badge">
                               🔄 DEVUELTO {ped.revision_count ? `(#${ped.revision_count})` : ''}
                             </span>
                           ) : !ped.retrabajo_activo && ped.estado === 'Finalizado' && (ped.revision_count || 0) > 0 ? (
-                            <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '0.25rem', backgroundColor: 'var(--pedidos-surface-sunken, #f1f5f9)', color: 'var(--pedidos-text-secondary, #475569)', border: '1px solid var(--pedidos-border-default, #cbd5e1)' }}>
+                            <span className="pedidos-table-reworked-hist-badge">
                               RETRABAJADO · {formatReworkHistoricalText(ped.revision_count || 0)}
                             </span>
                           ) : null}
                         </div>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: ped.responsable_nombre ? 'var(--pedidos-text-secondary, #334155)' : '#b91c1c', fontWeight: 500 }}>
-                        {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
+                      <td className="pedidos-table-td pedidos-table-td-assignee">
+                        <span className={`pedidos-table-assignee-text ${ped.responsable_nombre ? 'is-assigned' : 'is-unassigned'}`}>
+                          {ped.responsable_nombre ? `👤 ${ped.responsable_nombre}` : '⚠️ Sin Asignar'}
+                        </span>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.8rem' }}>
-                        {new Date(ped.created_at).toLocaleDateString()}
+                      <td className="pedidos-table-td pedidos-table-td-date">
+                        <time dateTime={ped.created_at} className="pedidos-table-date-text">
+                          {new Date(ped.created_at).toLocaleDateString()}
+                        </time>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                      <td className="pedidos-table-td pedidos-table-td-actions">
                         <Link
                           to={`/gestion/pedidos/${ped.id}`}
-                          style={{ color: 'var(--pedidos-brand-accent, #0284c7)', fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}
+                          className="pedidos-table-detail-link"
                         >
                           Ver detalle &rarr;
                         </Link>
@@ -1785,7 +1434,7 @@ export const GestionDashboardPage: React.FC = () => {
                 })}
                 {paginatedPedidos.length === 0 && (
                   <tr>
-                    <td colSpan={isAdmin ? 9 : 8} style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--pedidos-text-muted, #94a3b8)' }}>
+                    <td colSpan={isAdmin ? 9 : 8} className="pedidos-table-empty">
                       No se encontraron pedidos con los filtros seleccionados.
                     </td>
                   </tr>
@@ -1796,16 +1445,16 @@ export const GestionDashboardPage: React.FC = () => {
 
           {/* Table Pagination Controls */}
           {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderTop: '1px solid var(--pedidos-border-default, #e2e8f0)', backgroundColor: 'var(--pedidos-surface-sunken, #f8fafc)', fontSize: '0.85rem' }}>
-              <span style={{ color: 'var(--pedidos-text-muted, #64748b)' }}>
+            <div className="pedidos-table-pagination">
+              <span className="pedidos-table-pagination-info">
                 Página {currentPage} de {totalPages} ({pedidos.length} pedidos)
               </span>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div className="pedidos-table-pagination-actions">
                 <button
                   type="button"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  style={{ padding: '0.3rem 0.6rem', borderRadius: '0.25rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', background: currentPage === 1 ? 'var(--pedidos-surface-sunken, #f1f5f9)' : 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #334155)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  className="pedidos-pagination-btn"
                 >
                   ← Anterior
                 </button>
@@ -1813,7 +1462,7 @@ export const GestionDashboardPage: React.FC = () => {
                   type="button"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  style={{ padding: '0.3rem 0.6rem', borderRadius: '0.25rem', border: '1px solid var(--pedidos-border-default, #cbd5e1)', background: currentPage === totalPages ? 'var(--pedidos-surface-sunken, #f1f5f9)' : 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #334155)', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                  className="pedidos-pagination-btn"
                 >
                   Siguiente →
                 </button>
@@ -1842,9 +1491,23 @@ export const GestionDashboardPage: React.FC = () => {
           pedidoVisible={selectedPedidoForEtiqueta.pedido_visible}
           initialEtiquetas={selectedPedidoForEtiqueta.etiquetas}
           initialEtiqueta={selectedPedidoForEtiqueta.etiqueta_interna || null}
-          onSuccess={() => {
+          onSuccess={async (savedEtiquetas) => {
+            if (selectedPedidoForEtiqueta && savedEtiquetas) {
+              const pedId = selectedPedidoForEtiqueta.id;
+              setPedidos((prev) =>
+                prev.map((p) =>
+                  p.id === pedId
+                    ? {
+                        ...p,
+                        etiquetas: savedEtiquetas,
+                        etiqueta_interna: savedEtiquetas.length > 0 ? savedEtiquetas[0].texto : null,
+                      }
+                    : p
+                )
+              );
+            }
             setSelectedPedidoForEtiqueta(null);
-            loadData();
+            await loadData();
           }}
           onSave={handleSaveEtiqueta}
         />

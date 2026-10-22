@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   PedidoEtiquetaItem,
   EtiquetaColor,
@@ -16,7 +16,7 @@ export interface EditarEtiquetaModalProps {
   // Compatibilidad hacia atrás
   initialEtiqueta?: string | null;
   onSave?: (newEtiqueta: string | null) => Promise<void>;
-  onSuccess?: () => void;
+  onSuccess?: (savedEtiquetas?: PedidoEtiquetaItem[]) => void | Promise<void>;
 }
 
 export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
@@ -36,9 +36,28 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
+  const prevIsOpenRef = useRef(false);
+  const initializedPedidoIdRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    // Inicializar exclusivamente cuando el modal transiciona de cerrado a abierto
+    // o cuando cambia el pedidoId para evitar que re-renders del componente padre
+    // o recargas silenciosas en segundo plano borren las etiquetas que el usuario está editando.
+    const isOpening = isOpen && !prevIsOpenRef.current;
+    const isDifferentPedido = isOpen && initializedPedidoIdRef.current !== pedidoId;
+
+    prevIsOpenRef.current = isOpen;
+
+    if (!isOpen) {
+      initializedPedidoIdRef.current = null;
+      return;
+    }
+
+    if (!isOpening && !isDifferentPedido) {
+      return;
+    }
+
+    initializedPedidoIdRef.current = pedidoId;
     setError(null);
     setNewTexto('');
     setSelectedColor('azul');
@@ -110,22 +129,27 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
     setError(null);
 
     try {
+      const clean = newTexto.trim();
+      const currentEtiquetas = [...etiquetas];
+      if (clean && clean.length <= 30 && !currentEtiquetas.some((e) => e.texto.toLowerCase() === clean.toLowerCase())) {
+        currentEtiquetas.push({ texto: clean, color: selectedColor });
+      }
+
+      let savedItems: PedidoEtiquetaItem[] = [];
       if (pedidoId) {
-        await Promise.resolve(
-          setPedidoEtiquetas(
-            pedidoId,
-            etiquetas.map((e) => ({ texto: e.texto, color: e.color }))
-          )
+        savedItems = await setPedidoEtiquetas(
+          pedidoId,
+          currentEtiquetas.map((e) => ({ texto: e.texto, color: e.color }))
         );
       }
 
-      const firstLabel = etiquetas.length > 0 ? etiquetas[0].texto : null;
+      const firstLabel = currentEtiquetas.length > 0 ? currentEtiquetas[0].texto : null;
       if (onSave) {
         await Promise.resolve(onSave(firstLabel));
       }
 
       if (onSuccess) {
-        onSuccess();
+        await Promise.resolve(onSuccess(savedItems));
       }
 
       onClose();
@@ -138,49 +162,23 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'var(--pedidos-surface-backdrop, rgba(0, 0, 0, 0.6))',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 9999,
-        padding: '1rem',
-      }}
+      className="pedidos-modal-overlay"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-etiquetas-title"
     >
       <div
-        style={{
-          backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)',
-          color: 'var(--pedidos-text-primary, #1f2937)',
-          border: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
-          borderRadius: '0.75rem',
-          maxWidth: '460px',
-          width: '100%',
-          boxShadow: 'var(--pedidos-shadow-lg, 0 10px 25px rgba(0,0,0,0.2))',
-          overflow: 'hidden',
-        }}
+        className="pedidos-modal-dialog pedidos-modal-dialog-sm"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div
-          style={{
-            padding: '1.15rem 1.5rem',
-            borderBottom: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
+        <div className="pedidos-modal-header">
           <div>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--pedidos-text-primary, #1f2937)' }}>
+            <h3 id="modal-etiquetas-title" className="pedidos-modal-title">
               Etiqueta interna
             </h3>
-            <span style={{ fontSize: '0.8rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
+            <span className="pedidos-modal-subtitle">
               {pedidoVisible} · Etiquetas del pedido
             </span>
           </div>
@@ -188,81 +186,41 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={saving}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '1.25rem',
-              cursor: 'pointer',
-              color: 'var(--pedidos-text-muted, #64748b)',
-            }}
+            className="pedidos-modal-close-btn"
+            aria-label="Cerrar modal"
           >
             ✕
           </button>
         </div>
 
-        <div style={{ padding: '1.25rem 1.5rem' }}>
+        <div className="pedidos-modal-body">
           {error && (
-            <div
-              style={{
-                padding: '0.65rem 0.85rem',
-                backgroundColor: 'var(--pedidos-status-rejected-bg, #fef2f2)',
-                border: '1px solid var(--pedidos-status-rejected-border, #fecaca)',
-                borderRadius: '0.375rem',
-                color: 'var(--pedidos-status-rejected-text, #b91c1c)',
-                fontSize: '0.825rem',
-                marginBottom: '1rem',
-              }}
-            >
+            <div className="pedidos-modal-error-banner">
               {error}
             </div>
           )}
 
           {/* List of current tags */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                color: 'var(--pedidos-text-muted, #64748b)',
-                textTransform: 'uppercase',
-                marginBottom: '0.5rem',
-              }}
-            >
+          <div className="pedidos-modal-field">
+            <label className="pedidos-modal-section-label">
               Etiquetas asignadas ({etiquetas.length})
             </label>
 
             {loading ? (
-              <div style={{ fontSize: '0.825rem', color: 'var(--pedidos-text-muted, #64748b)', padding: '0.5rem 0' }}>
+              <div className="pedidos-modal-loading-text">
                 Cargando etiquetas...
               </div>
             ) : etiquetas.length === 0 ? (
-              <div
-                style={{
-                  fontSize: '0.825rem',
-                  color: 'var(--pedidos-text-muted, #94a3b8)',
-                  fontStyle: 'italic',
-                  padding: '0.5rem 0.75rem',
-                  backgroundColor: 'var(--pedidos-surface-sunken, #f8fafc)',
-                  borderRadius: '0.375rem',
-                  border: '1px dashed var(--pedidos-border-default, #e2e8f0)',
-                }}
-              >
+              <div className="pedidos-modal-empty-box">
                 No hay etiquetas asignadas a este pedido.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+              <div className="pedidos-modal-tags-wrap">
                 {etiquetas.map((item, idx) => {
                   return (
                     <span
                       key={`${item.texto}-${idx}`}
                       className={`etiqueta-interna-pill etiqueta-color-${item.color}`}
-                      style={{
-                        padding: '0.25rem 0.55rem',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                      }}
                     >
                       <span>🏷️ {item.texto}</span>
                       <button
@@ -270,17 +228,7 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
                         onClick={() => handleRemoveEtiqueta(idx)}
                         disabled={saving}
                         title={`Eliminar etiqueta "${item.texto}"`}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: 0,
-                          fontSize: '0.85rem',
-                          lineHeight: 1,
-                          opacity: 0.7,
-                          color: 'inherit',
-                          fontWeight: 700,
-                        }}
+                        className="pedidos-modal-tag-remove-btn"
                       >
                         ✕
                       </button>
@@ -292,30 +240,12 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
           </div>
 
           {/* Form to add new label */}
-          <form
-            onSubmit={handleAddEtiqueta}
-            style={{
-              padding: '0.85rem',
-              backgroundColor: 'var(--pedidos-surface-sunken, #f8fafc)',
-              borderRadius: '0.5rem',
-              border: '1px solid var(--pedidos-border-default, #e2e8f0)',
-              marginBottom: '1.25rem',
-            }}
-          >
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label
-                htmlFor="input-nueva-etiqueta"
-                style={{
-                  display: 'block',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  marginBottom: '0.35rem',
-                  color: 'var(--pedidos-text-primary, #1f2937)',
-                }}
-              >
+          <form onSubmit={handleAddEtiqueta} className="pedidos-modal-subcard">
+            <div className="pedidos-modal-field">
+              <label htmlFor="input-nueva-etiqueta" className="pedidos-modal-label">
                 Nueva etiqueta (máx. 30 caracteres)
               </label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div className="pedidos-modal-input-group">
                 <input
                   id="input-nueva-etiqueta"
                   type="text"
@@ -324,43 +254,17 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
                   placeholder="Ej: URGENTE, WEB, PRENSA"
                   maxLength={30}
                   disabled={saving}
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem 0.65rem',
-                    borderRadius: '0.375rem',
-                    border: '1px solid var(--pedidos-control-border, #cbd5e1)',
-                    backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                    color: 'var(--pedidos-control-text, #1f2937)',
-                    fontSize: '0.875rem',
-                  }}
+                  className="pedidos-modal-input"
                 />
                 <button
                   type="submit"
                   disabled={saving || !newTexto.trim()}
-                  style={{
-                    padding: '0.5rem 0.85rem',
-                    backgroundColor: 'var(--pedidos-brand-accent, #0284c7)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '0.375rem',
-                    fontWeight: 600,
-                    fontSize: '0.825rem',
-                    cursor: saving || !newTexto.trim() ? 'not-allowed' : 'pointer',
-                    opacity: !newTexto.trim() ? 0.6 : 1,
-                  }}
+                  className="pedidos-modal-btn-add"
                 >
                   + Agregar
                 </button>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginTop: '0.3rem',
-                  fontSize: '0.7rem',
-                  color: 'var(--pedidos-text-muted, #64748b)',
-                }}
-              >
+              <div className="pedidos-modal-hint-row">
                 <span>Uso operativo interno únicamente</span>
                 <span>{newTexto.trim().length} / 30</span>
               </div>
@@ -368,18 +272,10 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
 
             {/* Color Selector */}
             <div>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '0.725rem',
-                  fontWeight: 600,
-                  color: 'var(--pedidos-text-secondary, #475569)',
-                  marginBottom: '0.35rem',
-                }}
-              >
+              <span className="pedidos-modal-color-title">
                 Color de etiqueta:
               </span>
-              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+              <div className="pedidos-modal-color-row">
                 {ETIQUETA_COLOR_OPTIONS.map((opt) => {
                   const isSelected = selectedColor === opt.key;
                   return (
@@ -388,31 +284,13 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
                       type="button"
                       onClick={() => setSelectedColor(opt.key)}
                       title={opt.label}
-                      style={{
-                        width: '26px',
-                        height: '26px',
-                        borderRadius: '9999px',
-                        backgroundColor: opt.dotColor,
-                        border: isSelected ? '2.5px solid var(--pedidos-brand-accent, #0284c7)' : '2px solid transparent',
-                        boxShadow: isSelected ? '0 0 0 2px var(--pedidos-surface-overlay, #ffffff)' : 'none',
-                        cursor: 'pointer',
-                        padding: 0,
-                        transition: 'transform 0.1s ease',
-                        transform: isSelected ? 'scale(1.15)' : 'scale(1)',
-                      }}
+                      className={`pedidos-modal-color-dot ${isSelected ? 'is-selected' : ''}`}
+                      style={{ backgroundColor: opt.dotColor }}
                       aria-label={`Color ${opt.label}`}
                     />
                   );
                 })}
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--pedidos-text-secondary, #475569)',
-                    marginLeft: '0.25rem',
-                    alignSelf: 'center',
-                    fontWeight: 500,
-                  }}
-                >
+                <span className="pedidos-modal-color-label">
                   {getEtiquetaColorOption(selectedColor).label}
                 </span>
               </div>
@@ -420,27 +298,12 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
           </form>
 
           {/* Footer buttons */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '0.5rem',
-            }}
-          >
+          <div className="pedidos-modal-footer">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              style={{
-                padding: '0.5rem 1rem',
-                backgroundColor: 'var(--pedidos-surface-sunken, #f1f5f9)',
-                border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                borderRadius: '0.375rem',
-                color: 'var(--pedidos-text-primary, #334155)',
-                fontSize: '0.825rem',
-                fontWeight: 600,
-                cursor: saving ? 'not-allowed' : 'pointer',
-              }}
+              className="pedidos-modal-btn-cancel"
             >
               Cancelar
             </button>
@@ -448,16 +311,7 @@ export const EditarEtiquetaModal: React.FC<EditarEtiquetaModalProps> = ({
               type="button"
               onClick={handleSave}
               disabled={saving}
-              style={{
-                padding: '0.5rem 1.25rem',
-                backgroundColor: 'var(--pedidos-brand-accent, #0284c7)',
-                border: 'none',
-                borderRadius: '0.375rem',
-                color: '#ffffff',
-                fontSize: '0.825rem',
-                fontWeight: 600,
-                cursor: saving ? 'not-allowed' : 'pointer',
-              }}
+              className="pedidos-modal-btn-primary"
             >
               {saving ? 'Guardando...' : 'Guardar'}
             </button>

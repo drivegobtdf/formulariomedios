@@ -207,38 +207,9 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-carga-interna-title"
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'var(--pedidos-surface-backdrop, rgba(15, 23, 42, 0.65))',
-        backdropFilter: 'blur(3px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1100,
-        padding: '1rem',
-        overflowY: 'auto',
-      }}
+      className="pedidos-modal-overlay"
     >
-      <div
-        style={{
-          position: 'relative',
-          backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)',
-          color: 'var(--pedidos-text-primary, #0f172a)',
-          border: '1px solid var(--pedidos-border-subtle, #e2e8f0)',
-          borderRadius: '0.75rem',
-          maxWidth: '720px',
-          width: '100%',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="pedidos-modal-dialog pedidos-modal-dialog-lg">
         {/* Diálogo de Confirmación de Descarte */}
         {showDiscardConfirm && (
           <div
@@ -246,84 +217,31 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
             aria-modal="true"
             aria-labelledby="discard-confirm-title"
             aria-describedby="discard-confirm-desc"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(15, 23, 42, 0.65)',
-              backdropFilter: 'blur(3px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1200,
-              padding: '1.25rem',
-            }}
+            className="pedidos-modal-alertdialog-backdrop"
           >
-            <div
-              style={{
-                backgroundColor: 'var(--pedidos-surface-overlay, #ffffff)',
-                color: 'var(--pedidos-text-primary, #0f172a)',
-                borderRadius: '0.625rem',
-                padding: '1.5rem',
-                maxWidth: '440px',
-                width: '100%',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                border: '1px solid var(--pedidos-border-default, #e2e8f0)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ fontSize: '1.4rem', lineHeight: 1 }} aria-hidden="true">
+            <div className="pedidos-modal-alertdialog-card">
+              <div className="pedidos-modal-alertdialog-header">
+                <span className="pedidos-modal-danger-icon" aria-hidden="true">
                   ⚠️
                 </span>
                 <h3
                   id="discard-confirm-title"
-                  style={{
-                    margin: 0,
-                    fontSize: '1.15rem',
-                    fontWeight: 700,
-                    color: 'var(--pedidos-text-primary, #0f172a)',
-                  }}
+                  className="pedidos-modal-alertdialog-title"
                 >
                   ¿Descartar los cambios?
                 </h3>
               </div>
               <p
                 id="discard-confirm-desc"
-                style={{
-                  margin: 0,
-                  fontSize: '0.9rem',
-                  lineHeight: 1.5,
-                  color: 'var(--pedidos-text-muted, #475569)',
-                }}
+                className="pedidos-modal-alertdialog-desc"
               >
                 Hay información cargada que todavía no fue guardada. Si cerrás esta ventana, se perderán los cambios.
               </p>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: '0.75rem',
-                  marginTop: '0.5rem',
-                }}
-              >
+              <div className="pedidos-modal-alertdialog-footer">
                 <button
                   type="button"
                   onClick={() => setShowDiscardConfirm(false)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '0.375rem',
-                    border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                    backgroundColor: 'var(--pedidos-surface-sunken, #ffffff)',
-                    color: 'var(--pedidos-text-primary, #334155)',
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
+                  className="pedidos-modal-btn-cancel"
                 >
                   Seguir editando
                 </button>
@@ -333,16 +251,7 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     resetForm();
                     onClose();
                   }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '0.375rem',
-                    border: 'none',
-                    backgroundColor: '#dc2626',
-                    color: '#ffffff',
-                    fontSize: '0.875rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
+                  className="pedidos-modal-btn-danger"
                 >
                   Descartar cambios
                 </button>
@@ -352,40 +261,14 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
         )}
 
         {/* Cabecera del Modal */}
-        <div
-          style={{
-            padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid var(--pedidos-border-default, #e2e8f0)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: 'var(--pedidos-surface-raised, #f8fafc)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <span
-              style={{
-                fontSize: '0.7rem',
-                fontWeight: 800,
-                padding: '0.2rem 0.5rem',
-                borderRadius: '4px',
-                background: 'var(--pedidos-interno-bg, #fff1f2)',
-                color: 'var(--pedidos-interno-text, #e11d48)',
-                border: '1px solid var(--pedidos-interno-border, #fecdd3)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}
-            >
+        <div className="pedidos-modal-header">
+          <div className="pedidos-modal-header-title-row">
+            <span className="pedidos-badge-interno">
               INTERNO
             </span>
             <h2
               id="modal-carga-interna-title"
-              style={{
-                margin: 0,
-                fontSize: '1.15rem',
-                fontWeight: 700,
-                color: 'var(--pedidos-text-primary, #0f172a)',
-              }}
+              className="pedidos-modal-title"
             >
               Carga Interna de Pedido
             </h2>
@@ -395,70 +278,34 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
             onClick={handleRequestClose}
             disabled={submitting}
             aria-label="Cerrar modal"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              fontSize: '1.25rem',
-              color: 'var(--pedidos-text-muted, #64748b)',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              padding: '0.25rem',
-              lineHeight: 1,
-            }}
+            className="pedidos-modal-close-btn"
           >
             ✕
           </button>
         </div>
 
         {/* Contenido / Formulario */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
-          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <form onSubmit={handleSubmit} className="pedidos-modal-form-scrollable">
+          <div className="pedidos-modal-body pedidos-modal-body-padded">
             {error && (
-              <div
-                style={{
-                  backgroundColor: 'var(--pedidos-status-cancelado-bg, #fef2f2)',
-                  color: 'var(--pedidos-status-cancelado-text, #991b1b)',
-                  border: '1px solid var(--pedidos-status-cancelado-border, #fca5a5)',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '0.375rem',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                }}
-              >
+              <div className="pedidos-modal-error-banner">
                 <span>⚠️</span>
                 <span>{error}</span>
               </div>
             )}
 
             {/* SECCIÓN 1: DATOS PRINCIPALES */}
-            <div>
-              <h3
-                style={{
-                  fontSize: '0.8rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--pedidos-brand-accent, #0284c7)',
-                  margin: '0 0 0.75rem 0',
-                  fontWeight: 700,
-                }}
-              >
+            <div className="pedidos-modal-section">
+              <h3 className="pedidos-modal-section-title">
                 1. Datos Principales
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div>
+              <div className="pedidos-modal-fields-stack">
+                <div className="pedidos-modal-field">
                   <label
                     htmlFor="input-titulo"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
-                    Título del Pedido <span style={{ color: '#e11d48' }}>*</span>
+                    Título del Pedido <span className="pedidos-modal-required-mark">*</span>
                   </label>
                   <input
                     id="input-titulo"
@@ -469,29 +316,14 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     onChange={(e) => setTitulo(e.target.value)}
                     disabled={submitting}
                     autoFocus
-                    style={{
-                      width: '100%',
-                      padding: '0.55rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.875rem',
-                      outline: 'none',
-                    }}
+                    className="pedidos-modal-input"
                   />
                 </div>
 
-                <div>
+                <div className="pedidos-modal-field">
                   <label
                     htmlFor="input-descripcion"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
                     Descripción / Alcance (opcional)
                   </label>
@@ -502,47 +334,22 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     value={descripcion}
                     onChange={(e) => setDescripcion(e.target.value)}
                     disabled={submitting}
-                    style={{
-                      width: '100%',
-                      padding: '0.55rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.875rem',
-                      outline: 'none',
-                      resize: 'vertical',
-                    }}
+                    className="pedidos-modal-textarea"
                   />
                 </div>
               </div>
             </div>
 
             {/* SECCIÓN 2: SOLICITANTE / ÁREA (OPCIONAL) */}
-            <div style={{ borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)', paddingTop: '1rem' }}>
-              <h3
-                style={{
-                  fontSize: '0.8rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--pedidos-brand-accent, #0284c7)',
-                  margin: '0 0 0.75rem 0',
-                  fontWeight: 700,
-                }}
-              >
+            <div className="pedidos-modal-section pedidos-modal-section-divided">
+              <h3 className="pedidos-modal-section-title">
                 2. Solicitante / Organismo (Opcional)
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div>
+              <div className="pedidos-modal-grid-2col">
+                <div className="pedidos-modal-field">
                   <label
                     htmlFor="input-solicitante-nombre"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
                     Nombre y Apellido
                   </label>
@@ -553,28 +360,14 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     value={solicitanteNombre}
                     onChange={(e) => setSolicitanteNombre(e.target.value)}
                     disabled={submitting}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.85rem',
-                    }}
+                    className="pedidos-modal-input"
                   />
                 </div>
 
-                <div>
+                <div className="pedidos-modal-field">
                   <label
                     htmlFor="input-solicitante-area"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
                     Área / Ministerio
                   </label>
@@ -585,28 +378,14 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     value={solicitanteArea}
                     onChange={(e) => setSolicitanteArea(e.target.value)}
                     disabled={submitting}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.85rem',
-                    }}
+                    className="pedidos-modal-input"
                   />
                 </div>
 
-                <div>
+                <div className="pedidos-modal-field">
                   <label
                     htmlFor="input-solicitante-correo"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
                     Correo Electrónico (referencial)
                   </label>
@@ -617,28 +396,14 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     value={solicitanteCorreo}
                     onChange={(e) => setSolicitanteCorreo(e.target.value)}
                     disabled={submitting}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.85rem',
-                    }}
+                    className="pedidos-modal-input"
                   />
                 </div>
 
-                <div>
+                <div className="pedidos-modal-field">
                   <label
                     htmlFor="input-solicitante-telefono"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
                     Teléfono (referencial)
                   </label>
@@ -649,45 +414,22 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     value={solicitanteTelefono}
                     onChange={(e) => setSolicitanteTelefono(e.target.value)}
                     disabled={submitting}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.85rem',
-                    }}
+                    className="pedidos-modal-input"
                   />
                 </div>
               </div>
             </div>
 
             {/* SECCIÓN 3: CLASIFICACIÓN Y METADATOS (OPCIONAL) */}
-            <div style={{ borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)', paddingTop: '1rem' }}>
-              <h3
-                style={{
-                  fontSize: '0.8rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--pedidos-brand-accent, #0284c7)',
-                  margin: '0 0 0.75rem 0',
-                  fontWeight: 700,
-                }}
-              >
+            <div className="pedidos-modal-section pedidos-modal-section-divided">
+              <h3 className="pedidos-modal-section-title">
                 3. Clasificación y Operación (Opcional)
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div>
+              <div className="pedidos-modal-grid-2col">
+                <div className="pedidos-modal-field">
                   <label
                     htmlFor="select-categoria"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
                     Categoría de Servicio
                   </label>
@@ -699,16 +441,7 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                       setTipoServicioId('');
                     }}
                     disabled={submitting || loadingCatalogo}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                    }}
+                    className="pedidos-modal-select"
                   >
                     <option value="">Sin categoría / General (I)</option>
                     {catalogo.map((cat) => (
@@ -719,16 +452,10 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                   </select>
                 </div>
 
-                <div>
+                <div className="pedidos-modal-field">
                   <label
                     htmlFor="select-tipo"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
                     Tipo de Servicio
                   </label>
@@ -737,17 +464,7 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     value={tipoServicioId}
                     onChange={(e) => setTipoServicioId(e.target.value)}
                     disabled={submitting || !categoriaId || availableTipos.length === 0}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.85rem',
-                      cursor: !categoriaId ? 'not-allowed' : 'pointer',
-                      opacity: !categoriaId ? 0.6 : 1,
-                    }}
+                    className="pedidos-modal-select"
                   >
                     <option value="">Sin sub-servicio específico</option>
                     {availableTipos.map((tipo) => (
@@ -758,16 +475,10 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                   </select>
                 </div>
 
-                <div>
+                <div className="pedidos-modal-field">
                   <label
                     htmlFor="select-prioridad"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
                     Prioridad
                   </label>
@@ -776,16 +487,7 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     value={prioridad}
                     onChange={(e) => setPrioridad(e.target.value as any)}
                     disabled={submitting}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                    }}
+                    className="pedidos-modal-select"
                   >
                     <option value="">Normal (por defecto)</option>
                     <option value="alta">🔴 Alta</option>
@@ -794,16 +496,10 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                   </select>
                 </div>
 
-                <div>
+                <div className="pedidos-modal-field">
                   <label
                     htmlFor="input-etiqueta"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
                     Etiqueta Interna (máx. 10 caracteres)
                   </label>
@@ -815,28 +511,14 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     value={etiquetaInterna}
                     onChange={(e) => setEtiquetaInterna(e.target.value)}
                     disabled={submitting}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.85rem',
-                    }}
+                    className="pedidos-modal-input"
                   />
                 </div>
 
-                <div style={{ gridColumn: 'span 2' }}>
+                <div className="pedidos-modal-field" style={{ gridColumn: 'span 2' }}>
                   <label
                     htmlFor="input-fecha-limite"
-                    style={{
-                      display: 'block',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      marginBottom: '0.25rem',
-                      color: 'var(--pedidos-text-primary, #334155)',
-                    }}
+                    className="pedidos-modal-label"
                   >
                     Fecha Límite Deseada
                   </label>
@@ -846,72 +528,38 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     value={fechaLimite}
                     onChange={(e) => setFechaLimite(e.target.value)}
                     disabled={submitting}
-                    style={{
-                      width: '100%',
-                      maxWidth: '240px',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                      backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                      color: 'var(--pedidos-text-primary, #0f172a)',
-                      fontSize: '0.85rem',
-                    }}
+                    className="pedidos-modal-input pedidos-modal-input-date"
                   />
                 </div>
               </div>
             </div>
 
             {/* SECCIÓN 4: ENLACES EXTERNOS (OPCIONAL) */}
-            <div style={{ borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)', paddingTop: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3
-                  style={{
-                    fontSize: '0.8rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: 'var(--pedidos-brand-accent, #0284c7)',
-                    margin: 0,
-                    fontWeight: 700,
-                  }}
-                >
+            <div className="pedidos-modal-section pedidos-modal-section-divided">
+              <div className="pedidos-modal-section-header">
+                <h3 className="pedidos-modal-section-title" style={{ margin: 0 }}>
                   4. Enlaces de Referencia / Material (Opcional)
                 </h3>
                 <button
                   type="button"
                   onClick={handleAddEnlace}
                   disabled={submitting}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#0284c7',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    padding: '0.1rem 0.3rem',
-                  }}
+                  className="pedidos-modal-btn-link-action"
                 >
                   + Agregar enlace
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div className="pedidos-modal-links-stack">
                 {enlaces.map((link, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <div key={idx} className="pedidos-modal-link-row">
                     <input
                       type="url"
                       placeholder="https://drive.google.com/... o https://figma.com/..."
                       value={link}
                       onChange={(e) => handleEnlaceChange(idx, e.target.value)}
                       disabled={submitting}
-                      style={{
-                        flex: 1,
-                        padding: '0.45rem 0.75rem',
-                        borderRadius: '0.375rem',
-                        border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                        backgroundColor: 'var(--pedidos-control-bg, #ffffff)',
-                        color: 'var(--pedidos-text-primary, #0f172a)',
-                        fontSize: '0.85rem',
-                      }}
+                      className="pedidos-modal-input pedidos-modal-input-link"
                     />
                     {enlaces.length > 1 && (
                       <button
@@ -919,14 +567,7 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                         onClick={() => handleRemoveEnlace(idx)}
                         disabled={submitting}
                         aria-label="Eliminar enlace"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#dc2626',
-                          fontSize: '1rem',
-                          cursor: 'pointer',
-                          padding: '0.2rem 0.4rem',
-                        }}
+                        className="pedidos-modal-btn-icon-danger"
                       >
                         🗑️
                       </button>
@@ -938,51 +579,19 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
           </div>
 
           {/* Footer del Modal */}
-          <div
-            style={{
-              padding: '1rem 1.5rem',
-              borderTop: '1px solid var(--pedidos-border-default, #e2e8f0)',
-              backgroundColor: 'var(--pedidos-surface-raised, #f8fafc)',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '0.75rem',
-              alignItems: 'center',
-            }}
-          >
+          <div className="pedidos-modal-footer">
             <button
               type="button"
               onClick={handleRequestClose}
               disabled={submitting}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '0.375rem',
-                border: '1px solid var(--pedidos-border-default, #cbd5e1)',
-                backgroundColor: 'var(--pedidos-surface-sunken, #ffffff)',
-                color: 'var(--pedidos-text-primary, #334155)',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                cursor: submitting ? 'not-allowed' : 'pointer',
-              }}
+              className="pedidos-modal-btn-cancel"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting || !titulo.trim()}
-              style={{
-                padding: '0.5rem 1.25rem',
-                borderRadius: '0.375rem',
-                border: 'none',
-                backgroundColor: !submitting && titulo.trim() ? '#e11d48' : '#cbd5e1',
-                color: '#ffffff',
-                fontSize: '0.875rem',
-                fontWeight: 700,
-                cursor: submitting || !titulo.trim() ? 'not-allowed' : 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                boxShadow: !submitting && titulo.trim() ? '0 1px 2px rgba(225, 29, 72, 0.25)' : 'none',
-              }}
+              className="pedidos-modal-btn-create"
             >
               {submitting ? 'Creando pedido...' : 'Crear Pedido Interno'}
             </button>

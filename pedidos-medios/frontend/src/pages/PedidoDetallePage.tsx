@@ -310,6 +310,7 @@ export const PedidoDetallePage: React.FC = () => {
         setError('Conflicto de versión: El pedido fue modificado recientemente. Recargando datos...');
         loadData();
       }
+      throw err;
     }
   };
 
@@ -2934,7 +2935,20 @@ export const PedidoDetallePage: React.FC = () => {
           initialEtiquetas={pedido.etiquetas}
           initialEtiqueta={pedido.etiqueta_interna || null}
           onSave={handleSaveEtiqueta}
-          onSuccess={loadData}
+          onSuccess={async (savedEtiquetas) => {
+            if (savedEtiquetas) {
+              setPedido((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      etiquetas: savedEtiquetas,
+                      etiqueta_interna: savedEtiquetas.length > 0 ? savedEtiquetas[0].texto : null,
+                    }
+                  : prev
+              );
+            }
+            await loadData(true);
+          }}
         />
       )}
 
