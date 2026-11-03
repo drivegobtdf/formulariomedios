@@ -25,7 +25,7 @@ import {
 import { InformacionEspecificaViewer } from '../components/gestion/InformacionEspecificaViewer';
 import { EditarEtiquetaModal } from '../components/gestion/EditarEtiquetaModal';
 import { PedidoChecklistSection } from '../components/gestion/PedidoChecklistSection';
-import { formatFileSize, formatArchivoEstado, formatLocalDate, formatHistoryDate } from '../utils/formatUtils';
+import { formatFileSize, formatArchivoEstado, formatLocalDate, formatHistoryDate, formatIngresoDateTime } from '../utils/formatUtils';
 import { WhatsAppPhoneLink } from '../components/WhatsAppPhoneLink';
 import { formatReworkHistoricalText } from '../utils/statusBadges';
 import { isValidHttpUrl } from '../validation/formValidation';
@@ -1113,7 +1113,7 @@ export const PedidoDetallePage: React.FC = () => {
 
             <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--pedidos-text-muted, #64748b)', flexWrap: 'wrap' }}>
               <span>
-                <strong>Ingreso:</strong> {new Date(pedido.created_at).toLocaleDateString('es-AR')}
+                <strong>Ingreso:</strong> {formatIngresoDateTime(pedido.created_at)}
               </span>
               {fechaLimiteVal && (
                 <span style={{ color: 'var(--pedidos-rework-accent, #b45309)', fontWeight: 600 }}>
@@ -2081,149 +2081,70 @@ export const PedidoDetallePage: React.FC = () => {
             )}
           </div>
 
-          {/* Entregas y Versiones Canónicas */}
-          <div className="pedidos-detalle-card">
+          {/* Historial Operativo Unificado */}
+          <div className="pedidos-detalle-card" data-testid="section-historial">
             <div className="pedidos-detalle-card-header">
-              <h2 className="pedidos-detalle-card-title">
-                {pedido.versiones && pedido.versiones.length > 0
-                  ? `Versiones de Finalización (${pedido.versiones.length})`
-                  : `Entregas (${(pedido.entregas || []).length})`}
-              </h2>
+              <div>
+                <h2 className="pedidos-detalle-card-title">
+                  Historial
+                </h2>
+              </div>
             </div>
 
-            {(!pedido.versiones || pedido.versiones.length === 0) && (!pedido.entregas || pedido.entregas.length === 0) ? (
+            {historial.length === 0 ? (
               <p style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
-                No hay versiones ni entregas registradas.
+                No hay registros en el historial.
               </p>
-            ) : pedido.versiones && pedido.versiones.length > 0 ? (
+            ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {pedido.versiones.map((ver, idx) => {
-                  const isLatest = idx === 0;
+                {historial.map((h, idx) => {
+                  const eventInfo = getHistorialEventInfo(h.evento, h.payload);
                   return (
                     <div
-                      key={ver.id}
+                      key={idx}
                       style={{
-                        background: isLatest ? 'var(--pedidos-status-finalizado-bg, #f0fdf4)' : 'var(--pedidos-surface-sunken, #f8fafc)',
-                        border: `1px solid ${isLatest ? 'var(--pedidos-status-finalizado-border, #86efac)' : 'var(--pedidos-border-default, #e2e8f0)'}`,
-                        borderRadius: '0.5rem',
-                        padding: '0.75rem',
+                        borderLeft: `3px solid ${eventInfo.color}`,
+                        background: 'var(--pedidos-surface-sunken, #f8fafc)',
+                        padding: '0.85rem 1rem',
+                        borderRadius: '0 0.375rem 0.375rem 0',
+                        borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
+                        borderRight: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
+                        borderBottom: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: isLatest ? 'var(--pedidos-status-finalizado-text, #15803d)' : 'var(--pedidos-text-muted, #64748b)' }}>
-                          Versión {ver.version_number} {isLatest && '(Última finalización)'}
+                        <span style={{ fontWeight: 700, fontSize: '0.825rem', color: eventInfo.color, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span>{eventInfo.icon}</span>
+                          <span>{eventInfo.title}</span>
                         </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {!isObserver && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const waMsg = generateFinalizacionWhatsAppMessage({
-                                  codigo: pedido.pedido_visible || pedido.id,
-                                  titulo: pedido.titulo,
-                                  solicitanteNombre: pedido.solicitante_nombre || pedido.envio?.nombre_apellido,
-                                  solicitanteArea: pedido.area_solicitante || pedido.envio?.area_solicitante,
-                                  solicitanteTelefono:
-                                    pedido.envio?.telefono ||
-                                    (pedido as any).solicitante_telefono ||
-                                    (pedido.informacion_especifica as any)?.solicitante?.telefono ||
-                                    (pedido.informacion_especifica as any)?.contacto_telefono,
-                                  versionNumber: ver.version_number,
-                                  enlacesEntrega: ver.enlace_externo ? [ver.enlace_externo] : [],
-                                  archivosEntrega: ver.archivo_id ? (pedido.archivos?.find((a) => a.id === ver.archivo_id) ? [pedido.archivos.find((a) => a.id === ver.archivo_id)!.nombre_original] : []) : [],
-                                  pedidoId: pedido.id,
-                                });
-                                setWhatsappShareData({
-                                  isOpen: true,
-                                  message: waMsg,
-                                  whatsappUrl: getFinalizacionWhatsAppUrl(waMsg),
-                                });
-                              }}
-                              style={{
-                                background: 'transparent',
-                                border: '1px solid #16a34a',
-                                color: '#15803d',
-                                padding: '0.2rem 0.5rem',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.25rem',
-                              }}
-                              title="Compartir esta versión por WhatsApp"
-                            >
-                              <span>💬</span>
-                              <span>Compartir</span>
-                            </button>
-                          )}
-                          <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
-                            {ver.finalizado_por_nombre ? `${ver.finalizado_por_nombre} · ` : ''}
-                            {new Date(ver.finalizado_at).toLocaleDateString('es-AR')}
-                          </span>
-                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
+                          {formatHistoryDate(h.created_at)}
+                        </span>
                       </div>
-                      {ver.enlace_externo && (
-                        <div style={{ marginBottom: '0.35rem' }}>
-                          <a
-                            href={ver.enlace_externo}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: 'var(--pedidos-brand-accent, #0369a1)', fontSize: '0.8125rem', wordBreak: 'break-all', fontWeight: 600 }}
-                          >
-                            🔗 {ver.enlace_externo}
-                          </a>
-                        </div>
-                      )}
-                      {ver.nota && (
-                        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--pedidos-text-secondary, #334155)', whiteSpace: 'pre-wrap' }}>
-                          <strong>Nota de cierre:</strong> {ver.nota}
+
+                      {eventInfo.desc && (
+                        <p style={{ margin: '0 0 0.35rem 0', fontSize: '0.85rem', color: 'var(--pedidos-text-primary, #1e293b)', fontWeight: 500, lineHeight: 1.4 }}>
+                          {eventInfo.desc}
                         </p>
+                      )}
+
+                      <div style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <span><strong style={{ color: 'var(--pedidos-text-secondary, #475569)' }}>Actor:</strong> {h.actor_nombre || 'Sistema'}</span>
+                      </div>
+
+                      {h.payload && Object.keys(h.payload).length > 0 && (
+                        <details className="pedidos-historial-details" style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
+                          <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--pedidos-text-secondary, #475569)', userSelect: 'none' }}>
+                            Ver detalles técnicos (JSON)
+                          </summary>
+                          <pre style={{ margin: '0.35rem 0 0 0', padding: '0.5rem', background: 'var(--pedidos-surface-sunken, #e2e8f0)', border: '1px solid var(--pedidos-border-subtle, transparent)', color: 'var(--pedidos-text-primary, #1e293b)', borderRadius: '0.25rem', fontSize: '0.7rem', overflowX: 'auto', maxHeight: '150px' }}>
+                            {JSON.stringify(h.payload, null, 2)}
+                          </pre>
+                        </details>
                       )}
                     </div>
                   );
                 })}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {(pedido.entregas || []).map((ent: any) => (
-                  <div
-                    key={ent.id}
-                    style={{
-                      background: ent.es_vigente ? 'var(--pedidos-status-finalizado-bg, #f0fdf4)' : 'var(--pedidos-surface-sunken, #f8fafc)',
-                      border: `1px solid ${ent.es_vigente ? 'var(--pedidos-status-finalizado-border, #86efac)' : 'var(--pedidos-border-default, #e2e8f0)'}`,
-                      borderRadius: '0.5rem',
-                      padding: '0.75rem',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: ent.es_vigente ? 'var(--pedidos-status-finalizado-text, #15803d)' : 'var(--pedidos-text-muted, #64748b)' }}>
-                        Entrega v{ent.version} {ent.es_vigente && '(Vigente)'}
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
-                        {new Date(ent.created_at).toLocaleDateString('es-AR')}
-                      </span>
-                    </div>
-                    {ent.enlace_externo && (
-                      <div style={{ marginBottom: '0.35rem' }}>
-                        <a
-                          href={ent.enlace_externo}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: 'var(--pedidos-brand-accent, #0369a1)', fontSize: '0.8125rem', wordBreak: 'break-all', fontWeight: 600 }}
-                        >
-                          🔗 {ent.enlace_externo}
-                        </a>
-                      </div>
-                    )}
-                    {ent.nota && (
-                      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--pedidos-text-secondary, #334155)', whiteSpace: 'pre-wrap' }}>
-                        {ent.nota}
-                      </p>
-                    )}
-                  </div>
-                ))}
               </div>
             )}
           </div>
@@ -2231,7 +2152,7 @@ export const PedidoDetallePage: React.FC = () => {
       </div>
 
       {/* =====================================================================
-          SECCIÓN INFERIOR: Solicitudes de Info (48h), Notas y Bitácora, Historial
+          SECCIÓN INFERIOR: Solicitudes de Info (48h), Notas y Bitácora, Versiones de Finalización
          ===================================================================== */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
         {/* Solicitudes de Información al Solicitante */}
@@ -2464,70 +2385,149 @@ export const PedidoDetallePage: React.FC = () => {
           )}
         </div>
 
-        {/* Historial Operativo Unificado */}
-        <div className="pedidos-detalle-card">
+        {/* Entregas y Versiones Canónicas */}
+        <div className="pedidos-detalle-card" data-testid="section-versiones-finalizacion">
           <div className="pedidos-detalle-card-header">
-            <div>
-              <h2 className="pedidos-detalle-card-title">
-                Historial
-              </h2>
-            </div>
+            <h2 className="pedidos-detalle-card-title">
+              {pedido.versiones && pedido.versiones.length > 0
+                ? `Versiones de Finalización (${pedido.versiones.length})`
+                : `Entregas (${(pedido.entregas || []).length})`}
+            </h2>
           </div>
 
-          {historial.length === 0 ? (
+          {(!pedido.versiones || pedido.versiones.length === 0) && (!pedido.entregas || pedido.entregas.length === 0) ? (
             <p style={{ color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.875rem', margin: 0, fontStyle: 'italic' }}>
-              No hay registros en el historial.
+              No hay versiones ni entregas registradas.
             </p>
-          ) : (
+          ) : pedido.versiones && pedido.versiones.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {historial.map((h, idx) => {
-                const eventInfo = getHistorialEventInfo(h.evento, h.payload);
+              {pedido.versiones.map((ver, idx) => {
+                const isLatest = idx === 0;
                 return (
                   <div
-                    key={idx}
+                    key={ver.id}
                     style={{
-                      borderLeft: `3px solid ${eventInfo.color}`,
-                      background: 'var(--pedidos-surface-sunken, #f8fafc)',
-                      padding: '0.85rem 1rem',
-                      borderRadius: '0 0.375rem 0.375rem 0',
-                      borderTop: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
-                      borderRight: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
-                      borderBottom: '1px solid var(--pedidos-border-subtle, #f1f5f9)',
+                      background: isLatest ? 'var(--pedidos-status-finalizado-bg, #f0fdf4)' : 'var(--pedidos-surface-sunken, #f8fafc)',
+                      border: `1px solid ${isLatest ? 'var(--pedidos-status-finalizado-border, #86efac)' : 'var(--pedidos-border-default, #e2e8f0)'}`,
+                      borderRadius: '0.5rem',
+                      padding: '0.75rem',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.825rem', color: eventInfo.color, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <span>{eventInfo.icon}</span>
-                        <span>{eventInfo.title}</span>
+                      <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: isLatest ? 'var(--pedidos-status-finalizado-text, #15803d)' : 'var(--pedidos-text-muted, #64748b)' }}>
+                        Versión {ver.version_number} {isLatest && '(Última finalización)'}
                       </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
-                        {formatHistoryDate(h.created_at)}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {!isObserver && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const waMsg = generateFinalizacionWhatsAppMessage({
+                                codigo: pedido.pedido_visible || pedido.id,
+                                titulo: pedido.titulo,
+                                solicitanteNombre: pedido.solicitante_nombre || pedido.envio?.nombre_apellido,
+                                solicitanteArea: pedido.area_solicitante || pedido.envio?.area_solicitante,
+                                solicitanteTelefono:
+                                  pedido.envio?.telefono ||
+                                  (pedido as any).solicitante_telefono ||
+                                  (pedido.informacion_especifica as any)?.solicitante?.telefono ||
+                                  (pedido.informacion_especifica as any)?.contacto_telefono,
+                                versionNumber: ver.version_number,
+                                enlacesEntrega: ver.enlace_externo ? [ver.enlace_externo] : [],
+                                archivosEntrega: ver.archivo_id ? (pedido.archivos?.find((a) => a.id === ver.archivo_id) ? [pedido.archivos.find((a) => a.id === ver.archivo_id)!.nombre_original] : []) : [],
+                                pedidoId: pedido.id,
+                              });
+                              setWhatsappShareData({
+                                isOpen: true,
+                                message: waMsg,
+                                whatsappUrl: getFinalizacionWhatsAppUrl(waMsg),
+                              });
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid #16a34a',
+                              color: '#15803d',
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: '0.25rem',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                            }}
+                            title="Compartir esta versión por WhatsApp"
+                          >
+                            <span>💬</span>
+                            <span>Compartir</span>
+                          </button>
+                        )}
+                        <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
+                          {ver.finalizado_por_nombre ? `${ver.finalizado_por_nombre} · ` : ''}
+                          {new Date(ver.finalizado_at).toLocaleDateString('es-AR')}
+                        </span>
+                      </div>
                     </div>
-
-                    {eventInfo.desc && (
-                      <p style={{ margin: '0 0 0.35rem 0', fontSize: '0.85rem', color: 'var(--pedidos-text-primary, #1e293b)', fontWeight: 500, lineHeight: 1.4 }}>
-                        {eventInfo.desc}
-                      </p>
+                    {ver.enlace_externo && (
+                      <div style={{ marginBottom: '0.35rem' }}>
+                        <a
+                          href={ver.enlace_externo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: 'var(--pedidos-brand-accent, #0369a1)', fontSize: '0.8125rem', wordBreak: 'break-all', fontWeight: 600 }}
+                        >
+                          🔗 {ver.enlace_externo}
+                        </a>
+                      </div>
                     )}
-
-                    <div style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                      <span><strong style={{ color: 'var(--pedidos-text-secondary, #475569)' }}>Actor:</strong> {h.actor_nombre || 'Sistema'}</span>
-                    </div>
-
-                    {h.payload && Object.keys(h.payload).length > 0 && (
-                      <details className="pedidos-historial-details" style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
-                        <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--pedidos-text-secondary, #475569)', userSelect: 'none' }}>
-                          Ver detalles técnicos (JSON)
-                        </summary>
-                        <pre style={{ margin: '0.35rem 0 0 0', padding: '0.5rem', background: 'var(--pedidos-surface-sunken, #e2e8f0)', border: '1px solid var(--pedidos-border-subtle, transparent)', color: 'var(--pedidos-text-primary, #1e293b)', borderRadius: '0.25rem', fontSize: '0.7rem', overflowX: 'auto', maxHeight: '150px' }}>
-                          {JSON.stringify(h.payload, null, 2)}
-                        </pre>
-                      </details>
+                    {ver.nota && (
+                      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--pedidos-text-secondary, #334155)', whiteSpace: 'pre-wrap' }}>
+                        <strong>Nota de cierre:</strong> {ver.nota}
+                      </p>
                     )}
                   </div>
                 );
               })}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {(pedido.entregas || []).map((ent: any) => (
+                <div
+                  key={ent.id}
+                  style={{
+                    background: ent.es_vigente ? 'var(--pedidos-status-finalizado-bg, #f0fdf4)' : 'var(--pedidos-surface-sunken, #f8fafc)',
+                    border: `1px solid ${ent.es_vigente ? 'var(--pedidos-status-finalizado-border, #86efac)' : 'var(--pedidos-border-default, #e2e8f0)'}`,
+                    borderRadius: '0.5rem',
+                    padding: '0.75rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: ent.es_vigente ? 'var(--pedidos-status-finalizado-text, #15803d)' : 'var(--pedidos-text-muted, #64748b)' }}>
+                      Entrega v{ent.version} {ent.es_vigente && '(Vigente)'}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
+                      {new Date(ent.created_at).toLocaleDateString('es-AR')}
+                    </span>
+                  </div>
+                  {ent.enlace_externo && (
+                    <div style={{ marginBottom: '0.35rem' }}>
+                      <a
+                        href={ent.enlace_externo}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--pedidos-brand-accent, #0369a1)', fontSize: '0.8125rem', wordBreak: 'break-all', fontWeight: 600 }}
+                      >
+                        🔗 {ent.enlace_externo}
+                      </a>
+                    </div>
+                  )}
+                  {ent.nota && (
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--pedidos-text-secondary, #334155)', whiteSpace: 'pre-wrap' }}>
+                      {ent.nota}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>

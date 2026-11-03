@@ -165,3 +165,16 @@ No inferir:
 - SLA;
 - transición no documentada;
 - migración destructiva de históricos.
+
+
+## 17. Backlog Evolutivo 2026-11 — Fase 1A (`CAM-04` y `CAM-06`)
+
+- **CAM-04 — Jerarquía visual de Historial y Versiones de Finalización:**
+  - En la vista de detalle del pedido (`PedidoDetallePage.tsx`), el bloque **Historial** (`Historial Operativo Unificado`, `data-testid="section-historial"`) se ubica en la columna derecha principal (`.col-right`), precediendo visual y estructuralmente al bloque **Versiones de Finalización / Entregas** (`data-testid="section-versiones-finalizacion"`), el cual se desplaza al cierre del contenedor inferior.
+  - Se preserva el 100 % de los datos, orden cronológico interno, permisos según rol (`administrador`, `equipo`, `observador`), descargas, enlaces externos y acción de compartir versión por WhatsApp.
+- **CAM-06 — Visibilidad de fecha y hora real de ingreso (`created_at`):**
+  - El timestamp real de recepción (`created_at`, persistido en UTC por PostgreSQL/Supabase) se formatea de manera determinista en la zona horaria oficial de la provincia (`America/Argentina/Ushuaia`, `UTC-3`, formato `DD/MM/YYYY HH:mm` mediante `formatIngresoDateTime`) y se exhibe en:
+    - Tarjetas del tablero Kanban de Gestión (columnas activas y vistas terminales Finalizados/Cancelados/Archivados) y columna `Fecha Ingreso` de la vista Tabla (`GestionDashboardPage.tsx`).
+    - Encabezado de la ficha de detalle del pedido (`PedidoDetallePage.tsx`, campo `Ingreso:`).
+    - Portal público de seguimiento (`SeguimientoPage.tsx`) y portal de Mis Solicitudes (`MisSolicitudesPage.tsx`, tabla escritorio, tarjetas móviles y modal de detalle).
+  - Nunca se altera el valor `created_at` almacenado ni se lo reemplaza por `updated_at`, `finalizado_at` o la hora actual del navegador.

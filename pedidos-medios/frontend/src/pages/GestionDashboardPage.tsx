@@ -8,6 +8,7 @@ import { EditarEtiquetaModal } from '../components/gestion/EditarEtiquetaModal';
 import { CargaInternaModal } from '../components/CargaInternaModal';
 import { formatReworkHistoricalText } from '../utils/statusBadges';
 import { getPedidoCardTitle } from '../utils/kanbanCardUtils';
+import { formatIngresoDateTime } from '../utils/formatUtils';
 import { KanbanEtiquetasBadge } from '../components/gestion/KanbanEtiquetasBadge';
 
 export type GestionTabFilter =
@@ -995,6 +996,9 @@ export const GestionDashboardPage: React.FC = () => {
                           {styleInfo.label}
                         </span>
                       </div>
+                      <div className="pedidos-kanban-card-date" style={{ marginTop: '-0.15rem', marginBottom: '0.25rem' }}>
+                        {formatIngresoDateTime(ped.created_at)}
+                      </div>
                       {ped.retrabajo_activo ? (
                         <div className="pedidos-badge-retrabajo">
                           🔄 DEVUELTO - RETRABAJAR {ped.revision_count ? `· Rev #${ped.revision_count}` : ''}
@@ -1158,7 +1162,7 @@ export const GestionDashboardPage: React.FC = () => {
                               )}
                             </div>
                             <span className="pedidos-kanban-card-date">
-                              {new Date(ped.created_at).toLocaleDateString()}
+                              {formatIngresoDateTime(ped.created_at)}
                             </span>
                           </div>
 
@@ -1418,7 +1422,7 @@ export const GestionDashboardPage: React.FC = () => {
                       </td>
                       <td className="pedidos-table-td pedidos-table-td-date">
                         <time dateTime={ped.created_at} className="pedidos-table-date-text">
-                          {new Date(ped.created_at).toLocaleDateString()}
+                          {formatIngresoDateTime(ped.created_at)}
                         </time>
                       </td>
                       <td className="pedidos-table-td pedidos-table-td-actions">

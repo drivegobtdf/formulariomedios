@@ -19,7 +19,7 @@ import {
 } from '../services/sessionStorageService';
 import { InfoResponseForm } from '../components/InfoResponseForm';
 import { SolicitarRevisionModal } from '../components/SolicitarRevisionModal';
-import { formatFileSize, formatHistoryDate, getServicioSolicitadoTexto } from '../utils/formatUtils';
+import { formatFileSize, formatHistoryDate, formatIngresoDateTime, getServicioSolicitadoTexto } from '../utils/formatUtils';
 import { renderPedidoStatusBundle } from '../utils/statusBadges';
 
 interface UrlParamsResult {
@@ -975,7 +975,7 @@ export const MisSolicitudesPage: React.FC = () => {
                               <div style={{ color: '#64748b', fontSize: '0.8125rem' }}>{p.tipo_nombre}</div>
                             </td>
                             <td style={{ padding: '1rem 1.25rem', color: '#475569', whiteSpace: 'nowrap' }}>
-                              {new Date(p.created_at).toLocaleDateString('es-AR')}
+                              {formatIngresoDateTime(p.created_at)}
                             </td>
                             <td style={{ padding: '1rem 1.25rem' }}>
                               {getEstadoBadge(p.estado, p.retrabajo_activo, p.revision_count)}
@@ -1069,13 +1069,13 @@ export const MisSolicitudesPage: React.FC = () => {
                         key={p.id}
                         className={`mis-solicitudes-card-item ${pendingCount > 0 ? 'has-pending' : ''}`}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
                           <div>
-                            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap' }}>
                               {p.pedido_visible}
                             </span>
-                            <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.1rem' }}>
-                              Ingreso: {new Date(p.created_at).toLocaleDateString('es-AR')}
+                            <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.1rem', whiteSpace: 'nowrap' }}>
+                              Ingreso: {formatIngresoDateTime(p.created_at)}
                             </div>
                           </div>
                           <div>{getEstadoBadge(p.estado, p.retrabajo_activo, p.revision_count)}</div>
@@ -1206,6 +1206,11 @@ export const MisSolicitudesPage: React.FC = () => {
                     <p style={{ margin: '0.15rem 0 0 0', fontWeight: 700, color: '#1e293b', fontSize: '1rem' }}>
                       {getServicioSolicitadoTexto(selectedPedido)}
                     </p>
+                    {selectedPedido.created_at && (
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.25rem' }}>
+                        <strong>Ingreso:</strong> {formatIngresoDateTime(selectedPedido.created_at)}
+                      </div>
+                    )}
                   </div>
                   <div>
                     {getEstadoBadge(selectedPedido.estado, selectedPedido.retrabajo_activo, selectedPedido.revision_count, { direction: 'row', gap: '0.5rem' })}

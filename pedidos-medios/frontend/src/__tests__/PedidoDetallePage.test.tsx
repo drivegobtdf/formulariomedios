@@ -1825,6 +1825,122 @@ describe('PedidoDetallePage Unit Tests', () => {
       });
     });
   });
+
+  describe('Fase 1A — CAM-04 (Orden Historial vs Versiones) y CAM-06 (Hora de Ingreso)', () => {
+    it('CAM-04: renderiza la sección Historial antes que Versiones de Finalización y preserva sus acciones y orden cronológico', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockAdminProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        signOut: vi.fn(),
+        refreshUser: vi.fn(),
+      });
+
+      const mockPedidoConVersionesYHistorial: gestionApi.PedidoDetailItem = {
+        ...mockPedidoFlyer,
+        estado: 'Finalizado',
+        versiones: [
+          {
+            id: 'ver-2',
+            version_number: 2,
+            enlace_externo: 'https://drive.google.com/drive/folders/v2',
+            nota: 'Segunda entrega ajustada',
+            finalizado_at: '2026-09-18T14:00:00.000Z',
+            finalizado_por_nombre: 'Pablo Saldivia',
+          },
+          {
+            id: 'ver-1',
+            version_number: 1,
+            enlace_externo: 'https://drive.google.com/drive/folders/v1',
+            nota: 'Primera entrega original',
+            finalizado_at: '2026-09-17T10:00:00.000Z',
+            finalizado_por_nombre: 'Pablo Saldivia',
+          },
+        ],
+      };
+
+      vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue(mockPedidoConVersionesYHistorial);
+      vi.spyOn(gestionApi, 'fetchPedidoHistorialOperativo').mockResolvedValue([
+        {
+          tipo: 'evento',
+          evento: 'pedido_finalizado',
+          actor_nombre: 'Pablo Saldivia',
+          created_at: '2026-09-18T14:00:00.000Z',
+          payload: { estado_nuevo: 'Finalizado' },
+        },
+        {
+          tipo: 'evento',
+          evento: 'pedido_creado',
+          actor_nombre: 'Sistema',
+          created_at: '2026-09-16T04:49:29.083Z',
+          payload: {},
+        },
+      ]);
+
+      render(
+        <MemoryRouter initialEntries={['/gestion/pedido/ped-d-155']}>
+          <Routes>
+            <Route path="/gestion/pedido/:id" element={<PedidoDetallePage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const sectionHistorial = await screen.findByTestId('section-historial');
+      const sectionVersiones = await screen.findByTestId('section-versiones-finalizacion');
+
+      // CAM-04: Historial debe preceder en el DOM a Versiones de Finalización
+      const position = sectionHistorial.compareDocumentPosition(sectionVersiones);
+      expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+      // Historial está ubicado dentro de la columna derecha (.col-right)
+      expect(sectionHistorial.closest('.col-right')).not.toBeNull();
+      // Versiones de Finalización está en el contenedor inferior (fuera de .col-right)
+      expect(sectionVersiones.closest('.col-right')).toBeNull();
+
+      // Preserva contenido de Historial y Versiones (incluyendo botones Compartir por WhatsApp)
+      expect(sectionHistorial).toHaveTextContent('Historial');
+      expect(sectionHistorial).toHaveTextContent('Trabajo Finalizado');
+      expect(sectionVersiones).toHaveTextContent('Versiones de Finalización (2)');
+      expect(sectionVersiones).toHaveTextContent('Versión 2 (Última finalización)');
+      expect(sectionVersiones).toHaveTextContent('Versión 1');
+      expect(screen.getAllByTitle('Compartir esta versión por WhatsApp')).toHaveLength(2);
+    });
+
+    it('CAM-06: muestra la fecha y hora real de ingreso (created_at) formateada en America/Argentina/Ushuaia sin confundirla con updated_at', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockAdminProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        signOut: vi.fn(),
+        refreshUser: vi.fn(),
+      });
+
+      vi.spyOn(gestionApi, 'fetchPedidoById').mockResolvedValue({
+        ...mockPedidoFlyer,
+        created_at: '2026-09-16T04:49:29.083Z', // 01:49 en Argentina (UTC-3)
+        updated_at: '2026-09-20T21:15:00.000Z', // 18:15 en Argentina (UTC-3)
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/gestion/pedido/ped-d-155']}>
+          <Routes>
+            <Route path="/gestion/pedido/:id" element={<PedidoDetallePage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('PED-2026-D000155')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('16/09/2026 01:49')).toBeInTheDocument();
+      expect(screen.queryByText('20/09/2026 18:15')).not.toBeInTheDocument();
+    });
+  });
 });
-
-

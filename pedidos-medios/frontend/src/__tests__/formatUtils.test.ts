@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatFileSize, formatLocalDate, formatArchivoEstado, getServicioSolicitadoTexto } from '../utils/formatUtils';
+import { formatFileSize, formatLocalDate, formatArchivoEstado, getServicioSolicitadoTexto, formatIngresoDateTime } from '../utils/formatUtils';
 
 describe('formatUtils Unit Tests', () => {
   describe('formatFileSize', () => {
@@ -124,5 +124,31 @@ describe('formatUtils Unit Tests', () => {
       expect(getServicioSolicitadoTexto({ categoria_nombre: '', tipo_nombre: '' })).toBe('—');
     });
   });
-});
 
+  describe('formatIngresoDateTime (CAM-06 — Zona Horaria America/Argentina/Ushuaia)', () => {
+    it('debe formatear timestamp UTC en horario de Argentina (UTC-3) como DD/MM/YYYY HH:mm', () => {
+      expect(formatIngresoDateTime('2026-09-16T04:49:29.083Z')).toBe('16/09/2026 01:49');
+      expect(formatIngresoDateTime('2026-11-03T15:05:00.000Z')).toBe('03/11/2026 12:05');
+    });
+
+    it('debe respetar el cambio de día cuando la hora UTC cruza medianoche en Argentina (UTC-3)', () => {
+      expect(formatIngresoDateTime('2026-11-03T01:30:00.000Z')).toBe('02/11/2026 22:30');
+      expect(formatIngresoDateTime('2026-09-16T03:00:00.000Z')).toBe('16/09/2026 00:00');
+    });
+
+    it('debe normalizar timestamps de PostgreSQL sin sufijo Z como UTC', () => {
+      expect(formatIngresoDateTime('2026-05-10 10:00:00')).toBe('10/05/2026 07:00');
+      expect(formatIngresoDateTime('2026-09-16T04:49:29.083+00:00')).toBe('16/09/2026 01:49');
+      expect(formatIngresoDateTime('2026-09-16 04:49:29.083+00')).toBe('16/09/2026 01:49');
+      expect(formatIngresoDateTime('2026-09-16T01:49:29-03:00')).toBe('16/09/2026 01:49');
+      expect(formatIngresoDateTime('fecha-invalida')).toBe('fecha-invalida');
+    });
+
+    it('debe preservar fechas puras YYYY-MM-DD sin hora artificial y manejar valores vacíos o nulos', () => {
+      expect(formatIngresoDateTime('2026-09-30')).toBe('30/09/2026');
+      expect(formatIngresoDateTime(null)).toBe('');
+      expect(formatIngresoDateTime(undefined)).toBe('');
+      expect(formatIngresoDateTime('')).toBe('');
+    });
+  });
+});

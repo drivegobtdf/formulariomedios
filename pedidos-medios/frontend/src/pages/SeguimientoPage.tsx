@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getPublicTracking, requestTrackingRecovery, exchangeTrackingToken, TrackingPublicDTO } from '../services/trackingApi';
 import { getPublicConfig } from '../services/config';
+import { formatIngresoDateTime } from '../utils/formatUtils';
 
 export const SeguimientoPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -254,7 +255,7 @@ export const SeguimientoPage: React.FC = () => {
               </div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Fecha de Ingreso</span>
-                <p style={{ margin: '0.2rem 0 0 0', fontWeight: 600, color: '#1e293b' }}>{new Date(data.created_at).toLocaleDateString()}</p>
+                <p style={{ margin: '0.2rem 0 0 0', fontWeight: 600, color: '#1e293b' }}>{formatIngresoDateTime(data.created_at)}</p>
               </div>
             </div>
 

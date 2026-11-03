@@ -30,6 +30,64 @@ export function formatFileSize(bytes: number | null | undefined): string {
  * Formatea una fecha a representación local argentina (DD/MM/YYYY)
  * sin riesgo de corrimiento de día por zona horaria UTC (desplazamiento de medianoche).
  */
+/**
+ * Formatea un timestamp ISO/UTC de recepción (`created_at`) a fecha y hora local
+ * de Argentina (`America/Argentina/Ushuaia`, `es-AR`) en formato `DD/MM/YYYY HH:mm` (CAM-06).
+ * Respeta el UTC almacenado en Supabase sin depender de la zona horaria del navegador
+ * ni de la hora actual del sistema.
+ */
+export function formatIngresoDateTime(rawDate: string | null | undefined): string {
+  if (!rawDate || typeof rawDate !== 'string') return '';
+  const trimmed = rawDate.trim();
+  if (!trimmed) return '';
+
+  // Si es únicamente fecha YYYY-MM-DD sin componente horario, evitar corrimiento UTC
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const [, yyyy, mm, dd] = dateOnlyMatch;
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
+  // Normalizar formato ISO si viene con espacio en lugar de T y asegurar sufijo UTC si carece de zona
+  let normalized = trimmed.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/, '$1T$2').replace(/([+-]\d{2})$/, '$1:00');
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(normalized) && !/(Z|[+-]\d{2}:?\d{2})$/i.test(normalized)) {
+    normalized = `${normalized}Z`;
+  }
+
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) {
+    return trimmed;
+  }
+
+  const parts = new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Ushuaia',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const partMap: Record<string, string> = {};
+  for (const p of parts) {
+    partMap[p.type] = p.value;
+  }
+
+  const day = (partMap.day || '').padStart(2, '0');
+  const month = (partMap.month || '').padStart(2, '0');
+  const year = partMap.year || '';
+  const rawHour = partMap.hour === '24' ? '00' : (partMap.hour || '');
+  const hour = rawHour.padStart(2, '0');
+  const minute = (partMap.minute || '').padStart(2, '0');
+
+  if (!day || !month || !year) {
+    return trimmed;
+  }
+
+  return `${day}/${month}/${year} ${hour}:${minute}`;
+}
+
 export function formatLocalDate(dateStr: string | null | undefined): string {
   if (!dateStr || typeof dateStr !== 'string') return '';
   const trimmed = dateStr.trim();

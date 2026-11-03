@@ -242,3 +242,19 @@ Todos estos QA son PLANIFICADOS hasta que exista evidencia ejecutada.
      - Ejecución real de `public.comunicacion_admin_requeue(uuid, text, text)` en PostgreSQL (`SECURITY DEFINER`, `search_path`, bloqueo `FOR UPDATE` sobre `public.comunicaciones_pedido`, `REVOKE ALL FROM PUBLIC, anon`).
      - Validación cruzada con tablas reales (`public.usuarios_acceso` + `auth.users` para `acceso_aprobado` y `public.pedidos.responsable_user_id` para `pedido_asignado`).
      - Verificación de permisos *append-only* sobre `public.audit_log` (`GRANT SELECT, INSERT`, ausencia de `UPDATE`/`DELETE` incluso para `service_role`).
+
+
+## 19. Evidencia QA — Fase 1A (`CAM-04` y `CAM-06`)
+
+- **Cobertura unitaria agregada y verificada en `Wordpress Formulario Backlog`:**
+  - `pedidos-medios/frontend/src/__tests__/formatUtils.test.ts`: 4 pruebas unitarias sobre `formatIngresoDateTime` validando conversión UTC a `America/Argentina/Ushuaia` (`UTC-3`), cruce de medianoche UTC, normalización de timestamps PostgreSQL sin sufijo `Z`, preservación de fechas `YYYY-MM-DD` y manejo de nulos/vacíos.
+  - `pedidos-medios/frontend/src/__tests__/PedidoDetallePage.test.tsx`: 2 pruebas unitarias validando `CAM-04` (precedencia DOM de `data-testid="section-historial"` en `.col-right` respecto de `data-testid="section-versiones-finalizacion"` en sección inferior, preservando orden cronológico y botón `Compartir` por WhatsApp) y `CAM-06` (exhibición de `Ingreso: DD/MM/YYYY HH:mm` en `America/Argentina/Ushuaia` a partir de `created_at` sin confusión con `updated_at`).
+  - `pedidos-medios/frontend/src/__tests__/GestionDashboardPage.test.tsx`: prueba unitaria validando `CAM-06` en tarjetas Kanban activas, tarjetas terminales (`Finalizados`) y vista Tabla (`Fecha Ingreso`).
+- **Compilaciones verificadas:**
+  - `npm run typecheck`: `0` errores TypeScript.
+  - `npm run build:wordpress`: bundle y paquete ZIP WordPress (`dist/pedidos-medios-wp-plugin.zip`) generados exitosamente.
+  - `STANDALONE_ENV=test npm run build:standalone`: compilación standalone apuntando exclusivamente a Supabase TEST (`yqfkzgqvezarzhlwiilo`), verificada por el guard *fail-closed* de `scripts/postbuild-standalone.mjs`.
+- **Incidencia de UI responsive preexistente registrada (ajena a `CAM-04` y `CAM-06`):**
+  - En viewport móvil `390 × 844 px` (`window.innerWidth = 390`, `document.documentElement.clientWidth = 390`), las vistas autenticadas internas (`/gestion` en Kanban/Tabla y `/gestion/pedido/:id`) presentan `document.documentElement.scrollWidth = 419` (`419.03 px`) y `document.body.scrollWidth = 411`.
+  - **Causa raíz:** En `pedidos-medios/frontend/src/components/Layout.tsx` (líneas 79–95) y `pedidos-medios/frontend/src/styles/app.css` (línea 297), el contenedor `.pedidos-header-actions` (`display: flex; gap: 0.75rem`, sin `flex-wrap: wrap`) agrupa en una sola línea el botón de tema (`☀ Modo Claro`), la campana `<NotificationBell />` y `<UserProfileMenu />` (`rectWidth = 253.56 px`), sumando `379.84 px` desde `rectLeft = 39.19 px` hasta `rectRight = 419.03 px` (desbordando `29.03 px` el viewport de `390 px` y llevando `header.pedidos-header.scrollWidth` a `399 px`).
+  - **Verificación contra baseline (`c444c9c53e25e0a2dd6bc2cfe691ec307da32e6c`):** Las mediciones sobre el baseline inalterado arrojan valores idénticos (`docScrollWidth = 419`, `bodyScrollWidth = 411`, `header.scrollWidth = 399`, `headerActionsRect.right = 419.03`), confirmando que se trata de una condición preexistente en `Layout.tsx` / `UserProfileMenu.tsx` y no de una regresión introducida por `CAM-04` o `CAM-06` (cuyos contenedores se mantienen dentro de `rectRight <= 370 px`). Queda registrada como incidencia de UI pendiente para su tratamiento específico sin alterar componentes ajenos al alcance de la Fase 1A.

@@ -863,6 +863,68 @@ describe('GestionDashboardPage Unit Tests', () => {
       expect(screen.getByText('Sin categoría')).toBeInTheDocument();
     });
   });
+
+  describe('CAM-06 — Hora de Ingreso en Tarjetas y Tabla de Gestión', () => {
+    it('muestra la fecha y hora real de ingreso (created_at en America/Argentina/Ushuaia) en tarjetas Kanban activas, tarjetas Finalizadas y vista Tabla', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({
+        user: mockApprovedProfile,
+        isLoading: false,
+        isApproved: true,
+        isAdmin: true,
+        isTeamOrAdmin: true,
+        isObserver: false,
+        refreshUser: vi.fn(),
+        signOut: vi.fn(),
+      });
+
+      const mockPedidosHora: gestionApi.PedidoListItem[] = [
+        {
+          ...mockPedidos[0],
+          id: 'ped-hora-1',
+          pedido_visible: 'PED-2026-D000101',
+          estado: 'Nuevo',
+          created_at: '2026-11-02T17:35:00.000Z', // 02/11/2026 14:35 en Argentina (UTC-3)
+          updated_at: '2026-11-03T12:00:00.000Z',
+        },
+        {
+          ...mockPedidos[1],
+          id: 'ped-hora-2',
+          pedido_visible: 'PED-2026-P000102',
+          estado: 'Finalizado',
+          created_at: '2026-11-01T02:15:00.000Z', // 31/10/2026 23:15 en Argentina (UTC-3)
+          updated_at: '2026-11-02T20:00:00.000Z',
+        },
+      ];
+
+      vi.spyOn(gestionApi, 'fetchPedidos').mockResolvedValue(mockPedidosHora);
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('PED-2026-D000101')).toBeInTheDocument();
+      });
+
+      // Tarjeta Kanban activa muestra DD/MM/YYYY HH:mm de created_at
+      expect(screen.getByText('02/11/2026 14:35')).toBeInTheDocument();
+
+      // Cambiar a pestaña Finalizados y verificar tarjeta terminal
+      fireEvent.click(screen.getByRole('button', { name: /Finalizados/i }));
+      await waitFor(() => {
+        expect(screen.getByText('PED-2026-P000102')).toBeInTheDocument();
+      });
+      expect(screen.getByText('31/10/2026 23:15')).toBeInTheDocument();
+
+      // Cambiar a vista Tabla y verificar columna Fecha Ingreso
+      fireEvent.click(screen.getByRole('button', { name: /^Todos$/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Tabla/i }));
+      await waitFor(() => {
+        expect(screen.getByText('02/11/2026 14:35')).toBeInTheDocument();
+        expect(screen.getByText('31/10/2026 23:15')).toBeInTheDocument();
+      });
+    });
+  });
 });
-
-

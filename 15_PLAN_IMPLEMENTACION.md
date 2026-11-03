@@ -66,3 +66,12 @@ Feature lista para codificar cuando:
 - compatibilidad relevante;
 - rollback donde aplique;
 - evidencia guardada.
+
+
+## Seguimiento Backlog 2026-11 (Rama `feature/backlog-12-cambios-202611`)
+
+| Fase | Cambios incluidos | Estado | Evidencia |
+|---|---|---|---|
+| GATE-0 (`0` a `0I`) | Auditoría Git, aislamiento de worktrees, backups cifrados PROD, guard *fail-closed* standalone y bloqueo de PROD en tests | **APROBADO** (`fe36bd9b190743729367bb6f24c6e78aaaa921be`) | 637 tests unitarios PASS, 0 escrituras PROD |
+| **Fase 1A** | **`CAM-04` (Orden Historial vs. Versiones de finalización) y `CAM-06` (Hora real de ingreso `created_at` en tarjetas y detalle)** | **APROBADO** | **644 tests unitarios PASS (`60/60` suites), `typecheck` OK, `build:wordpress` OK, `build:standalone` (`TEST`) OK, QA visual verificado** |
+| Fases subsiguientes | `CAM-01`, `CAM-02`, `CAM-03`, `CAM-05`, `CAM-07` a `CAM-11` | PENDIENTE | Planificado según `docs/backlog/PEDIDOS_backlog_cambios_2026-11-02.md` |

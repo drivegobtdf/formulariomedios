@@ -96,3 +96,7 @@ No marcar requisito cumplido solo porque está escrito; se exige evidencia imple
 - QA v3: F1-F6 100% PASS (pgTAP 199/199, Vitest 49/49, Playwright 24/24);
 - baseline WordPress: DOCUMENTADO;
 - integración Google Drive: IMPLEMENTADA Y VERIFICADA EN SUPABASE CLOUD Y GOOGLE REAL (OPEN-016 CERRADO).
+
+- **Backlog 2026-11 — Fase 1A (`CAM-04` y `CAM-06`):**
+  - `CAM-04` (`docs/backlog/PEDIDOS_backlog_cambios_2026-11-02.md` §CAM-04 → `02_REQUISITOS_FUNCIONALES.md` §17 → `PedidoDetallePage.tsx` → `PedidoDetallePage.test.tsx`): IMPLEMENTADO Y VERIFICADO.
+  - `CAM-06` (`docs/backlog/PEDIDOS_backlog_cambios_2026-11-02.md` §CAM-06 → `02_REQUISITOS_FUNCIONALES.md` §17 → `formatUtils.ts`, `GestionDashboardPage.tsx`, `PedidoDetallePage.tsx`, `MisSolicitudesPage.tsx`, `SeguimientoPage.tsx`, `app.css` → `formatUtils.test.ts`, `PedidoDetallePage.test.tsx`, `GestionDashboardPage.test.tsx`): IMPLEMENTADO Y VERIFICADO.
