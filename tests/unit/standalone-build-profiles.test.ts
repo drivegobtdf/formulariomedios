@@ -12,8 +12,14 @@ import {
 
 describe('Standalone Build Profiles & Security Guards', () => {
   describe('1. Resolución de Perfiles en Local y CI', () => {
-    it('por defecto en local sin variables selecciona el perfil PROD intacto', () => {
-      const res = resolveStandaloneProfile({});
+    it('falla de forma segura (fail-closed) en local si no se define STANDALONE_ENV', () => {
+      expect(() => {
+        resolveStandaloneProfile({});
+      }).toThrow(/Bloqueo de seguridad \(fail-closed\)/);
+    });
+
+    it('en local con STANDALONE_ENV=production selecciona explícitamente el perfil PROD', () => {
+      const res = resolveStandaloneProfile({ STANDALONE_ENV: 'production' });
       expect(res.profile).toBe('production');
       expect(res.effectiveConfig.supabaseUrl).toContain(PROD_SUPABASE_REF);
       expect(res.effectiveConfig.environment).toBe('production');

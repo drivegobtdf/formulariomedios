@@ -144,3 +144,18 @@ Runbooks:
 - Google OAuth: https://developers.google.com/identity/protocols/oauth2/web-server
 - Drive API: https://developers.google.com/workspace/drive/api/guides/about-sdk
 - Supabase Edge limits: https://supabase.com/docs/guides/functions/limits
+
+
+## 16. Reglas Operativas de Build Standalone y Custodia Multi-Disco de Backups (GATE-0 / Fases 0F–0H)
+
+- **Compilación local standalone (`scripts/postbuild-standalone.mjs`):**
+  - Desarrollo/QA local debe ejecutar `STANDALONE_ENV=test npm run build:standalone`.
+  - Ejecutar `npm run build:standalone` sin `STANDALONE_ENV` fuera de Cloudflare Pages falla de forma segura (*fail-closed*).
+- **Custodia multi-disco de respaldos de Supabase PROD (`PEDIDOS_FASE0E_SUPABASE_PROD_20261103`):**
+  - **Disco físico 1 (`C:`, SSD `CT1000P3PSSD8`):**
+    - Artefactos cifrados primarios: `C:\Users\Pc\Documents\Proyectos Tech\_backups\PEDIDOS_FASE0E_SUPABASE_PROD_20261103\encrypted\` (9 archivos `.enc` AES-256-GCM).
+    - Espejo local: `C:\Users\Pc\.pedidos\backups\` (9 archivos `.enc`).
+    - Clave de cifrado: `C:\Users\Pc\.pedidos\backup.key` (protegida por ACL NTFS exclusivo del usuario `Pc`, `SYSTEM` y `Administradores`).
+  - **Disco físico 0 (`I:`, SSD secundario `ADATA SU630`):**
+    - Copia física independiente: `I:\_backups_pedidos\PEDIDOS_FASE0E_SUPABASE_PROD_20261103\` conteniendo exclusivamente los 9 archivos `.enc` y `fase0e_backup_manifest.json`, verificados por SHA-256.
+    - Por separación de custodia criptográfica, ni `backup.key` ni los volcados `.sql` en texto plano se almacenan en el volumen secundario `I:`.

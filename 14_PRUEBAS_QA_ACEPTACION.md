@@ -229,3 +229,16 @@ No producción con:
 ## 17. Estado
 
 Todos estos QA son PLANIFICADOS hasta que exista evidencia ejecutada.
+
+
+## 18. Garantías de Aislamiento de la Suite Unitaria (Fase 0H / GATE-0)
+
+- La ejecución de `npm run test:unit` (60 archivos de prueba) está aislada de Supabase PRODUCCIÓN (`uwzgyirilafgnbpmrkic`):
+  1. `pedidos-medios/frontend/src/__tests__/setup.ts` instala `createProdBlockedFetch` para interceptar y rechazar cualquier petición HTTP hacia `uwzgyirilafgnbpmrkic.supabase.co`.
+  2. `tests/unit/admin-requeue-failed-communications.test.ts` valida los 5 escenarios funcionales del RPC `comunicacion_admin_requeue` mediante un almacén en memoria (`InMemoryRequeueStore`) y un 6.º caso de prueba que verifica tanto el contrato SQL de la migración 052 como la ausencia estática de referencias a `prod-secrets.json` en `tests/unit/`.
+  3. `tests/unit/standalone-build-profiles.test.ts` verifica los 22 casos de resolución de perfiles TEST/PROD y el bloqueo *fail-closed* cuando `STANDALONE_ENV` no está definido.
+
+  4. **Cobertura de integración real diferida exclusivamente a TEST (`yqfkzgqvezarzhlwiilo`) o Supabase Docker local (`127.0.0.1:54351`):**
+     - Ejecución real de `public.comunicacion_admin_requeue(uuid, text, text)` en PostgreSQL (`SECURITY DEFINER`, `search_path`, bloqueo `FOR UPDATE` sobre `public.comunicaciones_pedido`, `REVOKE ALL FROM PUBLIC, anon`).
+     - Validación cruzada con tablas reales (`public.usuarios_acceso` + `auth.users` para `acceso_aprobado` y `public.pedidos.responsable_user_id` para `pedido_asignado`).
+     - Verificación de permisos *append-only* sobre `public.audit_log` (`GRANT SELECT, INSERT`, ausencia de `UPDATE`/`DELETE` incluso para `service_role`).

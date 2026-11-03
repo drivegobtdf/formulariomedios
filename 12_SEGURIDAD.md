@@ -143,3 +143,17 @@ Lockfiles, dependabot/renovate si se adopta, revisión de paquetes, no CDN runti
 - Google OAuth web server: https://developers.google.com/identity/protocols/oauth2/web-server
 - Google Drive upload: https://developers.google.com/workspace/drive/api/guides/manage-uploads
 - Supabase Edge security: https://supabase.com/docs/guides/functions/auth
+
+
+## 16. Controles de Aislamiento de Entornos y Auditoría Forense (GATE-0 / Fases 0F–0H)
+
+- **Bloqueo fail-closed de compilación standalone (`scripts/postbuild-standalone.mjs`):**
+  - Queda prohibido el fallback silencioso a `production` en compilaciones locales de `npm run build:standalone`.
+  - Si `STANDALONE_ENV` no se define explícitamente (`test` o `production`) y no existe contexto de Cloudflare Pages (`CF_PAGES=1` / `CF_PAGES_BRANCH`), el script aborta con código de salida `1` (`SECURITY_ERROR`).
+- **Aislamiento estricto de pruebas unitarias (`pedidos-medios/frontend/src/__tests__/setup.ts`):**
+  - El setup global de Vitest intercepta `globalThis.fetch` mediante `createProdBlockedFetch` y aborta de inmediato con `SECURITY_VIOLATION` cualquier intento de conexión HTTP hacia el proyecto productivo `uwzgyirilafgnbpmrkic.supabase.co`.
+  - Ningún archivo de `tests/unit/` puede leer `~/.pedidos/prod-secrets.json` ni instanciar clientes `service_role` contra producción.
+- **Registro de incidente corregido (Fase 0G/0H):**
+  - **Causa raíz:** `tests/unit/admin-requeue-failed-communications.test.ts` cargaba `~/.pedidos/prod-secrets.json` e invocaba el RPC real `public.comunicacion_admin_requeue` en `uwzgyirilafgnbpmrkic` durante `npm run test:unit`. Aunque su bloque `finally` eliminaba las filas temporales de `public.comunicaciones_pedido`, el intento de limpieza sobre `public.audit_log` fallaba silenciosamente porque `service_role` carece de permiso `DELETE` sobre `public.audit_log` (tabla append-only con `GRANT SELECT, INSERT`).
+  - **Alcance verificado:** 0 filas pendientes o en proceso en `public.comunicaciones_pedido` para el fixture (`test.requeue.fixture@tdf.gob.ar`); 6 registros `comunicacion.admin_requeue` generados el 2026-11-03 (4 previos al backup de Fase 0E y 2 durante las corridas de `test:unit` de Fase 0F, llevando `public.audit_log` de 1.467 a 1.469 filas). Sin riesgo de envío de correos.
+  - **Corrección aplicada:** Reemplazo total por arnés unitario determinista en memoria en `tests/unit/admin-requeue-failed-communications.test.ts`, bloqueo global de `fetch` hacia PROD en `setup.ts` y test estático anti-secretos productivos.

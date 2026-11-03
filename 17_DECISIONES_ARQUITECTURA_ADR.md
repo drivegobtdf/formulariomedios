@@ -165,3 +165,12 @@ No se consideran aprobados:
 - proveedor email;
 - SLA;
 - migración histórica destructiva.
+
+
+## 15. ADR-051 — Aislamiento técnico de entornos TEST/PROD en builds locales y pruebas unitarias (GATE-0)
+
+- **Decisión:**
+  1. `scripts/postbuild-standalone.mjs` opera en modo *fail-closed*: si `STANDALONE_ENV` no se define explícitamente (`test` o `production`) fuera de Cloudflare Pages, la compilación aborta con error.
+  2. `pedidos-medios/frontend/src/__tests__/setup.ts` intercepta `globalThis.fetch` mediante `createProdBlockedFetch` para bloquear cualquier petición HTTP hacia `uwzgyirilafgnbpmrkic.supabase.co` durante la ejecución de Vitest.
+  3. Queda prohibida la lectura de `~/.pedidos/prod-secrets.json` en `tests/unit/`, validada mediante aserción estática automática en la suite unitaria.
+- **Estado:** **Aceptada y verificada (2026-11-03 — Cierre GATE-0)**.

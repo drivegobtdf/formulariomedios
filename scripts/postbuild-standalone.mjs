@@ -149,10 +149,17 @@ export function resolveStandaloneProfile(env = process.env) {
         );
       }
       publicAppUrl = rawLocalUrl;
-    } else {
-      // Por defecto en local sin flags: producción intacta
+    } else if (rawStandaloneEnv === 'production') {
+      // Producción explícita fuera de Cloudflare: únicamente autorizada cuando se especifica STANDALONE_ENV=production
       profile = 'production';
       publicAppUrl = PROD_CONFIG.publicAppUrl;
+    } else {
+      // Bloqueo de seguridad (fail-closed): PROHIBIDO asumir producción por defecto en local o CI externo
+      throw new Error(
+        '[postbuild-standalone] Bloqueo de seguridad (fail-closed): STANDALONE_ENV no está definido en entorno local o CI externo.\n' +
+        'Para compilar en entorno local de pruebas/staging, configure explícitamente STANDALONE_ENV=test (o staging).\n' +
+        'Para compilar en producción fuera de Cloudflare Pages, configure explícitamente STANDALONE_ENV=production.'
+      );
     }
   }
 
