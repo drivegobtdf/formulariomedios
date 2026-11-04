@@ -143,6 +143,19 @@ export function isOriginAuthorized(
   }
 }
 
+/**
+ * Identificador devuelto por el relay de Supabase. Mantiene compatibilidad
+ * con respuestas antiguas de Google Drive que contienen `id`.
+ */
+export function extractRelayDriveFileId(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return '';
+  const data = payload as { drive_file_id?: unknown; id?: unknown };
+  if (typeof data.drive_file_id === 'string' && data.drive_file_id.trim()) {
+    return data.drive_file_id;
+  }
+  return typeof data.id === 'string' ? data.id : '';
+}
+
 export async function uploadFileToDrive(
   sessionId: string,
   capabilityToken: string,
@@ -217,7 +230,8 @@ export async function uploadFileToDrive(
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const parsed = JSON.parse(xhr.responseText || '{}');
-          if (parsed.id) driveFileId = parsed.id;
+          const extractedId = extractRelayDriveFileId(parsed);
+          if (extractedId) driveFileId = extractedId;
         } catch {
           void 0;
         }
@@ -351,7 +365,8 @@ export async function uploadFileForInfoResponse(
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const parsed = JSON.parse(xhr.responseText || '{}');
-          if (parsed.id) driveFileId = parsed.id;
+          const extractedId = extractRelayDriveFileId(parsed);
+          if (extractedId) driveFileId = extractedId;
         } catch {
           void 0;
         }

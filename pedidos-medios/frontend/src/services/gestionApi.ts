@@ -1082,6 +1082,46 @@ export async function finalizePedido(pedidoId: string, expectedVersion: number, 
   return data;
 }
 
+/**
+ * Solo envía el JWT de Supabase al relay del mismo origen configurado.
+ * Para sesiones resumibles directas de Google Drive no envía credenciales.
+ * Cualquier otro destino se rechaza sin emitir una petición.
+ */
+export function buildDeliveryUploadHeaders(
+  targetUploadUrl: string,
+  configuredSupabaseUrl: string,
+  anonKey: string,
+  token: string,
+  contentType: string
+): Record<string, string> {
+  let target: URL;
+  let supabase: URL;
+  try {
+    target = new URL(targetUploadUrl);
+    supabase = new URL(configuredSupabaseUrl);
+  } catch {
+    throw new Error('SECURITY_ERROR: Destino de subida inválido.');
+  }
+
+  if (target.origin === supabase.origin && target.pathname === '/functions/v1/delivery-upload-prepare') {
+    return {
+      'apikey': anonKey,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': contentType,
+    };
+  }
+
+  if (
+    target.protocol === 'https:' &&
+    ['www.googleapis.com', 'upload.googleapis.com'].includes(target.hostname) &&
+    target.pathname.startsWith('/upload/drive/')
+  ) {
+    return { 'Content-Type': contentType };
+  }
+
+  throw new Error('SECURITY_ERROR: Destino de almacenamiento no autorizado.');
+}
+
 export async function uploadDeliveryFile(
   pedidoId: string,
   file: File,
@@ -1130,13 +1170,17 @@ export async function uploadDeliveryFile(
 
   if (onProgress) onProgress(40);
 
-  // 2. Subir contenido binario
+  // 2. Subir contenido binario: no exponer JWTs a destinos externos
+  const uploadHeaders = buildDeliveryUploadHeaders(
+    targetUploadUrl,
+    supabaseUrl,
+    anonKey,
+    token,
+    file.type || 'application/octet-stream'
+  );
   const uploadRes = await fetch(targetUploadUrl, {
     method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': file.type || 'application/octet-stream',
-    },
+    headers: uploadHeaders,
     body: file,
   });
 
@@ -1150,7 +1194,7 @@ export async function uploadDeliveryFile(
   }
 
   const uploadResult = await uploadRes.json().catch(() => ({}));
-  const driveFileId = uploadResult.drive_file_id || prepData.drive_file_id;
+  const driveFileId = uploadResult.drive_file_id || uploadResult.id || prepData.drive_file_id;
 
   if (onProgress) onProgress(85);
 
