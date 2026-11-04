@@ -80,6 +80,7 @@ export interface PedidoListItem {
   archivado: boolean;
   created_at: string;
   updated_at: string;
+  finalizado_at?: string | null;
   solicitudes_pendientes_count?: number;
 }
 
@@ -131,6 +132,37 @@ export function comparePedidos(a: PedidoListItem, b: PedidoListItem): number {
   const aNum = a.numero || 0;
   const bNum = b.numero || 0;
   return bNum - aNum;
+}
+
+export function comparePedidosFinalizados(
+  a: PedidoListItem,
+  b: PedidoListItem,
+  direction: 'recientes' | 'antiguos' = 'recientes'
+): number {
+  const aRaw = a.finalizado_at || a.created_at;
+  const bRaw = b.finalizado_at || b.created_at;
+  const aTime = aRaw ? new Date(aRaw).getTime() : 0;
+  const bTime = bRaw ? new Date(bRaw).getTime() : 0;
+
+  const validATime = Number.isNaN(aTime) ? 0 : aTime;
+  const validBTime = Number.isNaN(bTime) ? 0 : bTime;
+
+  if (validATime !== validBTime) {
+    return direction === 'recientes' ? validBTime - validATime : validATime - validBTime;
+  }
+
+  // Criterio secundario estable para pedidos con igual timestamp:
+  // Más recientes primero -> número DESC; Más antiguos primero -> número ASC
+  const aNum = a.numero || 0;
+  const bNum = b.numero || 0;
+  if (aNum !== bNum) {
+    return direction === 'recientes' ? bNum - aNum : aNum - bNum;
+  }
+
+  // Desempate final determinista por ID
+  const aId = a.id || '';
+  const bId = b.id || '';
+  return direction === 'recientes' ? bId.localeCompare(aId) : aId.localeCompare(bId);
 }
 
 export interface EnrichedArchivoItem {
@@ -372,7 +404,9 @@ export async function fetchGestionStats(): Promise<GestionStats> {
   };
 }
 
-export async function fetchPedidos(filters?: {
+export const POSTGREST_PAGE_SIZE = 1000;
+
+export interface FetchPedidosFilters {
   estado?: string;
   responsable_user_id?: string;
   unassigned?: boolean;
@@ -381,8 +415,20 @@ export async function fetchPedidos(filters?: {
   search?: string;
   prioridad?: string;
   origen?: 'todos' | 'publico' | 'interno';
-}): Promise<PedidoListItem[]> {
-  const supabase = getSupabaseClient();
+  categoria_id?: string;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  orden_finalizados?: 'recientes' | 'antiguos';
+}
+
+function applyQueryRange(query: any, from: number, to: number) {
+  if (query && typeof query.range === 'function') {
+    return query.range(from, to);
+  }
+  return query;
+}
+
+function createPedidosQueryBuilder(supabase: any, filters?: FetchPedidosFilters) {
   let query = supabase
     .from('pedidos')
     .select(`
@@ -407,6 +453,7 @@ export async function fetchPedidos(filters?: {
       informacion_especifica,
       version,
       archivado,
+      finalizado_at,
       created_at,
       updated_at,
       categorias_servicio!pedidos_categoria_id_fkey ( nombre ),
@@ -421,8 +468,13 @@ export async function fetchPedidos(filters?: {
         texto,
         color,
         created_at
+      ),
+      pedido_versiones (
+        id,
+        version_number,
+        finalizado_at
       )
-    `);
+    `, { count: 'exact' });
 
   if (filters?.archivado !== undefined) {
     query = query.eq('archivado', filters.archivado);
@@ -454,26 +506,90 @@ export async function fetchPedidos(filters?: {
     query = query.eq('origen', filters.origen);
   }
 
+  if (filters?.categoria_id && filters.categoria_id !== 'todas') {
+    query = query.eq('categoria_id', filters.categoria_id);
+  }
+
   if (filters?.search && filters.search.trim().length > 0) {
     const s = filters.search.trim();
     query = query.or(`pedido_visible.ilike.%${s}%,titulo.ilike.%${s}%`);
   }
 
-  query = query
-    .order('retrabajo_activo', { ascending: false, nullsFirst: false })
-    .order('revision_requested_at', { ascending: false, nullsFirst: false })
-    .order('created_at', { ascending: false });
+  if (filters?.estado === 'Finalizado') {
+    const asc = filters?.orden_finalizados === 'antiguos';
+    query = query
+      .order('finalizado_at', { ascending: asc, nullsFirst: false })
+      .order('created_at', { ascending: asc })
+      .order('numero', { ascending: asc });
+  } else {
+    query = query
+      .order('retrabajo_activo', { ascending: false, nullsFirst: false })
+      .order('revision_requested_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false });
+  }
 
-  const [pedidosRes, users] = await Promise.all([
-    query,
+  return query;
+}
+
+export async function fetchPedidos(filters?: FetchPedidosFilters): Promise<PedidoListItem[]> {
+  const supabase = getSupabaseClient();
+
+  const [initialRes, users] = await Promise.all([
+    applyQueryRange(createPedidosQueryBuilder(supabase, filters), 0, POSTGREST_PAGE_SIZE - 1),
     fetchInternalUsers().catch(() => []),
   ]);
 
-  if (pedidosRes.error) throw new Error(pedidosRes.error.message);
+  if (initialRes?.error) throw new Error(initialRes.error.message);
+
+  let rawData = Array.isArray(initialRes?.data) ? [...initialRes.data] : [];
+  const totalCount = typeof initialRes?.count === 'number' ? initialRes.count : null;
+
+  // Recuperación resiliente por lotes si el dataset excede el límite de 1.000 registros de PostgREST
+  if (totalCount !== null && totalCount > rawData.length) {
+    const remainingTasks: Promise<any>[] = [];
+    for (let offset = POSTGREST_PAGE_SIZE; offset < totalCount; offset += POSTGREST_PAGE_SIZE) {
+      const chunkQuery = applyQueryRange(
+        createPedidosQueryBuilder(supabase, filters),
+        offset,
+        Math.min(offset + POSTGREST_PAGE_SIZE - 1, totalCount - 1)
+      );
+      remainingTasks.push(chunkQuery);
+    }
+    const chunkResults = await Promise.all(remainingTasks);
+    for (const res of chunkResults) {
+      if (res?.error) throw new Error(res.error.message);
+      if (Array.isArray(res?.data)) {
+        rawData.push(...res.data);
+      }
+    }
+  } else if (rawData.length === POSTGREST_PAGE_SIZE && totalCount === null) {
+    // Si no hay cabecera count pero la página vino al tope de 1.000, paginamos secuencialmente
+    let nextOffset = POSTGREST_PAGE_SIZE;
+    let hasMore = true;
+    while (hasMore) {
+      const nextRes = await applyQueryRange(
+        createPedidosQueryBuilder(supabase, filters),
+        nextOffset,
+        nextOffset + POSTGREST_PAGE_SIZE - 1
+      );
+      if (nextRes?.error) throw new Error(nextRes.error.message);
+      const batchData = Array.isArray(nextRes?.data) ? nextRes.data : [];
+      if (batchData.length === 0) {
+        hasMore = false;
+      } else {
+        rawData.push(...batchData);
+        if (batchData.length < POSTGREST_PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          nextOffset += POSTGREST_PAGE_SIZE;
+        }
+      }
+    }
+  }
 
   const userMap = new Map((users || []).map((u) => [u.user_id, `${u.nombre} ${u.apellido}`.trim()]));
 
-  const mapped: PedidoListItem[] = (pedidosRes.data || []).map((p: any) => ({
+  const mapped: PedidoListItem[] = rawData.map((p: any) => ({
     id: p.id,
     pedido_visible: p.pedido_visible,
     anio: p.anio,
@@ -509,8 +625,18 @@ export async function fetchPedidos(filters?: {
     archivado: p.archivado,
     created_at: p.created_at,
     updated_at: p.updated_at,
+    finalizado_at: (() => {
+      if (p.pedido_versiones && Array.isArray(p.pedido_versiones) && p.pedido_versiones.length > 0) {
+        const sorted = [...p.pedido_versiones].sort((a: any, b: any) => (b.version_number || 0) - (a.version_number || 0));
+        if (sorted[0]?.finalizado_at) return sorted[0].finalizado_at;
+      }
+      return p.finalizado_at || null;
+    })(),
   }));
 
+  if (filters?.estado === 'Finalizado') {
+    return mapped.sort((a, b) => comparePedidosFinalizados(a, b, filters?.orden_finalizados || 'recientes'));
+  }
   return mapped.sort(comparePedidos);
 }
 
@@ -542,6 +668,7 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       informacion_especifica,
       version,
       archivado,
+      finalizado_at,
       created_at,
       updated_at,
       categorias_servicio!pedidos_categoria_id_fkey ( nombre ),
@@ -685,6 +812,9 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     archivado: p.archivado,
     created_at: p.created_at,
     updated_at: p.updated_at,
+    finalizado_at: (versionesData && versionesData.length > 0 && versionesData[0]?.finalizado_at)
+      ? versionesData[0].finalizado_at
+      : (p.finalizado_at || null),
     envio: p.envios_formulario ? {
       id: (p.envios_formulario as any).id,
       nombre_apellido: (p.envios_formulario as any).nombre_apellido,

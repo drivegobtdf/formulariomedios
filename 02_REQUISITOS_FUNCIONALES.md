@@ -178,3 +178,28 @@ No inferir:
     - Encabezado de la ficha de detalle del pedido (`PedidoDetallePage.tsx`, campo `Ingreso:`).
     - Portal público de seguimiento (`SeguimientoPage.tsx`) y portal de Mis Solicitudes (`MisSolicitudesPage.tsx`, tabla escritorio, tarjetas móviles y modal de detalle).
   - Nunca se altera el valor `created_at` almacenado ni se lo reemplaza por `updated_at`, `finalizado_at` o la hora actual del navegador.
+
+## 18. Backlog Evolutivo 2026-11 — Fase 2 (`CAM-03` — Vista Finalizados: Orden Cronológico y Filtros)
+
+- **CAM-03 — Orden cronológico configurable y filtros avanzados en vista Finalizados:**
+  - **Orden cronológico configurable:**
+    - Opciones disponibles en selector de orden: `Más recientes primero` (predeterminado) y `Más antiguos primero`.
+    - **Prioridad del campo cronológico:**
+      1. Se prioriza el timestamp real de finalización (`finalizado_at`, obtenido canónicamente de la versión entregada en `public.pedido_versiones` o de `public.pedidos.finalizado_at`).
+      2. Si un pedido histórico carece de `finalizado_at`, se utiliza como valor sustituto la fecha real de ingreso (`created_at`).
+      3. La interfaz identifica explícitamente la naturaleza del dato: si existe `finalizado_at`, muestra `🏁 Finalizado: <fecha/hora>` (o etiqueta visual de finalización); si se utiliza `created_at`, se rotula inequívocamente como `Ingreso: <fecha/hora>` (o tooltip identificador), evitando presentar fechas de ingreso como si fueran momentos de cierre.
+    - **Desempate estable y determinista:** ante timestamps cronológicos idénticos, se desempata por `numero` (descendente para más recientes, ascendente para más antiguos) y finalmente por `id` lexicográfico.
+    - **Seguridad aritmética frente a fechas inválidas:** análisis robusto contra valores `NaN` en `new Date()`.
+  - **Filtros avanzados combinados en Finalizados:**
+    - Búsqueda por texto (código visible `PED-...` o título del pedido).
+    - Filtro por Responsable institucional (dropdown dinámico poblado desde usuarios internos aprobados o pedidos cargados).
+    - Filtro por Origen (`Todos`, `Público`, `Interno`).
+    - Filtro por Categoría de servicio (dropdown dinámico poblado desde el catálogo o pedidos cargados).
+    - Filtro por Rango de Fechas: `Fecha desde` y `Fecha hasta` (evaluando la fecha efectiva de finalización, o fecha de ingreso si no posee cierre registrado).
+    - Acción directa de restablecimiento: botón `Limpiar filtros ✕` visible cuando algún filtro se encuentra activo, restableciendo los parámetros a sus valores predeterminados sin recargar la página.
+  - **Paginación e integridad de datos:**
+    - El ordenamiento y los filtros se aplican sobre el conjunto íntegro de resultados antes de paginar (`pageSize = 15`), impidiendo truncamientos que alteren el orden global.
+    - Recuperación completa por lotes (`POSTGREST_PAGE_SIZE = 1000` con `count: 'exact'`): si el total de pedidos finalizados supera los 1.000 registros límite de PostgREST, `gestionApi.ts` pagina automáticamente en lotes sucesivos hasta recuperar el 100 % de los registros matching (e.g. 1.205 registros), garantizando que el orden cronológico global y la paginación operen sobre la totalidad de la base sin omitir registros.
+  - **Preservación estricta de tableros activos:**
+    - El ordenamiento cronológico de `CAM-03` opera de forma restringida sobre la vista `Finalizados`.
+    - Las columnas activas del Kanban (`Nuevo`, `En revisión`, `En proceso`, `Esperando información`) preservan íntegramente su orden canónico (priorización de retrabajos activos `retrabajo_activo = true`, orden por prioridad y antigüedad de ingreso).

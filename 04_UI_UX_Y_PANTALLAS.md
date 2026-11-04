@@ -243,3 +243,21 @@ WCAG 2.2 AA objetivo:
 ## 15. Integración WordPress
 
 Namespace `.pedidos-app`; sin selectores globales. Montaje idempotente frente a renders repetidos de Elementor. No iniciar acciones reales por preview/editor.
+
+
+## 16. Vista de Finalizados — Mejoras Visuales y Filtros (`CAM-03`)
+
+- **Bandeja de filtros y orden cronológico (`.pedidos-linear-filter-shelf`):**
+  - Al ingresar a la pestaña `Finalizados`, la repisa de filtros exhibe controles específicos contextuales:
+    - **Selector de Orden Cronológico:** dropdown con opciones `Más recientes primero` (default) y `Más antiguos primero`.
+    - **Selector de Responsable:** listado de integrantes del equipo y opción `Sin asignar`.
+    - **Selector de Categoría:** listado dinámico de servicios (`cat-diseno`, `cat-audiovisual`, etc.).
+    - **Rango de Fechas:** grupo `.pedidos-linear-date-range` con campos fecha desde (`input[type="date"]`) y fecha hasta (`input[type="date"]`), con tooltip aclaratorio sobre evaluación de fecha de finalización o ingreso.
+    - **Botón Restablecer (`.pedidos-linear-reset-btn`):** botón interactivo `Limpiar filtros ✕` que se activa en cuanto se define algún parámetro de búsqueda o filtrado.
+- **Tarjetas en Terminal Grid (`.pedidos-terminal-card`):**
+  - Muestran de forma prominente la fecha y hora efectiva de finalización (`🏁 Finalizado: DD/MM/YYYY HH:mm`) cuando está disponible, y en caso contrario la fecha de ingreso (`Ingreso: DD/MM/YYYY HH:mm`), preservando la transparencia operativa.
+- **Vista Tabla (`.pedidos-gestion-table`):**
+  - La columna de fechas en la vista de Finalizados refleja el timestamp de cierre acompañado de indicador visual (`🏁`) y el timestamp original de ingreso en tooltip/subtexto.
+- **Adaptación Responsive Móvil (`viewport <= 640px`):**
+  - Los controles de rango de fecha y selectores adicionales se apilan a ancho completo (`100%`) con tipografía accesible (`0.85rem`) y áreas táctiles confortables (`min-height: 40px`).
+  - Las tarjetas de pedidos finalizados y la paginación garantizan una navegación fluida sin desbordamientos horizontales.

@@ -3559,6 +3559,126 @@ body:has(.pedidos-app.pedidos-app-wide[data-theme="dark"]) {
 }
 
 /* ==============================================================================
+   CAM-03: Filtros y ordenamiento cronológico en Finalizados
+   ============================================================================== */
+.pedidos-app.pedidos-app-wide .pedidos-linear-date-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-date-range-caption {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pedidos-text-secondary, #475569);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-date-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--pedidos-text-secondary, #475569);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-date-input {
+  padding: 5px 8px;
+  border-radius: var(--radius-inputs, 6px);
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-date-input {
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #334155;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-date-input:focus {
+  border-color: #0f172a;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-date-input {
+  border: 1px solid var(--color-graphite, #23252a);
+  background-color: var(--color-carbon, #0f1011);
+  color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-date-input:focus {
+  border-color: var(--color-mist, #d0d6e0);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-linear-reset-btn {
+  padding: 5px 10px;
+  border-radius: var(--radius-inputs, 6px);
+  font-family: var(--font-inter-variable, inherit);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-reset-btn {
+  border: 1px solid #fecaca;
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+.pedidos-app.pedidos-app-wide:not([data-theme="dark"]) .pedidos-linear-reset-btn:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-reset-btn {
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.pedidos-app.pedidos-app-wide[data-theme="dark"] .pedidos-linear-reset-btn:hover {
+  background-color: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-kanban-card-finalizado-date {
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: var(--pedidos-status-finalizado-text, #15803d);
+  margin-top: -0.15rem;
+  margin-bottom: 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pedidos-app.pedidos-app-wide .pedidos-table-finalizado-date {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--pedidos-status-finalizado-text, #15803d);
+}
+
+@media (max-width: 640px) {
+  .pedidos-app.pedidos-app-wide .pedidos-linear-date-range {
+    width: 100%;
+    justifyContent: flex-start;
+  }
+  .pedidos-app.pedidos-app-wide .pedidos-linear-date-label {
+    flex: 1 1 130px;
+    justifyContent: space-between;
+  }
+  .pedidos-app.pedidos-app-wide .pedidos-linear-date-input {
+    width: 100%;
+    max-width: 140px;
+  }
+}
+
+/* ==============================================================================
    Barra de Selección Masiva (Linear Bulk Bar)
    ============================================================================== */
 .pedidos-app.pedidos-app-wide .pedidos-linear-bulk-bar {

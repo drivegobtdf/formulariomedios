@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { fetchPedidos, fetchGestionStats, updatePedidoMetadata, PedidoListItem, GestionStats } from '../services/gestionApi';
+import { fetchPedidos, fetchGestionStats, updatePedidoMetadata, fetchInternalUsers, fetchCatalogoServicios, comparePedidosFinalizados, PedidoListItem, GestionStats, InternalUser, CatalogoCategoriaItem } from '../services/gestionApi';
 import { getSupabaseClient } from '../services/supabaseClient';
 import { EliminarPedidosModal } from '../components/gestion/EliminarPedidosModal';
 import { EditarEtiquetaModal } from '../components/gestion/EditarEtiquetaModal';
@@ -60,10 +60,80 @@ export const GestionDashboardPage: React.FC = () => {
   const [selectedEtiquetasFilter, setSelectedEtiquetasFilter] = useState<string[]>([]);
   const [showEtiquetasDropdown, setShowEtiquetasDropdown] = useState(false);
   const [showCargaInternaModal, setShowCargaInternaModal] = useState(false);
+  // Additional Filters & Ordering (CAM-03)
+  const [responsableFilter, setResponsableFilter] = useState<string>('todos');
+  const [categoriaFilter, setCategoriaFilter] = useState<string>('todas');
+  const [fechaDesde, setFechaDesde] = useState<string>('');
+  const [fechaHasta, setFechaHasta] = useState<string>('');
+  const [ordenFinalizados, setOrdenFinalizados] = useState<'recientes' | 'antiguos'>('recientes');
+  const [internalUsers, setInternalUsers] = useState<InternalUser[]>([]);
+  const [catalogoCategorias, setCatalogoCategorias] = useState<CatalogoCategoriaItem[]>([]);
 
   // Pagination for table
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
+
+  // Load internal users and service categories for advanced filters (CAM-03)
+  useEffect(() => {
+    if (!isApproved) return;
+    try {
+      const usersPromise = typeof fetchInternalUsers === 'function' ? fetchInternalUsers() : null;
+      if (usersPromise && typeof usersPromise.then === 'function') {
+        usersPromise.then((data) => { if (Array.isArray(data)) setInternalUsers(data); }).catch(() => []);
+      }
+    } catch {
+      // Fallback a derivación desde pedidos
+    }
+    try {
+      const catsPromise = typeof fetchCatalogoServicios === 'function' ? fetchCatalogoServicios() : null;
+      if (catsPromise && typeof catsPromise.then === 'function') {
+        catsPromise.then((data) => { if (Array.isArray(data)) setCatalogoCategorias(data); }).catch(() => []);
+      }
+    } catch {
+      // Fallback a derivación desde pedidos
+    }
+  }, [isApproved]);
+
+  // Available responsables: catalog users or derived from loaded pedidos
+  const availableResponsables = useMemo(() => {
+    if (internalUsers.length > 0) return internalUsers;
+    const map = new Map<string, string>();
+    pedidos.forEach((p) => {
+      if (p.responsable_user_id && p.responsable_nombre) {
+        map.set(p.responsable_user_id, p.responsable_nombre);
+      }
+    });
+    return Array.from(map.entries()).map(([user_id, nombreCompleto]) => {
+      const parts = nombreCompleto.split(' ');
+      return {
+        user_id,
+        nombre: parts[0] || '',
+        apellido: parts.slice(1).join(' ') || '',
+        nombre_usuario: '',
+        app_role: 'equipo' as const,
+        estado_acceso: 'aprobado' as const,
+      };
+    });
+  }, [internalUsers, pedidos]);
+
+  // Available categories: catalog categories or derived from loaded pedidos
+  const availableCategorias = useMemo(() => {
+    if (catalogoCategorias.length > 0) return catalogoCategorias;
+    const map = new Map<string, { id: string; nombre: string; codigo_ped: string }>();
+    pedidos.forEach((p) => {
+      if (p.categoria_id && p.categoria_nombre) {
+        map.set(p.categoria_id, {
+          id: p.categoria_id,
+          nombre: p.categoria_nombre,
+          codigo_ped: p.codigo_categoria || '',
+        });
+      }
+    });
+    return Array.from(map.values()).map((c) => ({
+      ...c,
+      tipos: [],
+    }));
+  }, [catalogoCategorias, pedidos]);
 
   const canEditMetadata = isApproved && (isAdmin || user?.appRole === 'equipo');
 
@@ -77,14 +147,28 @@ export const GestionDashboardPage: React.FC = () => {
       else if (tabFilter === 'finalizados') estadoFilter = 'Finalizado';
       else if (tabFilter === 'cancelados') estadoFilter = 'Cancelado';
 
+      let responsableParam: string | undefined;
+      let unassignedParam: boolean | undefined;
+      if (tabFilter === 'mis_pedidos') {
+        responsableParam = user?.userId;
+      } else if (tabFilter === 'sin_asignar') {
+        unassignedParam = true;
+      } else if (responsableFilter === 'sin_asignar') {
+        unassignedParam = true;
+      } else if (responsableFilter !== 'todos') {
+        responsableParam = responsableFilter;
+      }
+
       const [pedidosData, statsData] = await Promise.all([
         fetchPedidos({
           archivado: tabFilter === 'archivados',
-          responsable_user_id: tabFilter === 'mis_pedidos' ? user?.userId : undefined,
-          unassigned: tabFilter === 'sin_asignar' ? true : undefined,
+          responsable_user_id: responsableParam,
+          unassigned: unassignedParam,
           estado: estadoFilter,
           prioridad: prioridadFilter !== 'todas' ? prioridadFilter : undefined,
           origen: origenFilter !== 'todos' ? origenFilter : undefined,
+          categoria_id: categoriaFilter !== 'todas' ? categoriaFilter : undefined,
+          orden_finalizados: tabFilter === 'finalizados' ? ordenFinalizados : undefined,
           search: searchTerm || undefined,
         }),
         fetchGestionStats().catch(() => ({
@@ -108,7 +192,7 @@ export const GestionDashboardPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [tabFilter, prioridadFilter, origenFilter, searchTerm, user?.userId, isApproved]);
+  }, [tabFilter, prioridadFilter, origenFilter, responsableFilter, categoriaFilter, ordenFinalizados, searchTerm, user?.userId, isApproved]);
 
   const handlePrioridadChange = async (ped: PedidoListItem, newPrioridad: string) => {
     if (!canEditMetadata || ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado') return;
@@ -240,29 +324,128 @@ export const GestionDashboardPage: React.FC = () => {
     return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
   }, [pedidos]);
 
-  // Filtered pedidos according to multi-etiqueta filter with OR semantics (Fase 4B)
+  // Filtered pedidos according to all combined filters (Fase 4B + CAM-03)
   const filteredPedidos = useMemo(() => {
-    if (selectedEtiquetasFilter.length === 0) {
-      return pedidos;
-    }
-    const lowerFilters = selectedEtiquetasFilter.map((s) => s.toLowerCase().trim());
-    return pedidos.filter((p) => {
-      const matchEtiquetas = (p.etiquetas || []).some((e) =>
-        lowerFilters.includes(e.texto.toLowerCase().trim())
-      );
-      if (matchEtiquetas) return true;
-      if (p.etiqueta_interna) {
-        return lowerFilters.includes(p.etiqueta_interna.toLowerCase().trim());
-      }
-      return false;
-    });
-  }, [pedidos, selectedEtiquetasFilter]);
+    let result = pedidos;
 
-  // Paginated table data
-  const totalPages = Math.ceil(filteredPedidos.length / pageSize) || 1;
+    // 1. Search filter (matching code, title, card title, solicitante or area)
+    if (searchTerm.trim().length > 0) {
+      const s = searchTerm.trim().toLowerCase();
+      result = result.filter((p) => {
+        const visibleCode = (p.pedido_visible || '').toLowerCase();
+        const titulo = (p.titulo || '').toLowerCase();
+        const cardTitle = getPedidoCardTitle(p).toLowerCase();
+        const solicitante = (p.solicitante_nombre || '').toLowerCase();
+        const area = (p.area_solicitante || '').toLowerCase();
+        return (
+          visibleCode.includes(s) ||
+          titulo.includes(s) ||
+          cardTitle.includes(s) ||
+          solicitante.includes(s) ||
+          area.includes(s)
+        );
+      });
+    }
+
+    // 2. Origen filter
+    if (origenFilter !== 'todos') {
+      result = result.filter((p) => p.origen === origenFilter);
+    }
+
+    // 3. Prioridad filter
+    if (prioridadFilter !== 'todas') {
+      if (prioridadFilter === 'sin_prioridad') {
+        result = result.filter((p) => !p.prioridad);
+      } else {
+        result = result.filter((p) => p.prioridad === prioridadFilter);
+      }
+    }
+
+    // 4. Responsable filter (if not already restricted by tab)
+    if (responsableFilter !== 'todos' && tabFilter !== 'mis_pedidos' && tabFilter !== 'sin_asignar') {
+      if (responsableFilter === 'sin_asignar') {
+        result = result.filter((p) => !p.responsable_user_id);
+      } else {
+        result = result.filter((p) => p.responsable_user_id === responsableFilter);
+      }
+    }
+
+    // 5. Categoria filter
+    if (categoriaFilter !== 'todas') {
+      result = result.filter(
+        (p) =>
+          p.categoria_id === categoriaFilter ||
+          p.categoria_nombre === categoriaFilter ||
+          p.codigo_categoria === categoriaFilter
+      );
+    }
+
+    // 6. Rango de fechas (Fecha de finalización en Finalizados, fecha de ingreso en otros/fallback)
+    if (fechaDesde) {
+      const fromTime = new Date(fechaDesde + 'T00:00:00').getTime();
+      if (!Number.isNaN(fromTime)) {
+        result = result.filter((p) => {
+          const rawDate = (tabFilter === 'finalizados' ? p.finalizado_at : null) || p.created_at;
+          const targetTime = new Date(rawDate).getTime();
+          return !Number.isNaN(targetTime) && targetTime >= fromTime;
+        });
+      }
+    }
+    if (fechaHasta) {
+      const toTime = new Date(fechaHasta + 'T23:59:59.999').getTime();
+      if (!Number.isNaN(toTime)) {
+        result = result.filter((p) => {
+          const rawDate = (tabFilter === 'finalizados' ? p.finalizado_at : null) || p.created_at;
+          const targetTime = new Date(rawDate).getTime();
+          return !Number.isNaN(targetTime) && targetTime <= toTime;
+        });
+      }
+    }
+
+    // 7. Multi-Etiqueta filter with OR semantics
+    if (selectedEtiquetasFilter.length > 0) {
+      const lowerFilters = selectedEtiquetasFilter.map((s) => s.toLowerCase().trim());
+      result = result.filter((p) => {
+        const matchEtiquetas = (p.etiquetas || []).some((e) =>
+          lowerFilters.includes(e.texto.toLowerCase().trim())
+        );
+        if (matchEtiquetas) return true;
+        if (p.etiqueta_interna) {
+          return lowerFilters.includes(p.etiqueta_interna.toLowerCase().trim());
+        }
+        return false;
+      });
+    }
+
+    return result;
+  }, [
+    pedidos,
+    searchTerm,
+    origenFilter,
+    prioridadFilter,
+    responsableFilter,
+    categoriaFilter,
+    fechaDesde,
+    fechaHasta,
+    selectedEtiquetasFilter,
+    tabFilter,
+  ]);
+
+  // Sorted pedidos (CAM-03): applies configurable chronological order to Finalizados, preserves canonical order elsewhere
+  const sortedPedidos = useMemo(() => {
+    if (tabFilter === 'finalizados') {
+      return [...filteredPedidos].sort((a, b) =>
+        comparePedidosFinalizados(a, b, ordenFinalizados)
+      );
+    }
+    return filteredPedidos;
+  }, [filteredPedidos, tabFilter, ordenFinalizados]);
+
+  // Paginated data applied after sorting and filtering
+  const totalPages = Math.ceil(sortedPedidos.length / pageSize) || 1;
   const paginatedPedidos = useMemo(() => {
-    return filteredPedidos.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [filteredPedidos, currentPage, pageSize]);
+    return sortedPedidos.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [sortedPedidos, currentPage, pageSize]);
 
   // Elements actually rendered in the current view (strictly visible)
   const visibleSelectablePedidos = useMemo(() => {
@@ -270,7 +453,7 @@ export const GestionDashboardPage: React.FC = () => {
       return paginatedPedidos;
     }
     if (isTerminalOrArchivedTab) {
-      return filteredPedidos;
+      return paginatedPedidos;
     }
     return filteredPedidos.filter((p) => estadosKanban.includes(p.estado));
   }, [viewMode, paginatedPedidos, isTerminalOrArchivedTab, filteredPedidos, estadosKanban]);
@@ -315,6 +498,31 @@ export const GestionDashboardPage: React.FC = () => {
       setDeleteSuccessMessage(null);
     }, 6000);
   };
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setOrigenFilter('todos');
+    setPrioridadFilter('todas');
+    setResponsableFilter('todos');
+    setCategoriaFilter('todas');
+    setFechaDesde('');
+    setFechaHasta('');
+    setSelectedEtiquetasFilter([]);
+    setOrdenFinalizados('recientes');
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = Boolean(
+    searchTerm.trim().length > 0 ||
+    origenFilter !== 'todos' ||
+    prioridadFilter !== 'todas' ||
+    responsableFilter !== 'todos' ||
+    categoriaFilter !== 'todas' ||
+    fechaDesde ||
+    fechaHasta ||
+    selectedEtiquetasFilter.length > 0 ||
+    ordenFinalizados !== 'recientes'
+  );
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -723,10 +931,71 @@ export const GestionDashboardPage: React.FC = () => {
         {/* Fila 2: Selectores de Origen, Prioridad, Etiquetas y Búsqueda */}
         <div className="pedidos-linear-filter-shelf-bottom">
           <div className="pedidos-linear-filters-left">
+            {/* CAM-03: Selector de Orden Cronológico en Finalizados */}
+            {tabFilter === 'finalizados' && (
+              <select
+                value={ordenFinalizados}
+                onChange={(e) => {
+                  setOrdenFinalizados(e.target.value as 'recientes' | 'antiguos');
+                  setCurrentPage(1);
+                }}
+                className="pedidos-linear-select"
+                aria-label="Orden cronológico"
+                title="Ordenar por fecha de finalización"
+              >
+                <option value="recientes">🕒 Más recientes primero</option>
+                <option value="antiguos">🕒 Más antiguos primero</option>
+              </select>
+            )}
+
+            {/* CAM-03: Selector de Responsable en Finalizados */}
+            {tabFilter === 'finalizados' && (
+              <select
+                value={responsableFilter}
+                onChange={(e) => {
+                  setResponsableFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pedidos-linear-select"
+                aria-label="Filtrar por responsable"
+              >
+                <option value="todos">Todos los responsables</option>
+                <option value="sin_asignar">⚠️ Sin asignar</option>
+                {availableResponsables.map((u) => (
+                  <option key={u.user_id} value={u.user_id}>
+                    👤 {u.nombre} {u.apellido}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* CAM-03: Selector de Categoría en Finalizados */}
+            {tabFilter === 'finalizados' && (
+              <select
+                value={categoriaFilter}
+                onChange={(e) => {
+                  setCategoriaFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pedidos-linear-select"
+                aria-label="Filtrar por categoría"
+              >
+                <option value="todas">Todas las categorías</option>
+                {availableCategorias.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    📁 {c.nombre}
+                  </option>
+                ))}
+              </select>
+            )}
+
             {/* Selector de Origen */}
             <select
               value={origenFilter}
-              onChange={(e) => setOrigenFilter(e.target.value as 'todos' | 'publico' | 'interno')}
+              onChange={(e) => {
+                setOrigenFilter(e.target.value as 'todos' | 'publico' | 'interno');
+                setCurrentPage(1);
+              }}
               className="pedidos-linear-select"
               aria-label="Filtrar por origen"
             >
@@ -738,7 +1007,7 @@ export const GestionDashboardPage: React.FC = () => {
             {/* Selector de Prioridad */}
             <select
               value={prioridadFilter}
-              onChange={(e) => setPrioridadFilter(e.target.value)}
+              onChange={(e) => { setPrioridadFilter(e.target.value); setCurrentPage(1); }}
               className="pedidos-linear-select"
               aria-label="Filtrar por prioridad"
             >
@@ -785,7 +1054,7 @@ export const GestionDashboardPage: React.FC = () => {
                     {selectedEtiquetasFilter.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => setSelectedEtiquetasFilter([])}
+                        onClick={() => { setSelectedEtiquetasFilter([]); setCurrentPage(1); }}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -844,6 +1113,58 @@ export const GestionDashboardPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* CAM-03: Rango de fechas con identificación clara en Finalizados */}
+            {tabFilter === 'finalizados' && (
+              <div
+                className="pedidos-linear-date-range"
+                title="Filtrar por fecha de finalización (o fecha de ingreso como alternativa)"
+              >
+                <span className="pedidos-linear-date-range-caption">
+                  Finalización:
+                </span>
+                <label className="pedidos-linear-date-label">
+                  <span>Desde:</span>
+                  <input
+                    type="date"
+                    value={fechaDesde}
+                    onChange={(e) => {
+                      setFechaDesde(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="pedidos-linear-date-input"
+                    aria-label="Fecha desde"
+                  />
+                </label>
+                <label className="pedidos-linear-date-label">
+                  <span>Hasta:</span>
+                  <input
+                    type="date"
+                    value={fechaHasta}
+                    onChange={(e) => {
+                      setFechaHasta(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="pedidos-linear-date-input"
+                    aria-label="Fecha hasta"
+                  />
+                </label>
+              </div>
+            )}
+
+            {/* CAM-03: Botón Restablecer Filtros */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="pedidos-linear-reset-btn"
+                aria-label="Restablecer filtros"
+                title="Restablecer todos los filtros de la vista"
+              >
+                <span>✕</span>
+                <span>Limpiar filtros</span>
+              </button>
+            )}
           </div>
 
           {/* Formulario de Búsqueda Compacto */}
@@ -852,7 +1173,7 @@ export const GestionDashboardPage: React.FC = () => {
               type="text"
               placeholder="Buscar por código o título..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="pedidos-linear-search-input"
             />
             <button
@@ -933,7 +1254,7 @@ export const GestionDashboardPage: React.FC = () => {
                   borderRadius: '9999px',
                   border: `1px solid ${tabFilter === 'finalizados' ? 'var(--pedidos-status-finalizado-border, #bbf7d0)' : tabFilter === 'cancelados' ? 'var(--pedidos-status-cancelado-border, #fecaca)' : 'var(--pedidos-border-default, #cbd5e1)'}`,
                 }}>
-                  {pedidos.length} pedidos
+                  {sortedPedidos.length !== pedidos.length ? `${sortedPedidos.length} de ${pedidos.length} pedidos` : `${pedidos.length} pedidos`}
                 </span>
               </div>
               <button
@@ -945,13 +1266,13 @@ export const GestionDashboardPage: React.FC = () => {
               </button>
             </div>
 
-            {filteredPedidos.length === 0 ? (
+            {sortedPedidos.length === 0 ? (
               <div className="pedidos-kanban-empty">
-                No hay pedidos en este estado.
+                {hasActiveFilters ? 'No se encontraron pedidos con los filtros seleccionados.' : 'No hay pedidos en este estado.'}
               </div>
             ) : (
               <div className="pedidos-terminal-grid">
-                {filteredPedidos.map((ped) => {
+                {paginatedPedidos.map((ped) => {
                   const styleInfo = estadoTitles[ped.estado] || { label: ped.estado, color: 'var(--pedidos-text-secondary, #334155)', bg: 'var(--pedidos-surface-sunken, #f1f5f9)', border: 'var(--pedidos-border-default, #cbd5e1)' };
                   const isTerminal = ped.archivado || ped.estado === 'Finalizado' || ped.estado === 'Cancelado';
                   const isSelected = selectedPedidoIds.has(ped.id);
@@ -996,9 +1317,20 @@ export const GestionDashboardPage: React.FC = () => {
                           {styleInfo.label}
                         </span>
                       </div>
-                      <div className="pedidos-kanban-card-date" style={{ marginTop: '-0.15rem', marginBottom: '0.25rem' }}>
-                        {formatIngresoDateTime(ped.created_at)}
-                      </div>
+                      {tabFilter === 'finalizados' && ped.finalizado_at ? (
+                        <div className="pedidos-kanban-card-date-stack">
+                          <div className="pedidos-kanban-card-finalizado-date">
+                            🏁 Finalizado: {formatIngresoDateTime(ped.finalizado_at)}
+                          </div>
+                          <div className="pedidos-kanban-card-date" style={{ marginTop: '0', marginBottom: '0.25rem', fontSize: '0.75rem', opacity: 0.85 }}>
+                            Ingreso: {formatIngresoDateTime(ped.created_at)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="pedidos-kanban-card-date" style={{ marginTop: '-0.15rem', marginBottom: '0.25rem' }} title={tabFilter === 'finalizados' ? 'Fecha de ingreso (sin fecha de finalización registrada)' : undefined}>
+                          {formatIngresoDateTime(ped.created_at)}
+                        </div>
+                      )}
                       {ped.retrabajo_activo ? (
                         <div className="pedidos-badge-retrabajo">
                           🔄 DEVUELTO - RETRABAJAR {ped.revision_count ? `· Rev #${ped.revision_count}` : ''}
@@ -1091,6 +1423,33 @@ export const GestionDashboardPage: React.FC = () => {
                     </article>
                   );
                 })}
+              </div>
+            )}
+
+            {/* CAM-03: Paginación para vista terminal */}
+            {totalPages > 1 && (
+              <div className="pedidos-table-pagination" style={{ marginTop: '1.25rem' }}>
+                <span className="pedidos-table-pagination-info">
+                  Página {currentPage} de {totalPages} ({sortedPedidos.length} pedidos)
+                </span>
+                <div className="pedidos-table-pagination-actions">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="pedidos-pagination-btn"
+                  >
+                    ← Anterior
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="pedidos-pagination-btn"
+                  >
+                    Siguiente →
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1421,9 +1780,20 @@ export const GestionDashboardPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="pedidos-table-td pedidos-table-td-date">
-                        <time dateTime={ped.created_at} className="pedidos-table-date-text">
-                          {formatIngresoDateTime(ped.created_at)}
-                        </time>
+                        {tabFilter === 'finalizados' && ped.finalizado_at ? (
+                          <div className="pedidos-table-date-stack">
+                            <div className="pedidos-table-finalizado-date">
+                              🏁 {formatIngresoDateTime(ped.finalizado_at)}
+                            </div>
+                            <time dateTime={ped.created_at} className="pedidos-table-date-text" style={{ fontSize: '0.75rem', opacity: 0.8 }}>
+                              Ingreso: {formatIngresoDateTime(ped.created_at)}
+                            </time>
+                          </div>
+                        ) : (
+                          <time dateTime={ped.created_at} className="pedidos-table-date-text" title={tabFilter === 'finalizados' ? 'Fecha de ingreso (sin fecha de finalización registrada)' : undefined}>
+                            {formatIngresoDateTime(ped.created_at)}
+                          </time>
+                        )}
                       </td>
                       <td className="pedidos-table-td pedidos-table-td-actions">
                         <Link
@@ -1451,7 +1821,7 @@ export const GestionDashboardPage: React.FC = () => {
           {totalPages > 1 && (
             <div className="pedidos-table-pagination">
               <span className="pedidos-table-pagination-info">
-                Página {currentPage} de {totalPages} ({pedidos.length} pedidos)
+                Página {currentPage} de {totalPages} ({sortedPedidos.length} pedidos)
               </span>
               <div className="pedidos-table-pagination-actions">
                 <button

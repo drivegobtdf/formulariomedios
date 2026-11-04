@@ -258,3 +258,50 @@ Todos estos QA son PLANIFICADOS hasta que exista evidencia ejecutada.
   - En viewport móvil `390 × 844 px` (`window.innerWidth = 390`, `document.documentElement.clientWidth = 390`), las vistas autenticadas internas (`/gestion` en Kanban/Tabla y `/gestion/pedido/:id`) presentan `document.documentElement.scrollWidth = 419` (`419.03 px`) y `document.body.scrollWidth = 411`.
   - **Causa raíz:** En `pedidos-medios/frontend/src/components/Layout.tsx` (líneas 79–95) y `pedidos-medios/frontend/src/styles/app.css` (línea 297), el contenedor `.pedidos-header-actions` (`display: flex; gap: 0.75rem`, sin `flex-wrap: wrap`) agrupa en una sola línea el botón de tema (`☀ Modo Claro`), la campana `<NotificationBell />` y `<UserProfileMenu />` (`rectWidth = 253.56 px`), sumando `379.84 px` desde `rectLeft = 39.19 px` hasta `rectRight = 419.03 px` (desbordando `29.03 px` el viewport de `390 px` y llevando `header.pedidos-header.scrollWidth` a `399 px`).
   - **Verificación contra baseline (`c444c9c53e25e0a2dd6bc2cfe691ec307da32e6c`):** Las mediciones sobre el baseline inalterado arrojan valores idénticos (`docScrollWidth = 419`, `bodyScrollWidth = 411`, `header.scrollWidth = 399`, `headerActionsRect.right = 419.03`), confirmando que se trata de una condición preexistente en `Layout.tsx` / `UserProfileMenu.tsx` y no de una regresión introducida por `CAM-04` o `CAM-06` (cuyos contenedores se mantienen dentro de `rectRight <= 370 px`). Queda registrada como incidencia de UI pendiente para su tratamiento específico sin alterar componentes ajenos al alcance de la Fase 1A.
+
+
+## 20. Evidencia QA — Fase 2 (`CAM-03` — Vista Finalizados: Orden y Filtros)
+
+- **Cobertura unitaria agregada y verificada en `Wordpress Formulario Backlog`:**
+  - `tests/unit/cam03-finalizados-ordering-and-filters.test.tsx`: 15 pruebas unitarias completas validando:
+    1. Ordenamiento cronológico predeterminado `Más recientes primero` con prioridad en `finalizado_at`.
+    2. Ordenamiento cronológico inverso `Más antiguos primero`.
+    3. Fallback transparente a `created_at` cuando `finalizado_at` es nulo/indefinido.
+    4. Desempate estable y determinista por `numero` e `id` ante timestamps cronológicos idénticos.
+    5. Manejo aritméticamente seguro de fechas inválidas / `NaN`.
+    6. Renderizado de selector de orden y filtros contextuales en la vista `Finalizados`.
+    7. Conmutación dinámica de ordenamiento y reordenamiento de tarjetas.
+    8. Filtrado por responsable asignado (`responsable_user_id`).
+    9. Filtrado por categoría de servicio (`categoria_id`).
+    10. Filtrado por rango de fechas (`fecha_desde` y `fecha_hasta`).
+    11. Filtrado combinado simultáneo (búsqueda + responsable + categoría + fechas).
+    12. Restablecimiento instantáneo de filtros mediante botón `Limpiar filtros ✕`.
+    13. Estado vacío descriptivo ante combinaciones sin coincidencias (`No hay pedidos finalizados con los filtros aplicados`).
+    14. Paginación preservando ordenamiento cronológico global sin truncamiento previo.
+    15. Vista Tabla (`table`) formateando fecha de finalización (`🏁`) y preservando ordenamiento cronológico.
+  - `tests/unit/cam03-pagination-large-datasets-1205.test.tsx`: 11 pruebas unitarias sobre dataset voluminoso (1.205 pedidos sintéticos) y simulación de paginación del servidor:
+    1. Estrategia de recuperación por lotes (chunking PostgREST) ante límite de 1.000 registros con count exacto.
+    2. Orden "recientes" ubicando el pedido #1205 en la primera posición.
+    3. Orden "antiguos" ubicando el pedido #1 en la primera posición.
+    4. Acceso determinista a ambos extremos del dataset (página 1 y página 81).
+    5. Filtrado por búsqueda de pedidos situados fuera de los primeros 1.000 (#1150).
+    6. Filtrado combinado (responsable Santiago Morales + categoría Prensa) localizando registro específico (#1120).
+    7. Validación de totales y número de páginas exacto (1.205 pedidos en 81 páginas de 15 ítems).
+    8. Restablecimiento automático de paginación a página 1 ante cambios de filtros o criterios de orden.
+    9. Estabilidad determinista ante timestamps idénticos (#501 y #502) mediante desempate por número e ID.
+    10. Selección masiva persistente entre páginas y acciones operativas.
+    11. Preservación absoluta del orden canónico en tableros activos (retrabajos y prioridades intactos).
+- **Resultados de la Suite Unitaria:**
+  - Total de suites ejecutadas: `63` suites (`63` aprobadas, `0` fallidas).
+  - Total de tests ejecutados: `680` tests (`680` aprobados, `0` fallidos).
+- **Compilaciones y Tipado Estático:**
+  - `npm run typecheck`: `0` errores TypeScript (`tsc --noEmit`).
+  - `npm run build:wordpress`: bundle y paquete ZIP generados exitosamente.
+  - `STANDALONE_ENV=test npm run build:standalone`: compilación validada por `scripts/postbuild-standalone.mjs` (14/14 archivos conformes).
+- **Evidencias Visuales Automatizadas (Playwright):**
+  - Generadas mediante `scripts/capture-qa-screenshots-cam03.mjs`:
+    1. `qa_cam03_01_finalizados_desktop_default_1440x900.png`: Vista Finalizados predeterminada en escritorio (más recientes primero, tarjetas con `🏁 Finalizado:` o `Ingreso:`).
+    2. `qa_cam03_02_finalizados_desktop_filtered_1440x900.png`: Filtros combinados aplicados en escritorio y botón `Limpiar filtros ✕`.
+    3. `qa_cam03_03_finalizados_desktop_table_1440x900.png`: Vista Tabla en escritorio con columna de fechas ordenada cronológicamente.
+    4. `qa_cam03_04_finalizados_mobile_390x844.png`: Vista Finalizados móvil responsive (390×844 px).
+    5. `qa_cam03_05_finalizados_mobile_table_390x844.png`: Vista Tabla móvil responsive (390×844 px).
