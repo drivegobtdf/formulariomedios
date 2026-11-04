@@ -1092,7 +1092,8 @@ export function buildDeliveryUploadHeaders(
   configuredSupabaseUrl: string,
   anonKey: string,
   token: string,
-  contentType: string
+  contentType: string,
+  relayFunction: 'delivery-upload-prepare' | 'internal-upload-prepare' = 'delivery-upload-prepare'
 ): Record<string, string> {
   let target: URL;
   let supabase: URL;
@@ -1103,7 +1104,7 @@ export function buildDeliveryUploadHeaders(
     throw new Error('SECURITY_ERROR: Destino de subida inválido.');
   }
 
-  if (target.origin === supabase.origin && target.pathname === '/functions/v1/delivery-upload-prepare') {
+  if (target.origin === supabase.origin && target.pathname === `/functions/v1/${relayFunction}`) {
     return {
       'apikey': anonKey,
       'Authorization': `Bearer ${token}`,
@@ -1230,6 +1231,74 @@ export async function uploadDeliveryFile(
     nombre_original: file.name,
     size_bytes: file.size,
   };
+}
+
+/** CAM-11: adjuntos de referencia al crear un pedido interno (NO entregables). */
+export async function uploadInternalPedidoFile(
+  pedidoId: string,
+  file: File,
+  clientFileRef: string
+): Promise<{ archivo_id: string; drive_file_id: string }> {
+  const supabase = getSupabaseClient();
+  const { data: session, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr || !session.session?.access_token) {
+    throw new Error('La sesión expiró. Volvé a iniciar sesión para adjuntar archivos.');
+  }
+  const token = session.session.access_token;
+  const supabaseUrl = (supabase as any).supabaseUrl || import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = (supabase as any).supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const headers = {
+    apikey: anonKey,
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+
+  const prepRes = await fetch(`${supabaseUrl}/functions/v1/internal-upload-prepare`, {
+    method: 'POST', headers,
+    body: JSON.stringify({
+      pedido_id: pedidoId, client_file_ref: clientFileRef,
+      expected_name: file.name, expected_size: file.size,
+      mime_type: file.type || 'application/octet-stream',
+    }),
+  });
+  const prep = await prepRes.json().catch(() => ({}));
+  if (!prepRes.ok) throw new Error(prep.message || prep.error || `No se pudo preparar adjunto (${prepRes.status})`);
+  if (prep.already_verified && prep.archivo_id) {
+    return { archivo_id: prep.archivo_id, drive_file_id: prep.drive_file_id || '' };
+  }
+  if (!prep.reservation_id || !prep.relay_upload_url) {
+    throw new Error('Respuesta de reserva inválida para adjunto interno.');
+  }
+
+  let driveFileId = prep.drive_file_id || '';
+  // Si el PUT ya concluyó pero el cliente perdió la respuesta, reintentar solo la confirmación.
+  if (!prep.already_uploaded) {
+    const uploadHeaders = buildDeliveryUploadHeaders(
+      prep.relay_upload_url, supabaseUrl, anonKey, token,
+      file.type || 'application/octet-stream', 'internal-upload-prepare'
+    );
+    const uploadRes = await fetch(prep.relay_upload_url, {
+      method: 'PUT', headers: uploadHeaders, body: file,
+    });
+    const upload = await uploadRes.json().catch(() => ({}));
+    if (!uploadRes.ok) {
+      throw new Error(upload.message || upload.error || `No se pudo subir adjunto (${uploadRes.status})`);
+    }
+    driveFileId = upload.drive_file_id || driveFileId;
+  }
+  if (!driveFileId) throw new Error('La transferencia no devolvió identificador de Google Drive.');
+
+  const compRes = await fetch(`${supabaseUrl}/functions/v1/internal-upload-complete`, {
+    method: 'POST', headers,
+    body: JSON.stringify({
+      pedido_id: pedidoId, reservation_id: prep.reservation_id, drive_file_id: driveFileId,
+    }),
+  });
+  const complete = await compRes.json().catch(() => ({}));
+  if (!compRes.ok || !complete.verified || !complete.archivo_id) {
+    throw new Error(complete.message || complete.error || `No se pudo confirmar adjunto (${compRes.status})`);
+  }
+  return { archivo_id: complete.archivo_id, drive_file_id: driveFileId };
 }
 
 export async function cancelPedido(pedidoId: string, motivo: string, expectedVersion: number) {

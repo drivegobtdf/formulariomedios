@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   createInternalPedido,
+  uploadInternalPedidoFile,
   fetchCatalogoServicios,
   CatalogoCategoriaItem,
   CreateInternalPedidoParams,
@@ -32,6 +33,10 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
   const [fechaLimite, setFechaLimite] = useState('');
 
   const [enlaces, setEnlaces] = useState<string[]>(['']);
+  const [selectedFiles, setSelectedFiles] = useState<Array<{ file: File; ref: string; uploaded: boolean }>>([]);
+  const [createdPedido, setCreatedPedido] = useState<{ id: string; pedido_visible: string } | null>(null);
+  const clientRequestRef = useRef<string | null>(null);
+  const savedPedidoRef = useRef<{ id: string; pedido_visible: string } | null>(null);
 
   const [loadingCatalogo, setLoadingCatalogo] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -52,6 +57,10 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
     setEtiquetaInterna('');
     setFechaLimite('');
     setEnlaces(['']);
+    setSelectedFiles([]);
+    setCreatedPedido(null);
+    clientRequestRef.current = null;
+    savedPedidoRef.current = null;
     setError(null);
     setShowDiscardConfirm(false);
   };
@@ -69,12 +78,20 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
     Boolean(prioridad) ||
     Boolean(etiquetaInterna) ||
     Boolean(fechaLimite) ||
+    selectedFiles.length > 0 ||
+    Boolean(createdPedido) ||
     enlaces.length > 1 ||
     (enlaces.length === 1 && Boolean(enlaces[0]));
 
   // Cierre explícito protegido contra pérdida de datos
   const handleRequestClose = () => {
     if (submitting) return;
+    if (createdPedido) {
+      const saved = createdPedido;
+      resetForm();
+      onSuccess(saved.id, saved.pedido_visible);
+      return;
+    }
     if (isDirty) {
       setShowDiscardConfirm(true);
     } else {
@@ -108,7 +125,7 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !submitting) {
+      if (e.key === 'Escape' && !submitting && !savedPedidoRef.current) {
         if (showDiscardConfirm) {
           setShowDiscardConfirm(false);
         } else if (isDirty) {
@@ -142,6 +159,25 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
       next[index] = val;
       return next;
     });
+  };
+
+  const handleSelectFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!picked.length) return;
+    if (selectedFiles.length + picked.length > 10) {
+      setError('Se permiten como máximo 10 archivos adjuntos por pedido interno.');
+      return;
+    }
+    const invalid = picked.find((file) => file.size <= 0 || file.size > 10 * 1024 * 1024);
+    if (invalid) {
+      setError(`El archivo «${invalid.name}» debe tener entre 1 byte y 10 MB.`);
+      return;
+    }
+    setSelectedFiles((prev) => [...prev, ...picked.map((file) => ({
+      file, ref: crypto.randomUUID(), uploaded: false,
+    }))]);
+    setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,16 +222,23 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
         etiqueta_interna: cleanEtiqueta || null,
         fecha_limite: fechaLimite || null,
         enlaces: validEnlaces.length > 0 ? validEnlaces : undefined,
-        client_request_ref: crypto.randomUUID(),
+        client_request_ref: clientRequestRef.current ?? (clientRequestRef.current = crypto.randomUUID()),
       };
 
-      const res = await createInternalPedido(payload);
-      if (res && res.id) {
-        resetForm();
-        onSuccess(res.id, res.pedido_visible);
-      } else {
-        throw new Error('Respuesta inválida al crear pedido interno.');
+      let saved = createdPedido;
+      if (!saved) {
+        const res = await createInternalPedido(payload);
+        if (!res?.id) throw new Error('Respuesta inválida al crear pedido interno.');
+        saved = { id: res.id, pedido_visible: res.pedido_visible };
+        setCreatedPedido(saved);
+        savedPedidoRef.current = saved;
       }
+      for (const item of selectedFiles.filter((f) => !f.uploaded)) {
+        await uploadInternalPedidoFile(saved.id, item.file, item.ref);
+        setSelectedFiles((prev) => prev.map((f) => f.ref === item.ref ? { ...f, uploaded: true } : f));
+      }
+      resetForm();
+      onSuccess(saved.id, saved.pedido_visible);
     } catch (err: any) {
       setError(err?.message || 'Error al crear el pedido interno. Intente nuevamente.');
       setSubmitting(false);
@@ -576,6 +619,51 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                 ))}
               </div>
             </div>
+            {/* CAM-11: adjuntos binarios opcionales al crear un pedido interno. */}
+            <div className="pedidos-modal-section pedidos-modal-section-divided">
+              <div className="pedidos-modal-section-header">
+                <h3 className="pedidos-modal-section-title" style={{ margin: 0 }}>
+                  5. Archivos adjuntos (opcional)
+                </h3>
+              </div>
+              <label htmlFor="input-internal-files" className="pedidos-modal-label">
+                Archivos de referencia (máximo 10 archivos, 10 MB cada uno)
+              </label>
+              <input
+                id="input-internal-files"
+                type="file"
+                multiple
+                disabled={submitting || Boolean(createdPedido)}
+                onChange={handleSelectFiles}
+                aria-label="Archivos adjuntos internos"
+                className="pedidos-modal-input"
+              />
+              {selectedFiles.length > 0 && (
+                <ul style={{ margin: '0.75rem 0', paddingLeft: '1.5rem' }}>
+                  {selectedFiles.map((item) => (
+                    <li key={item.ref}>
+                      {item.file.name} — {item.uploaded ? 'Adjuntado' : 'Pendiente'}
+                      {!createdPedido && !submitting && (
+                        <button
+                          type="button"
+                          aria-label={`Quitar ${item.file.name}`}
+                          className="pedidos-modal-btn-link-action"
+                          onClick={() => setSelectedFiles((prev) => prev.filter((f) => f.ref !== item.ref))}
+                        >
+                          Quitar
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {createdPedido && (
+                <p role="status">
+                  El pedido {createdPedido.pedido_visible} ya fue creado. Si falla un adjunto,
+                  reintentá sin duplicar el pedido o abrí su detalle.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Footer del Modal */}
@@ -586,14 +674,14 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
               disabled={submitting}
               className="pedidos-modal-btn-cancel"
             >
-              Cancelar
+              {createdPedido ? 'Ver pedido creado' : 'Cancelar'}
             </button>
             <button
               type="submit"
-              disabled={submitting || !titulo.trim()}
+              disabled={submitting || (!createdPedido && !titulo.trim())}
               className="pedidos-modal-btn-create"
             >
-              {submitting ? 'Creando pedido...' : 'Crear Pedido Interno'}
+              {submitting ? 'Procesando pedido y adjuntos...' : createdPedido ? 'Reintentar adjuntos' : 'Crear Pedido Interno'}
             </button>
           </div>
         </form>
