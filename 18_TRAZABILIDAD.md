@@ -33,7 +33,7 @@
 | finalización entrega | ADR-049 | entregas_pedido | QA-EST-008 |
 | cancelar/reabrir | ADR-050 | RPC | QA-EST-007..012 |
 | archivar/restaurar | ADR-047 | archivado_at/audit | QA archivo |
-| tablero+tabla | ADR-048 | frontend/query APIs | UI/E2E |
+| tablero+tabla (refresco sin parpadeo `CAM-05`) | ADR-048 | GestionDashboardPage.tsx (`loadData` isSilent, `latestLoadId`) | UI/E2E / QA `CAM-05` |
 
 ## 2. Revisión 2.0 → 3.0
 
@@ -103,5 +103,6 @@ No marcar requisito cumplido solo porque está escrito; se exige evidencia imple
 
 - **Backlog 2026-11 — Fase 1B (`CAM-01`):**
   - `CAM-01` (`docs/backlog/PEDIDOS_backlog_cambios_2026-11-02.md` §CAM-01 → `02_REQUISITOS_FUNCIONALES.md` §6 → migración SQL `20261103193000`, `drive-upload-prepare`, 6 vistas frontend → `cam01-info-request-72h.test.ts`, pgTAP `00005` y `00007`): IMPLEMENTADO Y APROBADO (`7298d5e3e6fddd820c84a4b29f6a4d952338fe3c`).
-- **Backlog 2026-11 — Fase 2 (`CAM-03`):**
-  - `CAM-03` (`docs/backlog/PEDIDOS_backlog_cambios_2026-11-02.md` §CAM-03 → `02_REQUISITOS_FUNCIONALES.md` §18 → `gestionApi.ts`, `GestionDashboardPage.tsx`, `app.css` → `cam03-finalizados-ordering-and-filters.test.tsx` (15 pruebas PASS) y `cam03-pagination-large-datasets-1205.test.tsx` (11 pruebas PASS, 680 pruebas totales en 63 suites), 5 capturas QA visuales Playwright): IMPLEMENTADO (Pendiente revisión Dirección Técnica).
+- **Backlog 2026-11 — Fase 2 (`CAM-03` y `CAM-05`):**
+  - `CAM-03` (`docs/backlog/PEDIDOS_backlog_cambios_2026-11-02.md` §CAM-03 → `02_REQUISITOS_FUNCIONALES.md` §18 → `gestionApi.ts`, `GestionDashboardPage.tsx`, `app.css` → `cam03-finalizados-ordering-and-filters.test.tsx` (15 pruebas PASS) y `cam03-pagination-large-datasets-1205.test.tsx` (11 pruebas PASS, 680 pruebas totales en 63 suites), 5 capturas QA visuales Playwright): IMPLEMENTADO Y APROBADO (`22be9172ce9b14907bd7d09fa64d96153ace52bd`).
+  - `CAM-05` (`docs/backlog/PEDIDOS_backlog_cambios_2026-11-02.md` §CAM-05 → `02_REQUISITOS_FUNCIONALES.md` §19 → `GestionDashboardPage.tsx` → `GestionDashboardPage.test.tsx` (2 pruebas unitarias PASS), 682 pruebas totales en 63 suites, 7 capturas QA visuales Playwright): IMPLEMENTADO (Pendiente revisión Dirección Técnica).

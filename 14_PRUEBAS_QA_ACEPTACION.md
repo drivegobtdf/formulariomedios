@@ -305,3 +305,28 @@ Todos estos QA son PLANIFICADOS hasta que exista evidencia ejecutada.
     3. `qa_cam03_03_finalizados_desktop_table_1440x900.png`: Vista Tabla en escritorio con columna de fechas ordenada cronológicamente.
     4. `qa_cam03_04_finalizados_mobile_390x844.png`: Vista Finalizados móvil responsive (390×844 px).
     5. `qa_cam03_05_finalizados_mobile_table_390x844.png`: Vista Tabla móvil responsive (390×844 px).
+
+
+## 21. Evidencia QA — Fase 2 (`CAM-05` — Refresco sin Parpadeo Visual)
+
+- **Cobertura unitaria agregada y verificada en `Wordpress Formulario Backlog`:**
+  - `pedidos-medios/frontend/src/__tests__/GestionDashboardPage.test.tsx`: Suite `CAM-05 — Refresco sin parpadeo`:
+    1. `mantiene el tablero visible mientras el refresco por foco sigue pendiente`: Verifica que al emitirse un evento `window.focus`, mientras la llamada a `fetchPedidos` se encuentra en curso (latencia artificial), el tablero permanece completamente montado, las tarjetas siguen visibles y el indicador de carga bloqueante (`Cargando pedidos...` / 🔄) no se renderiza.
+    2. `ignora una respuesta automática anterior frente a una sincronización posterior`: Verifica que si un refresco previo tarda más tiempo y llega después de un evento posterior (`online`), el guard de versión `latestLoadId` descarta la respuesta obsoleta y preserva la versión más reciente sin sobrescrituras indebidas.
+- **Resultados de la Suite Unitaria:**
+  - Total de suites ejecutadas: `63` suites (`63` aprobadas, `0` fallidas).
+  - Total de tests ejecutados: `682` tests (`682` aprobados, `0` fallidos).
+- **Compilaciones y Tipado Estático:**
+  - `npm run typecheck`: `0` errores TypeScript (`tsc --noEmit`).
+  - `npm run build:wordpress`: bundle y paquete ZIP generados exitosamente.
+  - `STANDALONE_ENV=test npm run build:standalone`: compilación validada por `scripts/postbuild-standalone.mjs` (14/14 archivos conformes).
+  - `git diff --check`: sin advertencias ni espacios en blanco erróneos.
+- **Evidencias Visuales Automatizadas (Playwright):**
+  - Generadas mediante `scripts/capture-qa-screenshots-cam05.mjs`:
+    1. `qa_cam05_01_desktop_tablero_kanban_1440x900.png`: Tablero Kanban inicial en escritorio (1440×900 px) con tarjetas activas.
+    2. `qa_cam05_02_desktop_silent_refresh_in_flight_1440x900.png`: Captura en vivo durante un refresco silencioso con latencia de 1.5s; confirma ausencia de spinner y permanencia íntegra de las tarjetas en el DOM.
+    3. `qa_cam05_03_desktop_focus_and_realtime_updated_1440x900.png`: Incorporación fluida de un nuevo pedido entrante tras reconexión/Realtime sin parpadeo.
+    4. `qa_cam05_04_desktop_finalizados_page2_preserved_1440x900.png`: En vista Finalizados sobre la Página 2; confirma que el refresco silencioso no reinicia la paginación a la Página 1.
+    5. `qa_cam05_05_desktop_network_error_resilience_1440x900.png`: Resiliencia ante error de red 500 en segundo plano; confirma que los datos visibles se mantienen y no se despliega banner de error invasivo.
+    6. `qa_cam05_06_mobile_tablero_kanban_390x844.png`: Vista móvil (390×844 px) de tablero Kanban inicial.
+    7. `qa_cam05_07_mobile_silent_refresh_preserved_390x844.png`: Vista móvil durante y después del refresco en segundo plano sin parpadeo.

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { fetchPedidos, fetchGestionStats, updatePedidoMetadata, fetchInternalUsers, fetchCatalogoServicios, comparePedidosFinalizados, PedidoListItem, GestionStats, InternalUser, CatalogoCategoriaItem } from '../services/gestionApi';
@@ -38,6 +38,8 @@ export const GestionDashboardPage: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Evita aplicar resultados obsoletos si se dispara un nuevo fetch.
+  const latestLoadId = useRef(0);
 
   // Bulk Selection & Delete Modal State
   const [selectedPedidoIds, setSelectedPedidoIds] = useState<Set<string>>(new Set());
@@ -137,10 +139,14 @@ export const GestionDashboardPage: React.FC = () => {
 
   const canEditMetadata = isApproved && (isAdmin || user?.appRole === 'equipo');
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isSilent = false) => {
     if (!isApproved) return;
-    setLoading(true);
-    setError(null);
+    const loadId = ++latestLoadId.current;
+    // Actualizaciones automáticas no desmontan visualmente el tablero.
+    if (!isSilent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       let estadoFilter: string | undefined;
       if (tabFilter === 'requieren_atencion') estadoFilter = 'Esperando información';
@@ -184,13 +190,18 @@ export const GestionDashboardPage: React.FC = () => {
         })),
       ]);
 
+      if (loadId !== latestLoadId.current) return;
       setPedidos(pedidosData);
       setStats(statsData);
-      setCurrentPage(1);
+      // Mantener página elegida ante Realtime/focus/online.
+      if (!isSilent) setCurrentPage(1);
+      setError(null);
     } catch (err: unknown) {
-      setError('No se pudieron cargar las solicitudes del sistema. Por favor intente nuevamente.');
+      if (loadId === latestLoadId.current && !isSilent) {
+        setError('No se pudieron cargar las solicitudes del sistema. Por favor intente nuevamente.');
+      }
     } finally {
-      setLoading(false);
+      if (loadId === latestLoadId.current) setLoading(false);
     }
   }, [tabFilter, prioridadFilter, origenFilter, responsableFilter, categoriaFilter, ordenFinalizados, searchTerm, user?.userId, isApproved]);
 
@@ -261,7 +272,7 @@ export const GestionDashboardPage: React.FC = () => {
     const triggerRefresh = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        loadData();
+        void loadData(true);
         setLastRealtimeUpdate(new Date());
       }, 300);
     };
@@ -284,10 +295,10 @@ export const GestionDashboardPage: React.FC = () => {
       });
 
     const handleFocus = () => {
-      loadData();
+      void loadData(true);
     };
     const handleOnline = () => {
-      loadData();
+      void loadData(true);
     };
 
     window.addEventListener('focus', handleFocus);
@@ -1210,7 +1221,7 @@ export const GestionDashboardPage: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={loadData}
+            onClick={() => { void loadData(); }}
             style={{
               padding: '0.45rem 1rem',
               backgroundColor: '#b91c1c',

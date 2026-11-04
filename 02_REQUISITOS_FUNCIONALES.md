@@ -203,3 +203,15 @@ No inferir:
   - **Preservación estricta de tableros activos:**
     - El ordenamiento cronológico de `CAM-03` opera de forma restringida sobre la vista `Finalizados`.
     - Las columnas activas del Kanban (`Nuevo`, `En revisión`, `En proceso`, `Esperando información`) preservan íntegramente su orden canónico (priorización de retrabajos activos `retrabajo_activo = true`, orden por prioridad y antigüedad de ingreso).
+
+## 19. Backlog Evolutivo 2026-11 — Fase 2 (`CAM-05` — Refresco Automático sin Parpadeo Visual)
+
+- **CAM-05 — Refresco en segundo plano no intrusivo (Silent Background Revalidation):**
+  - **Problema resuelto:** En versiones anteriores, las actualizaciones automáticas disparadas por eventos de Supabase Realtime (`postgres_changes` en `pedidos`), recuperación de foco de la ventana (`focus`) o reconexión de red (`online`) ejecutaban `setLoading(true)`, provocando que el contenedor principal del tablero Kanban y las tablas terminales se desmontaran temporalmente, sustituyendo las tarjetas por un indicador de carga durante 200–300 ms (efecto "parpadeo visual").
+  - **Mecanismo de refresco desacoplado (`loadData(isSilent)`):**
+    - **Carga explícita inicial (`isSilent = false`):** Utilizada al montar el componente, al pulsar el botón "Reintentar" o al alternar pestañas y filtros estructurales. Muestra el estado de carga bloqueante (`loading = true`), limpia errores y reinicia la paginación a la página 1.
+    - **Refresco silencioso (`isSilent = true`):** Utilizado por las suscripciones Realtime, los oyentes de foco (`window.focus`) y reconexión (`window.online`).
+      - Mantiene el árbol DOM, las tarjetas visibles y la posición del usuario sin desmontaje ni parpadeo visual.
+      - **Preservación estricta de la paginación:** No reinicia `currentPage` a 1; el operador permanece en la página que está visualizando.
+      - **Resiliencia ante condiciones de carrera (Race Condition Guard):** Implementa un contador incremental `latestLoadId = useRef(0)`. Si un refresco anterior finaliza después de una acción o consulta más reciente, la respuesta obsoleta se descarta sin sobreescribir los datos actualizados.
+      - **Resiliencia ante fallos transitorios de red:** Si un refresco automático en segundo plano arroja un error de red o timeout, los datos visibles se preservan intactos sin mostrar banners invasivos que bloqueen la operación.

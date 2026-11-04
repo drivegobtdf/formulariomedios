@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { GestionDashboardPage } from '../pages/GestionDashboardPage';
 import * as AuthContextModule from '../auth/AuthContext';
@@ -925,6 +925,71 @@ describe('GestionDashboardPage Unit Tests', () => {
         expect(screen.getByText('02/11/2026 14:35')).toBeInTheDocument();
         expect(screen.getByText('31/10/2026 23:15')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('CAM-05 — Refresco sin parpadeo', () => {
+    const auth = {
+      user: mockApprovedProfile,
+      isLoading: false,
+      isApproved: true,
+      isAdmin: true,
+      isTeamOrAdmin: true,
+      isObserver: false,
+      signOut: vi.fn(),
+      refreshUser: vi.fn(),
+    };
+
+    it('mantiene el tablero visible mientras el refresco por foco sigue pendiente', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue(auth);
+      let completeRefresh!: (pedidos: gestionApi.PedidoListItem[]) => void;
+      const delayedRefresh = new Promise<gestionApi.PedidoListItem[]>((resolve) => {
+        completeRefresh = resolve;
+      });
+      const fetchSpy = vi.spyOn(gestionApi, 'fetchPedidos')
+        .mockResolvedValueOnce(mockPedidos)
+        .mockImplementationOnce(() => delayedRefresh);
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+      await waitFor(() => expect(screen.getByText('PED-2026-000001')).toBeInTheDocument());
+      fireEvent(window, new Event('focus'));
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+      expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
+      expect(screen.queryByText('Cargando pedidos...')).not.toBeInTheDocument();
+      await act(async () => completeRefresh(mockPedidos));
+      expect(screen.getByText('PED-2026-000001')).toBeInTheDocument();
+    });
+
+    it('ignora una respuesta automática anterior frente a una sincronización posterior', async () => {
+      vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue(auth);
+      let completeOldRefresh!: (pedidos: gestionApi.PedidoListItem[]) => void;
+      const oldRefresh = new Promise<gestionApi.PedidoListItem[]>((resolve) => {
+        completeOldRefresh = resolve;
+      });
+      const latestPedido = { ...mockPedidos[0], id: 'ped-latest', pedido_visible: 'PED-2026-ULTIMO' };
+      const fetchSpy = vi.spyOn(gestionApi, 'fetchPedidos')
+        .mockResolvedValueOnce(mockPedidos)
+        .mockImplementationOnce(() => oldRefresh)
+        .mockResolvedValueOnce([latestPedido]);
+
+      render(
+        <MemoryRouter>
+          <GestionDashboardPage />
+        </MemoryRouter>
+      );
+      await waitFor(() => expect(screen.getByText('PED-2026-000001')).toBeInTheDocument());
+      fireEvent(window, new Event('focus'));
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+      fireEvent(window, new Event('online'));
+      await waitFor(() => expect(screen.getByText('PED-2026-ULTIMO')).toBeInTheDocument());
+      await act(async () => completeOldRefresh(mockPedidos));
+      expect(screen.getByText('PED-2026-ULTIMO')).toBeInTheDocument();
+      expect(screen.queryByText('PED-2026-000001')).not.toBeInTheDocument();
+      expect(screen.queryByText('Cargando pedidos...')).not.toBeInTheDocument();
     });
   });
 });
