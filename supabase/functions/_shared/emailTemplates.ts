@@ -192,12 +192,24 @@ export function renderEmail(
     }
 
     // -------------------------------------------------------------------------
-    // 2. Información Faltante (Plazo Estricto de 48 Horas Corridas) — C04, C05
+    // 2. Información Faltante (Plazo Contractual 72h nuevas / 48h históricas) — C04, C05, CAM-01
     // -------------------------------------------------------------------------
     case 'informacion_faltante':
     case 'info_requested': {
       const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
-      const subject = `[PEDIDOS] Requerimiento de Información (48h): ${payload.pedido_visible || 'PED'}`;
+      const rawPlazo = Number(payload.plazo_horas);
+      let plazoHoras: number | null = Number.isFinite(rawPlazo) && rawPlazo > 0 ? Math.round(rawPlazo) : null;
+      if (plazoHoras === null && payload.expires_at && payload.created_at) {
+        const expMs = new Date(String(payload.expires_at)).getTime();
+        const creMs = new Date(String(payload.created_at)).getTime();
+        if (!Number.isNaN(expMs) && !Number.isNaN(creMs) && expMs > creMs) {
+          plazoHoras = Math.max(1, Math.round((expMs - creMs) / 3600000));
+        }
+      }
+
+      const subject = plazoHoras !== null
+        ? `[PEDIDOS] Requerimiento de Información (${plazoHoras}h): ${payload.pedido_visible || 'PED'}`
+        : `[PEDIDOS] Requerimiento de Información: ${payload.pedido_visible || 'PED'}`;
       const rawToken = String(payload.token || payload.raw_token || payload.info_token || '').trim();
       const actionUrl = rawToken
         ? `${cleanAppUrl}/solicitud-informacion#token=${encodeURIComponent(rawToken)}`
@@ -207,7 +219,17 @@ export function renderEmail(
       const mensajeSafe = escapeHtml(rawMensaje);
       const catSafe = escapeHtml(payload.categoria || '');
       const tipSafe = escapeHtml(payload.tipo || '');
-      const expiresAt = payload.expires_at ? new Date(payload.expires_at).toLocaleString('es-AR', { timeZone: 'America/Argentina/Ushuaia' }) : '48 horas corridas desde la emisión';
+      const parsedExpiresAt = payload.expires_at ? new Date(String(payload.expires_at)) : null;
+      const hasValidExpiresAt = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt.getTime());
+      const expiresAt = hasValidExpiresAt
+        ? parsedExpiresAt!.toLocaleString('es-AR', { timeZone: 'America/Argentina/Ushuaia' })
+        : plazoHoras !== null
+        ? `${plazoHoras} horas corridas desde la emisión`
+        : 'según fecha de vencimiento indicada en el portal';
+
+      const plazoBannerHtml = plazoHoras !== null
+        ? `⚠️ PLAZO CONTRACTUAL: Dispone de ${plazoHoras} HORAS CORRIDAS para responder este requerimiento (Vence: ${escapeHtml(expiresAt)}).`
+        : `⚠️ PLAZO CONTRACTUAL: Debe responder este requerimiento antes de su vencimiento (Vence: ${escapeHtml(expiresAt)}).`;
 
       const contentHtml = `
         <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
@@ -231,7 +253,7 @@ export function renderEmail(
 
         <div style="background-color: #FEE2E2; border-left: 4px solid #DC2626; padding: 14px; margin: 20px 0; border-radius: 4px;">
           <p style="margin: 0; font-weight: 700; color: #991B1B; font-size: 13px;">
-            ⚠️ PLAZO CONTRACTUAL: Dispone de 48 HORAS CORRIDAS para responder este requerimiento (Vence: ${escapeHtml(expiresAt)}).
+            ${plazoBannerHtml}
           </p>
         </div>
 
@@ -242,7 +264,14 @@ export function renderEmail(
         </div>
       `;
 
-      const text = `REQUERIMIENTO DE INFORMACIÓN COMPLEMENTARIA (48 HORAS CORRIDAS)\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nSe requiere información adicional para su pedido ${payload.pedido_visible || 'PED'}:\n\n"${rawMensaje}"\n\nATENCIÓN: Dispone de 48 horas corridas (Vence: ${expiresAt}) para ingresar su respuesta.\n\nPara responder ingrese a: ${actionUrl}\n`;
+      const textHeader = plazoHoras !== null
+        ? `REQUERIMIENTO DE INFORMACIÓN COMPLEMENTARIA (${plazoHoras} HORAS CORRIDAS)`
+        : 'REQUERIMIENTO DE INFORMACIÓN COMPLEMENTARIA';
+      const textAtencion = plazoHoras !== null
+        ? `ATENCIÓN: Dispone de ${plazoHoras} horas corridas (Vence: ${expiresAt}) para ingresar su respuesta.`
+        : `ATENCIÓN: Debe ingresar su respuesta antes del vencimiento (Vence: ${expiresAt}).`;
+
+      const text = `${textHeader}\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nSe requiere información adicional para su pedido ${payload.pedido_visible || 'PED'}:\n\n"${rawMensaje}"\n\n${textAtencion}\n\nPara responder ingrese a: ${actionUrl}\n`;
 
       return {
         subject,
@@ -265,10 +294,15 @@ export function renderEmail(
       const tipSafe = escapeHtml(payload.tipo || 'General');
       const solicitanteSafe = escapeHtml(payload.solicitante_nombre || payload.nombre_apellido || 'Solicitante');
       const areaSafe = escapeHtml(payload.area_solicitante || 'Gobierno');
+      const rawRespPlazo = Number(payload.plazo_horas);
+      const respPlazoHoras = Number.isFinite(rawRespPlazo) && rawRespPlazo > 0 ? Math.round(rawRespPlazo) : null;
+      const headingTitle = respPlazoHoras !== null
+        ? `Respuesta a Solicitud de Información (${respPlazoHoras} h)`
+        : 'Respuesta a Solicitud de Información';
 
       const contentHtml = `
         <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
-          Respuesta a Solicitud de Información (48 h)
+          ${headingTitle}
         </h2>
         <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
           Hola <strong>${nombreSafe}</strong>,

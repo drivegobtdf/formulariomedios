@@ -98,7 +98,7 @@ export const SolicitudInformacionPage: React.FC = () => {
       <div style={{ maxWidth: '640px', margin: '3rem auto', padding: '1.5rem', background: '#fef2f2', border: '1px solid #f87171', borderRadius: '0.75rem', color: '#991b1b' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>Solicitud No Disponible</h2>
         <p style={{ margin: 0 }}>
-          {validationError || validation?.message || 'El enlace provisto es inválido o ha expirado tras las 48 horas corridas de vigencia.'}
+          {validationError || validation?.message || 'El enlace provisto es inválido o la solicitud de información ya no se encuentra disponible.'}
         </p>
       </div>
     );
@@ -124,12 +124,21 @@ export const SolicitudInformacionPage: React.FC = () => {
     );
   }
 
+  const expDate = solicitud?.expires_at ? new Date(solicitud.expires_at) : null;
+  const venceStr = expDate && !Number.isNaN(expDate.getTime())
+    ? expDate.toLocaleString('es-AR', { timeZone: 'America/Argentina/Ushuaia' })
+    : null;
+  const diffHours = solicitud?.created_at && expDate && !Number.isNaN(expDate.getTime())
+    ? Math.round((expDate.getTime() - new Date(solicitud.created_at).getTime()) / 3600000)
+    : null;
+  const plazoHoras = diffHours === 48 || diffHours === 72 ? diffHours : null;
+
   return (
     <div style={{ maxWidth: '720px', margin: '2rem auto', padding: '1.5rem' }}>
       <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.75rem', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
         <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
           <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: 700 }}>
-            Información solicitada · 48 h
+            {plazoHoras ? `Información solicitada · ${plazoHoras} h` : 'Información solicitada'}
           </span>
           <h1 style={{ fontSize: '1.625rem', fontWeight: 800, color: '#0f172a', margin: '0.25rem 0' }}>
             Pedido {solicitud?.pedido_visible}
@@ -145,7 +154,7 @@ export const SolicitudInformacionPage: React.FC = () => {
             {solicitud?.mensaje}
           </p>
           <div style={{ fontSize: '0.75rem', color: '#a16207', marginTop: '0.6rem', fontWeight: 600 }}>
-            Vence: {solicitud?.expires_at ? new Date(solicitud.expires_at).toLocaleString('es-AR') : '48 h'} (48 h)
+            Vence: {venceStr || 'Sin fecha especificada'}{plazoHoras ? ` (${plazoHoras} h)` : ''}
           </div>
         </div>
 

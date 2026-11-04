@@ -127,7 +127,7 @@ Casos:
 ## 8. Información faltante
 
 - crear no muta estado;
-- 48 horas corridas (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas);
+- 72 horas corridas para nuevas emisiones (`CAM-01`: evolución 15 días → 48 horas corridas → 72 horas corridas) y compatibilidad histórica estricta con solicitudes previas de 48 horas;
 - respuesta;
 - vencimiento (now >= expires_at rechazado);
 - archivo/link;

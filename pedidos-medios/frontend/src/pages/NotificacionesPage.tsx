@@ -140,7 +140,7 @@ export const NotificacionesPage: React.FC = () => {
               <span>🔔</span> Centro de Notificaciones
             </h1>
             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--pedidos-text-secondary, #475569)' }}>
-              Historial de asignaciones, notas internas, respuestas 48h y revisiones
+              Historial de asignaciones, notas internas, respuestas de información y revisiones
             </p>
           </div>
 

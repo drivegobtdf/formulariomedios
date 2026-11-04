@@ -1246,10 +1246,10 @@ export const GestionDashboardPage: React.FC = () => {
                             />
                           </div>
 
-                          {/* 48h Info Request Badge if applicable */}
+                          {/* Info Request Badge if applicable */}
                           {ped.estado === 'Esperando información' && (
                             <div className="pedidos-badge-info-pendiente">
-                              ⏳ 48h Info Pendiente
+                              ⏳ Info Pendiente
                             </div>
                           )}
 

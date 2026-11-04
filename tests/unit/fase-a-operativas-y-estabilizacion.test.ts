@@ -22,12 +22,14 @@ describe('FASE A — Mejoras Operativas y Estabilización (Sistema PEDIDOS)', ()
       responsable_id: '11111111-1111-1111-1111-111111111111',
     };
 
-    it('1.1. emailTemplates.ts renderiza el correo dirigido al operador con link a /gestion/pedidos/:id', () => {
+    it('1.1. emailTemplates.ts renderiza el correo dirigido al operador con link a /gestion/pedidos/:id y título neutro si no se conoce el plazo original', () => {
       const email = renderEmail('informacion_respondida', payload, sampleAppUrl);
 
       expect(email.n8nTipo).toBe('informacion_respondida');
       expect(email.subject).toBe('[PEDIDOS] Información respondida: PED-2026-D000199');
-      expect(email.html).toContain('Respuesta a Solicitud de Información (48 h)');
+      expect(email.html).toContain('Respuesta a Solicitud de Información');
+      expect(email.html).not.toContain('Respuesta a Solicitud de Información (48 h)');
+      expect(email.html).not.toContain('Respuesta a Solicitud de Información (72 h)');
       expect(email.html).toContain('Hola <strong>Carlos Diseñador</strong>');
       expect(email.html).toContain('PED-2026-D000199');
       expect(email.html).toContain('Diseño Gráfico — Flyer Digital');

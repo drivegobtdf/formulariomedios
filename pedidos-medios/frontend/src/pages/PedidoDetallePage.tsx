@@ -85,9 +85,19 @@ export function getHistorialEventInfo(evento: string, payload: any) {
       desc: payload?.respuesta_texto ? `Respuesta: "${payload.respuesta_texto}"` : 'El solicitante respondió al requerimiento de información',
     };
   }
-  if (norm.includes('info_request_created') || (norm.includes('info') && norm.includes('creat')) || norm.includes('solicitud_informacion_creada') || (norm.includes('solicitud') && norm.includes('info'))) {
+  if (norm.includes('info_request_created') || norm.includes('info_requested') || (norm.includes('info') && norm.includes('creat')) || norm.includes('solicitud_informacion_creada') || (norm.includes('solicitud') && norm.includes('info'))) {
+    const rawPlazo = Number(payload?.plazo_horas);
+    let plazoHoras: number | null = Number.isFinite(rawPlazo) && rawPlazo > 0 ? Math.round(rawPlazo) : null;
+    if (plazoHoras === null && payload?.expires_at && payload?.created_at) {
+      const expMs = new Date(String(payload.expires_at)).getTime();
+      const creMs = new Date(String(payload.created_at)).getTime();
+      if (!Number.isNaN(expMs) && !Number.isNaN(creMs) && expMs > creMs) {
+        const diff = Math.round((expMs - creMs) / 3600000);
+        if (diff === 48 || diff === 72) plazoHoras = diff;
+      }
+    }
     return {
-      title: 'Solicitud de Información Emitida (48h)',
+      title: plazoHoras ? `Solicitud de Información Emitida (${plazoHoras}h)` : 'Solicitud de Información Emitida',
       icon: '⚠️',
       color: '#d97706',
       desc: payload?.mensaje ? `Requerimiento: "${payload.mensaje}"` : 'Se emitió una solicitud de información complementaria al solicitante',
@@ -684,7 +694,7 @@ export const PedidoDetallePage: React.FC = () => {
       await createInfoRequest(pedido.id, infoReqMensaje.trim(), pedido.version);
       setShowInfoReqModal(false);
       setInfoReqMensaje('');
-      setSuccessMessage('Solicitud de información emitida con vigencia contractual de 48 horas corridas.');
+      setSuccessMessage('Solicitud de información emitida con vigencia contractual de 72 horas corridas.');
       await loadData();
     } catch (err: any) {
       const msg = err.message || 'Error al crear solicitud de información.';
@@ -1278,7 +1288,7 @@ export const PedidoDetallePage: React.FC = () => {
                           setShowStateModal(true);
                         }}
                         disabled={actionLoading || !pedido.responsable_user_id || hasPendingInfo}
-                        title={hasPendingInfo ? 'Esperando respuesta del solicitante a la solicitud de información de 48 h' : (!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En revisión' : 'Pasar a En revisión')}
+                        title={hasPendingInfo ? 'Esperando respuesta del solicitante a la solicitud de información pendiente' : (!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En revisión' : 'Pasar a En revisión')}
                         style={{
                           background: 'var(--pedidos-control-bg, #f8fafc)',
                           color: !pedido.responsable_user_id || hasPendingInfo ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
@@ -1309,7 +1319,7 @@ export const PedidoDetallePage: React.FC = () => {
                           setShowStateModal(true);
                         }}
                         disabled={actionLoading || !pedido.responsable_user_id || hasPendingInfo}
-                        title={hasPendingInfo ? 'Esperando respuesta del solicitante a la solicitud de información de 48 h' : (!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En proceso' : 'Pasar a En proceso')}
+                        title={hasPendingInfo ? 'Esperando respuesta del solicitante a la solicitud de información pendiente' : (!pedido.responsable_user_id ? 'Debe asignar un responsable antes de pasar a En proceso' : 'Pasar a En proceso')}
                         style={{
                           background: 'var(--pedidos-control-bg, #f8fafc)',
                           color: !pedido.responsable_user_id || hasPendingInfo ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-control-text, #334155)',
@@ -1327,7 +1337,7 @@ export const PedidoDetallePage: React.FC = () => {
                     </>
                   )}
 
-                  {/* 4. Solicitud de Información 48h (Solo para pedidos públicos) */}
+                  {/* 4. Solicitud de Información 72h (Solo para pedidos públicos) */}
                   {pedido.origen !== 'interno' && ['Nuevo', 'En revisión', 'En proceso'].includes(pedido.estado) && !hasPendingInfo && (
                     <button
                       type="button"
@@ -1347,7 +1357,7 @@ export const PedidoDetallePage: React.FC = () => {
                         cursor: actionLoading ? 'not-allowed' : 'pointer',
                       }}
                     >
-                      Pedir información · 48 h
+                      Pedir información · 72 h
                     </button>
                   )}
                 </div>
@@ -2152,7 +2162,7 @@ export const PedidoDetallePage: React.FC = () => {
       </div>
 
       {/* =====================================================================
-          SECCIÓN INFERIOR: Solicitudes de Info (48h), Notas y Bitácora, Versiones de Finalización
+          SECCIÓN INFERIOR: Solicitudes de Info, Notas y Bitácora, Versiones de Finalización
          ===================================================================== */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
         {/* Solicitudes de Información al Solicitante */}
@@ -2160,7 +2170,7 @@ export const PedidoDetallePage: React.FC = () => {
           <div className="pedidos-detalle-card-header">
             <div>
               <h2 className="pedidos-detalle-card-title">
-                Información solicitada · 48 h
+                Información solicitada
               </h2>
             </div>
           </div>
@@ -2209,7 +2219,11 @@ export const PedidoDetallePage: React.FC = () => {
                       Estado: {si.estado}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
-                      Emitida: {new Date(si.created_at).toLocaleString('es-AR')} · Vence: {new Date(si.expires_at).toLocaleString('es-AR')}
+                      Emitida: {si.created_at ? new Date(si.created_at).toLocaleString('es-AR', { timeZone: 'America/Argentina/Ushuaia' }) : '-'} · Vence: {si.expires_at ? new Date(si.expires_at).toLocaleString('es-AR', { timeZone: 'America/Argentina/Ushuaia' }) : '-'}{(() => {
+                        if (!si.created_at || !si.expires_at) return '';
+                        const diff = Math.round((new Date(si.expires_at).getTime() - new Date(si.created_at).getTime()) / 3600000);
+                        return diff === 48 || diff === 72 ? ` (${diff} h)` : '';
+                      })()}
                     </span>
                   </div>
                   <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #1e293b)', whiteSpace: 'pre-wrap' }}>
@@ -2876,11 +2890,11 @@ export const PedidoDetallePage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Solicitud de Información (48h) */}
+      {/* Modal Solicitud de Información (72h) */}
       {showInfoReqModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--pedidos-surface-backdrop, rgba(0,0,0,0.6))', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
           <div style={{ background: 'var(--pedidos-surface-overlay, #ffffff)', color: 'var(--pedidos-text-primary, #1e293b)', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)', borderRadius: '0.75rem', maxWidth: '480px', width: '100%', padding: '1.5rem', boxShadow: 'var(--pedidos-shadow-lg, 0 10px 25px rgba(0,0,0,0.2))' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: 'var(--pedidos-status-pending-text, #b45309)' }}>Pedir información · 48 h</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: 'var(--pedidos-status-pending-text, #b45309)' }}>Pedir información · 72 h</h3>
 
             {modalError && (
               <div style={{ background: 'var(--pedidos-status-rejected-bg, #fef2f2)', border: '1px solid var(--pedidos-status-rejected-border, #f87171)', color: 'var(--pedidos-status-rejected-text, #991b1b)', padding: '0.65rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>

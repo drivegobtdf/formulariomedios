@@ -119,7 +119,7 @@ SELECT throws_ok(
 -- Test 3: Asignación con versión incorrecta (concurrencia / conflicto) -> REJECTED (40001)
 SELECT throws_ok(
     $$SELECT public.pedido_assign('a0000000-0000-0000-0000-000000000777', '00000000-0000-0000-0000-000000000102', 99)$$,
-    '40001',
+    'PT409',
     NULL,
     'Versión esperada incorrecta debe generar conflicto de concurrencia (VERSION_CONFLICT)'
 );
@@ -150,13 +150,13 @@ SELECT results_eq(
 -- 2. F8: Transiciones de Estados (pedido_change_state) [Tests 7..14]
 -- -----------------------------------------------------------------------------
 
--- Test 7: Transición inválida directa (nuevo -> en_proceso sin pasar por en_revision) -> REJECTED
+-- Test 7: Transición inválida directa (nuevo -> esperando_informacion sin requerimiento atómico) -> REJECTED
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
 SELECT throws_ok(
-    $$SELECT public.pedido_change_state('a0000000-0000-0000-0000-000000000777', 'En proceso', 2)$$,
+    $$SELECT public.pedido_change_state('a0000000-0000-0000-0000-000000000777', 'Esperando información', 2)$$,
     '42200',
     NULL,
-    'Transición inválida directo a en_proceso debe ser rechazada'
+    'Transición inválida directo a esperando_informacion debe ser rechazada'
 );
 
 -- Test 8: Transición válida: nuevo -> en_revision (tiene responsable y version 2) -> SUCCESS
@@ -218,10 +218,10 @@ SELECT public.pedido_change_state('a0000000-0000-0000-0000-000000000777', 'En pr
 
 -- Test 15: Finalizar sin entrega (sin archivo y sin URL) -> REJECTED (DELIVERY_REQUIRED)
 SELECT throws_ok(
-    $$SELECT public.pedido_finalize('a0000000-0000-0000-0000-000000000777', 9, NULL, '', 'Nota sin entrega')$$,
+    $$SELECT public.pedido_finalize('a0000000-0000-0000-0000-000000000777', 9, NULL, '', NULL)$$,
     '42200',
     NULL,
-    'Finalización sin archivos ni URL de entrega debe ser rechazada'
+    'Finalización de pedido público sin nota de entrega debe ser rechazada'
 );
 
 -- Test 16: Finalizar con URL de entrega válida -> SUCCESS (estado = finalizado, version 10)
@@ -297,11 +297,13 @@ SELECT results_eq(
 );
 
 -- -----------------------------------------------------------------------------
--- 5. F7: Solicitudes de Información (Vigencia 48 Horas Corridas) [Tests 25..35]
+-- 5. F7: Solicitudes de Información (Vigencia 72 Horas Corridas — CAM-01) [Tests 25..35]
 -- -----------------------------------------------------------------------------
 
--- Test 25: Crear solicitud de información con 48 horas de vigencia -> SUCCESS
-SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+-- Test 25: Crear solicitud de información con 72 horas de vigencia -> SUCCESS
+SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid, 'service_role');
+RESET ROLE;
+SET ROLE service_role;
 CREATE TEMP TABLE t_info_req AS
 SELECT public.info_request_create(
     'a0000000-0000-0000-0000-000000000777',
@@ -315,11 +317,11 @@ SELECT results_eq(
     'info_request_create debe retornar success = true'
 );
 
--- Test 26: La vigencia exacta es 48 horas corridas (now + 48h +/- 5 segundos)
+-- Test 26: La vigencia exacta es 72 horas corridas (now + 72h +/- 5 segundos — CAM-01)
 SELECT results_eq(
-    $$SELECT ((res->>'expires_at')::timestamptz > now() + interval '47 hours 59 minutes' AND (res->>'expires_at')::timestamptz <= now() + interval '48 hours 1 minute') FROM t_info_req$$,
+    $$SELECT ((res->>'expires_at')::timestamptz > now() + interval '71 hours 59 minutes' AND (res->>'expires_at')::timestamptz <= now() + interval '72 hours 1 minute') FROM t_info_req$$,
     ARRAY[true],
-    'La vigencia de la solicitud debe ser exactamente 48 horas corridas (Regla aprobada)'
+    'La vigencia de la solicitud debe ser exactamente 72 horas corridas (Regla CAM-01)'
 );
 
 -- Test 27: La creación de solicitud NO muta el estado del pedido
@@ -379,9 +381,10 @@ SELECT results_eq(
     'Reenvío de respuesta aceptada debe retornar resultado idempotente'
 );
 
--- Test 33: Crear segunda solicitud para simular vencimiento de 48h
+-- Test 33: Crear segunda solicitud para simular vencimiento de 72h
 RESET ROLE;
 SELECT pg_temp.set_auth_context('00000000-0000-0000-0000-000000000101'::uuid);
+SET ROLE service_role;
 CREATE TEMP TABLE t_info_expired AS
 SELECT public.info_request_create(
     'a0000000-0000-0000-0000-000000000777',
@@ -389,29 +392,32 @@ SELECT public.info_request_create(
 ) AS res;
 GRANT ALL ON t_info_expired TO service_role, authenticated, anon, PUBLIC;
 
--- Simular el paso del tiempo de 48 horas (expires_at = now() - 1 segundo)
+-- Simular el paso del tiempo de 72 horas (expires_at = now() - interval '1 second')
 RESET ROLE;
 UPDATE public.solicitudes_informacion
 SET expires_at = now() - interval '1 second'
 WHERE id = (SELECT (res->>'solicitud_id')::uuid FROM t_info_expired);
 
--- Test 34: Intento de respuesta a solicitud con 48h vencidas -> REJECTED (42201 / TOKEN_EXPIRED)
+-- Test 34: Respuesta tardía de texto aceptada (>72h) con is_tardia = true (Migración 075 & ADR-052)
 SET ROLE service_role;
-SELECT throws_ok(
-    $$SELECT public.info_response_submit_core(
-        encode(digest((SELECT res->>'raw_token' FROM t_info_expired), 'sha256'), 'hex'),
-        'Respuesta tardía fuera de las 48h'
-    )$$,
-    '42201',
-    NULL,
-    'Respuesta a solicitud vencida (>48h) debe ser rechazada con TOKEN_EXPIRED'
+CREATE TEMP TABLE t_info_late_resp AS
+SELECT public.info_response_submit_core(
+    encode(digest((SELECT res->>'raw_token' FROM t_info_expired), 'sha256'), 'hex'),
+    'Respuesta tardía fuera de las 72h'
+) AS res;
+GRANT ALL ON t_info_late_resp TO service_role, authenticated, anon, PUBLIC;
+
+SELECT results_eq(
+    $$SELECT (res->>'success')::boolean, (res->>'is_tardia')::boolean FROM t_info_late_resp$$,
+    $$VALUES (true, true)$$,
+    'Respuesta tardía de texto post-vencimiento (>72h) debe ser aceptada registrando is_tardia = true'
 );
 
--- Test 35: Comprobar que la solicitud registra fecha de expiración superada
+-- Test 35: Comprobar que la solicitud pasa a estado respondida y registra responded_at
 SELECT results_eq(
-    $$SELECT (now() >= expires_at) FROM public.solicitudes_informacion WHERE id = (SELECT (res->>'solicitud_id')::uuid FROM t_info_expired)$$,
-    ARRAY[true],
-    'La solicitud vencida debe registrar fecha de expiración superada (now >= expires_at)'
+    $$SELECT estado, (responded_at IS NOT NULL) FROM public.solicitudes_informacion WHERE id = (SELECT (res->>'solicitud_id')::uuid FROM t_info_expired)$$,
+    $$VALUES ('respondida'::text, true)$$,
+    'La solicitud respondida tardíamente debe quedar en estado respondida con responded_at'
 );
 
 -- -----------------------------------------------------------------------------

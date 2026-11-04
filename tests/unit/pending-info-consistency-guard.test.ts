@@ -7,6 +7,8 @@ describe('Migration 044: Info Concurrency Hardening & Terminal State Guard (H1 &
     estado: 'pendiente' | 'respondida' | 'vencida';
     expires_at: string;
     respuesta_texto?: string;
+    is_tardia?: boolean;
+    responded_at?: string;
   }
 
   interface PedidoState {
@@ -30,13 +32,15 @@ describe('Migration 044: Info Concurrency Hardening & Terminal State Guard (H1 &
   ];
 
   // Emulación de lógica backend D1 + H1: Respuesta de solicitud de información con serialización sobre PED
+  // Alineada con info_response_submit_core vigente (Migración 075 & CAM-01 / ADR-052)
   function simulateInfoResponse(params: {
     solicitudId: string;
     pedido: PedidoState;
     solicitudes: SolicitudInfo[];
     currentTime?: Date;
+    respuestaTexto?: string;
   }) {
-    const { solicitudId, pedido, solicitudes, currentTime = new Date() } = params;
+    const { solicitudId, pedido, solicitudes, currentTime = new Date(), respuestaTexto } = params;
     const sol = solicitudes.find((s) => s.id === solicitudId);
 
     if (!sol) {
@@ -47,16 +51,19 @@ describe('Migration 044: Info Concurrency Hardening & Terminal State Guard (H1 &
       return { success: true, idempotent: true, pedido_estado: pedido.estado };
     }
 
-    if (currentTime.getTime() >= new Date(sol.expires_at).getTime()) {
-      sol.estado = 'vencida';
-      throw new Error('TOKEN_EXPIRED: La solicitud de información ha vencido tras 48 horas corridas');
-    }
+    // Regla vigente (Migración 075 & CAM-01 / ADR-052):
+    // La respuesta de texto tardía post-vencimiento (>= expires_at) es ACEPTADA si la solicitud sigue pendiente,
+    // registrando is_tardia = true y pasando a estado respondida.
+    const isTardia = currentTime.getTime() >= new Date(sol.expires_at).getTime();
 
     // 1. Marcar como respondida
     sol.estado = 'respondida';
+    sol.is_tardia = isTardia;
+    sol.respuesta_texto = respuestaTexto || 'Respuesta aportada';
+    sol.responded_at = currentTime.toISOString();
 
     // 2. H1: Serialización en public.pedidos FOR UPDATE
-    // Con el lock de pedidos adquirido, evaluar si quedan solicitudes pendientes vigentes (< 48h)
+    // Con el lock de pedidos adquirido, evaluar si quedan solicitudes pendientes vigentes (< 72h / contractuales)
     const hasOtherPendingAndValid = solicitudes.some((s) => {
       if (s.id === solicitudId) return false;
       const isPending = s.estado === 'pendiente';
@@ -75,6 +82,7 @@ describe('Migration 044: Info Concurrency Hardening & Terminal State Guard (H1 &
     return {
       success: true,
       solicitud_id: sol.id,
+      is_tardia: isTardia,
       pedido_estado: pedido.estado,
       pedido_version: pedido.version,
     };
@@ -111,7 +119,7 @@ describe('Migration 044: Info Concurrency Hardening & Terminal State Guard (H1 &
       throw new Error(`VERSION_CONFLICT: El pedido fue modificado concurrentemente (esperada ${expectedVersion}, actual ${pedido.version})`);
     }
 
-    const expiresAt = new Date(currentTime.getTime() + 48 * 3600 * 1000).toISOString();
+    const expiresAt = new Date(currentTime.getTime() + 72 * 3600 * 1000).toISOString();
     const newSol: SolicitudInfo = {
       id: solicitudId,
       pedido_id: pedido.id,
@@ -169,7 +177,7 @@ describe('Migration 044: Info Concurrency Hardening & Terminal State Guard (H1 &
       throw new Error('RESPONSABLE_REQUIRED: El responsable asignado no es un operador o administrador aprobado válido');
     }
 
-    // D2 HARD GUARD: Rechazar si existen solicitudes de información pendientes y vigentes (< 48h)
+    // D2 HARD GUARD: Rechazar si existen solicitudes de información pendientes y vigentes (< 72h / contractuales)
     const hasPendingAndValidInfo = solicitudes.some((s) => {
       const isPending = s.estado === 'pendiente';
       const isVigente = currentTime.getTime() < new Date(s.expires_at).getTime();
@@ -177,7 +185,7 @@ describe('Migration 044: Info Concurrency Hardening & Terminal State Guard (H1 &
     });
 
     if (hasPendingAndValidInfo) {
-      throw new Error('PENDING_INFO_REQUEST: No se puede finalizar el pedido porque posee solicitudes de información pendientes y vigentes (48h)');
+      throw new Error('PENDING_INFO_REQUEST: No se puede finalizar el pedido porque posee solicitudes de información pendientes y vigentes');
     }
 
     pedido.estado = 'Finalizado';
@@ -209,7 +217,7 @@ describe('Migration 044: Info Concurrency Hardening & Terminal State Guard (H1 &
         id: 'sol-reg-1',
         pedido_id: 'ped-reg-1',
         estado: 'pendiente',
-        expires_at: new Date(now.getTime() + 48 * 3600 * 1000).toISOString(),
+        expires_at: new Date(now.getTime() + 72 * 3600 * 1000).toISOString(),
       },
     ];
 
@@ -280,13 +288,13 @@ describe('Migration 044: Info Concurrency Hardening & Terminal State Guard (H1 &
         id: 'sol-reg-3a',
         pedido_id: 'ped-reg-3',
         estado: 'pendiente',
-        expires_at: new Date(now.getTime() + 48 * 3600 * 1000).toISOString(),
+        expires_at: new Date(now.getTime() + 72 * 3600 * 1000).toISOString(),
       },
       {
         id: 'sol-reg-3b',
         pedido_id: 'ped-reg-3',
         estado: 'pendiente',
-        expires_at: new Date(now.getTime() + 48 * 3600 * 1000).toISOString(),
+        expires_at: new Date(now.getTime() + 72 * 3600 * 1000).toISOString(),
       },
     ];
 
@@ -368,6 +376,45 @@ describe('Migration 044: Info Concurrency Hardening & Terminal State Guard (H1 &
     expect(result.pedido_estado).toBe('En proceso');
     expect(pedido.estado).toBe('En proceso');
     expect(pedido.version).toBe(6);
+  });
+
+  it('4b. Respuesta tardía de texto post-vencimiento (now >= expires_at) con solicitud pendiente -> ACEPTADA con is_tardia = true y PED pasa a En proceso', () => {
+    const now = new Date();
+    const pedido: PedidoState = {
+      id: 'ped-reg-tardia',
+      estado: 'Esperando información',
+      version: 3,
+      responsable_user_id: 'usr-equipo-1',
+    };
+
+    const solicitudes: SolicitudInfo[] = [
+      {
+        id: 'sol-reg-tardia-1',
+        pedido_id: 'ped-reg-tardia',
+        estado: 'pendiente',
+        // Expirada hace 5 horas respecto a now() (post-72h contractuales)
+        expires_at: new Date(now.getTime() - 5 * 3600 * 1000).toISOString(),
+      },
+    ];
+
+    const result = simulateInfoResponse({
+      solicitudId: 'sol-reg-tardia-1',
+      pedido,
+      solicitudes,
+      currentTime: now,
+      respuestaTexto: 'Respuesta de texto aportada luego del vencimiento del plazo contractual.',
+    });
+
+    // Aserciones explícitas de contrato vigente:
+    expect(result.success).toBe(true);
+    expect(result.is_tardia).toBe(true);
+    expect(solicitudes[0].is_tardia).toBe(true);
+    expect(solicitudes[0].estado).toBe('respondida');
+    expect(solicitudes[0].respuesta_texto).toBe('Respuesta de texto aportada luego del vencimiento del plazo contractual.');
+    expect(solicitudes[0].responded_at).toBeDefined();
+    expect(result.pedido_estado).toBe('En proceso');
+    expect(pedido.estado).toBe('En proceso');
+    expect(pedido.version).toBe(4);
   });
 
   it('5. Respuesta tardía sobre PED que ya no está en Esperando información -> No modifica indebidamente el estado', () => {

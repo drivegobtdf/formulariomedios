@@ -86,7 +86,7 @@ Equipo/Admin
 → PED conserva estado salvo acción explícita
 ```
 
-A las 48 horas corridas una solicitud pendiente se marca vencida (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas). A partir de now >= expires_at, una nueva respuesta debe rechazarse.
+A las 72 horas corridas desde su emisión (`CAM-01`: evolución de 15 días históricos → 48 horas corridas anteriores → 72 horas corridas; solicitudes históricas de 48 h conservan su `expires_at` original), la solicitud alcanza su vencimiento (`now >= expires_at`): la carga de archivos adjuntos posteriores al vencimiento se rechaza con HTTP 410, mientras que la respuesta textual vía enlace directo sigue siendo aceptada y auditada con indicador `is_tardia = true`.
 
 ## 7. Solicitar acceso
 

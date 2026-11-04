@@ -29,7 +29,7 @@
 | email inicial agrupado | ADR-046 | submission.created | QA-010 |
 | email posterior individual | ADR-046 | pedido.* | QA-011 |
 | seguimiento seguro | SRS-SEG | tracking Edge | security/E2E |
-| info 48h corridas (aprobado) | SRS-INF | solicitudes_informacion (expires_at = created_at + 48h) | info QA |
+| info 72h corridas (`CAM-01`, hist. 48h preservado) | SRS-INF / ADR-052 | solicitudes_informacion (`expires_at = now() + 72h` nuevas; preserva `expires_at` en históricas) | info QA / `cam01-info-request-72h` |
 | finalización entrega | ADR-049 | entregas_pedido | QA-EST-008 |
 | cancelar/reabrir | ADR-050 | RPC | QA-EST-007..012 |
 | archivar/restaurar | ADR-047 | archivado_at/audit | QA archivo |

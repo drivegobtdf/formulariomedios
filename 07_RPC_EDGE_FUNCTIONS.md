@@ -177,7 +177,7 @@ Solo Finalizado/Cancelado. Modifica campos de archivado, no `estado`.
 `info_request_create`:
 - PED;
 - mensaje;
-- vigencia 48 horas corridas (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas);
+- vigencia 72 horas corridas para nuevas solicitudes en `public.info_request_create_atomic` y `public.info_request_create` (`CAM-01`: evolución 15 días → 48 horas corridas → 72 horas corridas; `public.comunicacion_enqueue_info_requested` calcula y preserva el plazo real `48` o `72` horas a partir de `expires_at - created_at`, y `public.pedido_finalize` emite mensaje neutral sin `(48h)` fijo);
 - token hash;
 - evento.
 No cambia estado.

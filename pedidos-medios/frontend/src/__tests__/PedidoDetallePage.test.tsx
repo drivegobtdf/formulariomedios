@@ -1293,7 +1293,8 @@ describe('PedidoDetallePage Unit Tests', () => {
     expect(screen.getByText('INTERNO')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Cobertura Especial Festival Invierno' })).toBeInTheDocument();
 
-    // El botón de pedir información de 48h NUNCA debe estar presente para pedidos internos
+    // El botón de pedir información (72h / 48h) NUNCA debe estar presente para pedidos internos
+    expect(screen.queryByRole('button', { name: /Pedir información · 72 h/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pedir información · 48 h/i })).not.toBeInTheDocument();
   });
 

@@ -58,7 +58,7 @@ Reglas:
 
 - mensaje;
 - token seguro;
-- 48 horas corridas (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas);
+- 72 horas corridas para nuevas solicitudes (`CAM-01`: evolución de 15 días históricos → 48 horas corridas anteriores → 72 horas corridas, preservando `expires_at` y duración de 48 h en registros históricos);
 - respuesta texto + archivos permitidos + link opcional;
 - estado propio pendiente/respondida/vencida;
 - no muta PED automáticamente.

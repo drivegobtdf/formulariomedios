@@ -262,7 +262,7 @@ Cada solicitud tendrá ciclo:
 `pendiente → respondida | vencida`.
 
 ### SRS-INF-003
-Vigencia funcional: 48 horas corridas (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas).
+Vigencia funcional: 72 horas corridas desde su emisión para nuevas solicitudes (`CAM-01`, evolución histórica: 15 días en revisión 2.0 → 48 horas corridas en revisión 3.0 → 72 horas corridas en `CAM-01`). Las solicitudes históricas emitidas bajo vigencia de 48 horas conservan su `expires_at` y duración original sin alteración retroactiva.
 
 ### SRS-INF-004
 El solicitante podrá responder texto, adjuntos permitidos y/o link al material.
@@ -478,7 +478,7 @@ Las alertas no cambiarán estados automáticamente.
 ### SRS-DASH-006
 Los umbrales serán configurables. Defaults funcionales:
 - nuevo sin asignar: advertencia desde 1 día hábil;
-- solicitud de información: 48 horas corridas (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas);
+- solicitud de información: 72 horas corridas para nuevas emisiones (`CAM-01`: evolución 15 días históricos → 48 horas corridas vigentes anteriormente → 72 horas corridas; preservando 48 horas en solicitudes históricas ya emitidas);
 - otros umbrales se versionarán/configurarán antes de producción.
 
 ## 16. Comunicaciones

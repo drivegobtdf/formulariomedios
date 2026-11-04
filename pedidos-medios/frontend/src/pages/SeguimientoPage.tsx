@@ -259,19 +259,27 @@ export const SeguimientoPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Solicitudes de información faltante (48h) */}
+            {/* Solicitudes de información faltante */}
             {data.solicitudes_informacion && data.solicitudes_informacion.length > 0 && (
               <div style={{ border: '1px solid #fef08a', backgroundColor: '#fefce8', borderRadius: '0.5rem', padding: '1.25rem' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#854d0e', margin: '0 0 0.75rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Información solicitada · 48 h
+                  Información solicitada
                 </h3>
                 {data.solicitudes_informacion.map((s) => {
-                  const isExpired = Date.now() >= new Date(s.expires_at).getTime();
+                  const expDate = new Date(s.expires_at);
+                  const isExpired = Date.now() >= expDate.getTime();
+                  const venceStr = !Number.isNaN(expDate.getTime())
+                    ? expDate.toLocaleString('es-AR', { timeZone: 'America/Argentina/Ushuaia' })
+                    : s.expires_at;
+                  const diffHours = s.created_at && s.expires_at && !Number.isNaN(expDate.getTime())
+                    ? Math.round((expDate.getTime() - new Date(s.created_at).getTime()) / 3600000)
+                    : null;
+                  const plazoLabel = diffHours === 48 || diffHours === 72 ? ` (${diffHours} h)` : '';
                   return (
                     <div key={s.id} style={{ backgroundColor: '#ffffff', padding: '1rem', borderRadius: '0.375rem', border: '1px solid #fde047', marginBottom: '0.75rem' }}>
                       <p style={{ margin: '0 0 0.5rem 0', color: '#334155', fontWeight: 500 }}>{s.mensaje}</p>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.8rem', color: '#64748b' }}>
-                        <span>Vence: {new Date(s.expires_at).toLocaleString()} (48 h)</span>
+                        <span>Vence: {venceStr}{plazoLabel}</span>
                         <span style={{ fontWeight: 600, color: s.estado === 'respondida' ? '#15803d' : isExpired ? '#b91c1c' : '#b45309' }}>
                           {s.estado === 'respondida' ? '✓ Respondida' : isExpired ? '✕ Vencida' : '⏳ Pendiente'}
                         </span>

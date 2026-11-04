@@ -174,3 +174,13 @@ No se consideran aprobados:
   2. `pedidos-medios/frontend/src/__tests__/setup.ts` intercepta `globalThis.fetch` mediante `createProdBlockedFetch` para bloquear cualquier petición HTTP hacia `uwzgyirilafgnbpmrkic.supabase.co` durante la ejecución de Vitest.
   3. Queda prohibida la lectura de `~/.pedidos/prod-secrets.json` en `tests/unit/`, validada mediante aserción estática automática en la suite unitaria.
 - **Estado:** **Aceptada y verificada (2026-11-03 — Cierre GATE-0)**.
+
+
+## 16. ADR-052 — Extensión de plazo de solicitudes de información de 48 a 72 horas corridas y compatibilidad histórica (`CAM-01`)
+
+- **Decisión funcional aprobada por el propietario:**
+  1. **Evolución de vigencia (`SRS-INF-003`):** La vigencia de las solicitudes de información adicional (`public.solicitudes_informacion`) evolucionó de `15 días` (revisión histórica 2.0) a `48 horas corridas` (revisión 3.0) y pasa a **`72 horas corridas` (`259.200` segundos)** a partir de `CAM-01` para todas las nuevas emisiones (`public.info_request_create_atomic` y `public.info_request_create`).
+  2. **Inmutabilidad y compatibilidad histórica:** No se recalcula ni altera retroactivamente `expires_at` en filas existentes de `public.solicitudes_informacion`. `public.comunicacion_enqueue_info_requested`, las plantillas de correo (`emailTemplates.ts`), `drive-upload-prepare` y las 6 vistas frontend determinan el plazo real a partir de `payload.plazo_horas` o `expires_at - created_at` (`48 h` para solicitudes históricas de 48 horas, `72 h` para nuevas solicitudes de 72 horas, o texto neutro con `expires_at` formateado en `America/Argentina/Ushuaia` cuando la duración original no sea determinable).
+  3. **Preservación de otros TTL y reglas de vencimiento:** Permanecen sin cambios los TTL de `magic_link` (2 h), sesión de portal `Mis Solicitudes` (4 h) y `tracking_recovery` (24 h), así como la aceptación de respuestas de texto tardías (`is_tardia = true`) y el rechazo HTTP 410 para adjuntos vencidos.
+  4. **Gobernanza documental (`FUENTES_WORK/`):** Los archivos bajo `FUENTES_WORK/FUENTES_WORK/` corresponden a consolidados históricos congelados generados el `2026-09-11` antes de la actualización de `15 días → 48 horas`; de acuerdo con `FUENTES_WORK/FUENTES_WORK/00_INDICE_MAESTRO.md`, no se editan manualmente y la fuente normativa viva reside en los documentos canónicos de la raíz del repositorio.
+- **Estado:** **Implementada en Fase 1B (2026-11-03 — `CAM-01`)**.

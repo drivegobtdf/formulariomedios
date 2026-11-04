@@ -188,7 +188,7 @@ Roles: administrador, equipo, observador.
 - mensaje;
 - token_hash UNIQUE;
 - estado (pendiente, respondida, vencida);
-- expires_at (created_at + interval '48 hours', Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas);
+- expires_at (`now() + interval '72 hours'` para nuevas emisiones desde `CAM-01`; evolución histórica: 15 días → 48 horas corridas → 72 horas corridas; las filas históricas emitidas con 48 horas conservan su `expires_at` original);
 - respuesta_texto;
 - respondida_at;
 - created_at.

@@ -314,7 +314,7 @@ export default async function handler(req: Request): Promise<Response> {
       const tokenHash = await computeSha256Hex(String(info_token).trim());
       const { data: sol, error: solErr } = await supabase
         .from('solicitudes_informacion')
-        .select('id, pedido_id, estado, expires_at, pedidos:pedido_id(pedido_visible)')
+        .select('id, pedido_id, estado, expires_at, created_at, pedidos:pedido_id(pedido_visible)')
         .eq('token_hash', tokenHash)
         .maybeSingle();
 
@@ -326,8 +326,14 @@ export default async function handler(req: Request): Promise<Response> {
       }
 
       if (sol.estado !== 'pendiente' || new Date(sol.expires_at).getTime() <= Date.now()) {
+        const diffHours = sol.created_at && sol.expires_at
+          ? Math.round((new Date(sol.expires_at).getTime() - new Date(sol.created_at).getTime()) / 3600000)
+          : null;
+        const expiredMsg = diffHours === 48 || diffHours === 72
+          ? `La solicitud de información ha expirado tras las ${diffHours} horas corridas`
+          : 'El plazo de vigencia de la solicitud de información ha expirado';
         return new Response(
-          JSON.stringify({ error: 'TOKEN_EXPIRED', message: 'La solicitud de información ha expirado tras las 48 horas corridas' }),
+          JSON.stringify({ error: 'TOKEN_EXPIRED', message: expiredMsg }),
           { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -371,7 +377,7 @@ export default async function handler(req: Request): Promise<Response> {
       if (solicitud_id) {
         const { data: sol, error: solErr } = await supabase
           .from('solicitudes_informacion')
-          .select('id, pedido_id, estado, expires_at')
+          .select('id, pedido_id, estado, expires_at, created_at')
           .eq('id', solicitud_id)
           .maybeSingle();
 
@@ -383,8 +389,14 @@ export default async function handler(req: Request): Promise<Response> {
         }
 
         if (sol.estado !== 'pendiente' || new Date(sol.expires_at).getTime() <= Date.now()) {
+          const diffHours = sol.created_at && sol.expires_at
+            ? Math.round((new Date(sol.expires_at).getTime() - new Date(sol.created_at).getTime()) / 3600000)
+            : null;
+          const expiredMsg = diffHours === 48 || diffHours === 72
+            ? `La solicitud de información ha expirado tras ${diffHours} horas corridas`
+            : 'El plazo de vigencia de la solicitud de información ha expirado';
           return new Response(
-            JSON.stringify({ error: 'SOLICITUD_EXPIRED', message: 'La solicitud de información ha expirado tras 48 horas corridas' }),
+            JSON.stringify({ error: 'SOLICITUD_EXPIRED', message: expiredMsg }),
             { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }

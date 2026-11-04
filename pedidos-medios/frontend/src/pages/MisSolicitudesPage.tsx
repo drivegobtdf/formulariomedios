@@ -1088,7 +1088,7 @@ export const MisSolicitudesPage: React.FC = () => {
 
                         {pendingCount > 0 && (
                           <div style={{ backgroundColor: '#fef3c7', border: '1px solid #fde047', borderRadius: '0.375rem', padding: '0.5rem 0.75rem', color: '#92400e', fontSize: '0.8125rem', fontWeight: 600 }}>
-                            ⚠️ Información solicitada · 48 h
+                            ⚠️ Información solicitada
                           </div>
                         )}
 
@@ -1297,15 +1297,23 @@ export const MisSolicitudesPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* 48h Info Requests & InfoResponseForm */}
+                {/* Info Requests & InfoResponseForm */}
                 {selectedPedido.solicitudes_informacion && selectedPedido.solicitudes_informacion.length > 0 && (
                   <div style={{ border: '1px solid #fef08a', backgroundColor: '#fefce8', borderRadius: '0.5rem', padding: '1.25rem' }}>
                     <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#854d0e', margin: '0 0 0.85rem 0' }}>
-                      Información solicitada · 48 h
+                      Información solicitada
                     </h3>
                     {selectedPedido.solicitudes_informacion.map((s) => {
-                      const isExpired = Date.now() >= new Date(s.expires_at).getTime();
+                      const expDate = new Date(s.expires_at);
+                      const isExpired = Date.now() >= expDate.getTime();
                       const isPending = s.estado === 'pendiente' && !isExpired;
+                      const venceStr = !Number.isNaN(expDate.getTime())
+                        ? expDate.toLocaleString('es-AR', { timeZone: 'America/Argentina/Ushuaia' })
+                        : s.expires_at;
+                      const diffHours = s.created_at && s.expires_at && !Number.isNaN(expDate.getTime())
+                        ? Math.round((expDate.getTime() - new Date(s.created_at).getTime()) / 3600000)
+                        : null;
+                      const plazoLabel = diffHours === 48 || diffHours === 72 ? ` (${diffHours} h)` : '';
 
                       return (
                         <div key={s.id} style={{ backgroundColor: '#ffffff', padding: '1rem 1.25rem', borderRadius: '0.5rem', border: '1px solid #fde047', marginBottom: '0.85rem' }}>
@@ -1313,7 +1321,7 @@ export const MisSolicitudesPage: React.FC = () => {
                             {s.mensaje}
                           </p>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#64748b', flexWrap: 'wrap', gap: '0.5rem' }}>
-                            <span>Vence: {new Date(s.expires_at).toLocaleString('es-AR')} (48 h)</span>
+                            <span>Vence: {venceStr}{plazoLabel}</span>
                             <span style={{ fontWeight: 700, color: s.estado === 'respondida' ? '#15803d' : isExpired ? '#b91c1c' : '#b45309' }}>
                               {s.estado === 'respondida' ? '✓ Respondida' : isExpired ? '✕ Vencida' : '⏳ Pendiente de respuesta'}
                             </span>

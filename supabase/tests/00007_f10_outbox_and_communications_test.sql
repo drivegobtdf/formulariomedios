@@ -6,7 +6,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(25);
+SELECT plan(26);
 
 -- -----------------------------------------------------------------------------
 -- 0. Fixtures y Helper
@@ -128,14 +128,14 @@ END $$;
 
 -- Verificar que el trigger encoló la comunicación submission_created agrupada
 SELECT is(
-    (SELECT count(*)::integer FROM public.comunicaciones_pedido 
+    (SELECT count(*)::integer FROM public.comunicaciones_pedido
      WHERE envio_id = 'e0000000-0000-0000-0000-000000000f10'::uuid AND tipo_comunicacion = 'pedido_ingresado'),
     1,
     'Trigger domain_events encoló exactamente 1 comunicación agrupada para submission.created'
 );
 
 SELECT is(
-    (SELECT jsonb_array_length(payload->'pedidos') FROM public.comunicaciones_pedido 
+    (SELECT jsonb_array_length(payload->'pedidos') FROM public.comunicaciones_pedido
      WHERE envio_id = 'e0000000-0000-0000-0000-000000000f10'::uuid AND tipo_comunicacion = 'pedido_ingresado'),
     2,
     'La comunicación agrupada contiene el arreglo con los 2 pedidos generados'
@@ -158,33 +158,47 @@ BEGIN
         encode(digest('tok_sol_f10', 'sha256'), 'hex'), 'pendiente', now(), now() + interval '48 hours'
     ) ON CONFLICT (id) DO NOTHING;
 
-    INSERT INTO public.domain_events (
-        event_name, aggregate_type, aggregate_id, payload, created_at
-    ) VALUES (
-        'pedido.info_requested', 'pedido', v_ped_1,
-        jsonb_build_object(
-            'pedido_id', v_ped_1,
-            'solicitud_id', v_sol_id,
-            'motivo', 'Por favor adjuntar logo vectorial en formato SVG o PDF',
-            'expires_at', (now() + interval '48 hours')
-        ),
-        now()
-    );
+    PERFORM public.comunicacion_enqueue_info_requested(v_sol_id, jsonb_build_object('alg', 'AES-256-GCM', 'kid', 'v1', 'iv', 'aXY=', 'ciphertext', 'Y3Q=', 'tag', 'dGFn'));
 END $$;
 
 SELECT is(
-    (SELECT count(*)::integer FROM public.comunicaciones_pedido 
+    (SELECT count(*)::integer FROM public.comunicaciones_pedido
      WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid AND tipo_comunicacion = 'informacion_faltante'),
     1,
-    'Trigger domain_events encoló comunicación para pedido.info_requested'
+    'comunicacion_enqueue_info_requested encoló comunicación para pedido.info_requested'
 );
 
 SELECT is(
-    (SELECT (payload->>'plazo_horas')::integer FROM public.comunicaciones_pedido 
+    (SELECT (payload->>'plazo_horas')::integer FROM public.comunicaciones_pedido
      WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid AND tipo_comunicacion = 'informacion_faltante'),
     48,
-    'La notificación de información faltante especifica plazo contractual de 48 horas'
+    'La notificación de información faltante histórica preserva plazo de 48 horas'
 );
+
+DO $$
+DECLARE
+    v_ped_2 uuid := 'a0000000-0000-0000-0000-000000000f12'::uuid;
+    v_sol_72 uuid := 'b0000000-0000-0000-0000-000000000f72'::uuid;
+    v_operador_id uuid := '00000000-0000-0000-0000-000000000102'::uuid;
+BEGIN
+    INSERT INTO public.solicitudes_informacion (
+        id, pedido_id, solicitada_por, mensaje, token_hash, estado, created_at, expires_at
+    ) VALUES (
+        v_sol_72, v_ped_2, v_operador_id, 'Por favor adjuntar manual de marca actualizado (72h)',
+        encode(digest('tok_sol_f10_72h', 'sha256'), 'hex'), 'pendiente', now(), now() + interval '72 hours'
+    ) ON CONFLICT (id) DO NOTHING;
+
+    PERFORM public.comunicacion_enqueue_info_requested(v_sol_72, jsonb_build_object('alg', 'AES-256-GCM', 'kid', 'v1', 'iv', 'aXY=', 'ciphertext', 'Y3Q=', 'tag', 'dGFn'));
+END $$;
+
+SELECT is(
+    (SELECT (payload->>'plazo_horas')::integer FROM public.comunicaciones_pedido
+     WHERE idempotency_key = 'info_requested:b0000000-0000-0000-0000-000000000f72'),
+    72,
+    'La notificación de nueva solicitud de información (CAM-01) especifica plazo contractual de 72 horas'
+);
+
+DELETE FROM public.comunicaciones_pedido WHERE idempotency_key = 'info_requested:b0000000-0000-0000-0000-000000000f72';
 
 -- -----------------------------------------------------------------------------
 -- 5. Prueba de Reclamación Atómica: comunicacion_claim_batch (REQ-F10-03)
@@ -273,7 +287,7 @@ DECLARE
 BEGIN
     SELECT id INTO v_comm_id
     FROM public.comunicaciones_pedido
-    WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid
+    WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid AND tipo_comunicacion = 'informacion_faltante'
     LIMIT 1;
 
     -- Resetear attempts a 1 y estado processing para prueba limpia
@@ -291,13 +305,13 @@ BEGIN
 END $$;
 
 SELECT is(
-    (SELECT estado FROM public.comunicaciones_pedido WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid),
+    (SELECT estado FROM public.comunicaciones_pedido WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid AND tipo_comunicacion = 'informacion_faltante'),
     'retry_wait',
     'comunicacion_mark_result registra fallo transitorio y estado retry_wait'
 );
 
 SELECT is(
-    (SELECT error_message FROM public.comunicaciones_pedido WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid),
+    (SELECT error_message FROM public.comunicaciones_pedido WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid AND tipo_comunicacion = 'informacion_faltante'),
     'Conexión temporal rechazada por proveedor',
     'error_message almacena el mensaje de error sanitizado'
 );
@@ -310,7 +324,7 @@ DECLARE
 BEGIN
     SELECT id INTO v_comm_id
     FROM public.comunicaciones_pedido
-    WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid
+    WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid AND tipo_comunicacion = 'informacion_faltante'
     LIMIT 1;
 
     -- Forzar attempts al máximo permitido
@@ -328,7 +342,7 @@ BEGIN
 END $$;
 
 SELECT is(
-    (SELECT estado FROM public.comunicaciones_pedido WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid),
+    (SELECT estado FROM public.comunicaciones_pedido WHERE pedido_id = 'a0000000-0000-0000-0000-000000000f11'::uuid AND tipo_comunicacion = 'informacion_faltante'),
     'fallida',
     'comunicacion_mark_result marca estado fallida cuando attempts >= max_attempts'
 );

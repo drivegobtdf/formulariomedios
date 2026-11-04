@@ -167,7 +167,7 @@ Accesos rápidos:
 Alertas ejemplos:
 - `Sin responsable hace 2 días`.
 - `Fecha límite mañana`.
-- `Esperando información (vence en < 24h)` / `Solicitud de información vencida` (Cambio aprobado por el responsable: vigencia de solicitudes de información faltante de 15 días a 48 horas corridas).
+- `Esperando información (vence en < 24h)` / `Solicitud de información vencida` (`CAM-01`: vigencia de 72 horas corridas para nuevas solicitudes; las vistas muestran fecha/hora real de `expires_at` en `America/Argentina/Ushuaia` y el plazo real `48 h` / `72 h` cuando es determinable, o texto neutro en encabezados globales).
 
 No depender solo de color.
 
