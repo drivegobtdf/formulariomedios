@@ -1583,7 +1583,7 @@ export interface CreateInternalPedidoParams {
   descripcion?: string;
   solicitante_nombre?: string;
   solicitante_area?: string;
-  solicitante_correo?: string;
+  solicitante_correo: string;
   solicitante_telefono?: string;
   categoria_id?: string | null;
   tipo_servicio_id?: string | null;
@@ -1640,7 +1640,7 @@ export async function createInternalPedido(params: CreateInternalPedidoParams): 
     p_descripcion: params.descripcion?.trim() || null,
     p_solicitante_nombre: params.solicitante_nombre?.trim() || null,
     p_solicitante_area: params.solicitante_area?.trim() || null,
-    p_solicitante_correo: params.solicitante_correo?.trim() || null,
+    p_solicitante_correo: params.solicitante_correo ? params.solicitante_correo.trim().toLowerCase() : null,
     p_solicitante_telefono: params.solicitante_telefono?.trim() || null,
     p_categoria_id: params.categoria_id || null,
     p_tipo_servicio_id: params.tipo_servicio_id || null,

@@ -57,6 +57,9 @@ describe('CAM-11 — adjuntos durante carga interna', () => {
     fireEvent.change(screen.getByPlaceholderText(/Cobertura Acto Malvinas/i), {
       target: { value: 'Pedido interno para probar adjuntos' },
     });
+    fireEvent.change(screen.getByLabelText(/Correo electrónico del solicitante/i), {
+      target: { value: 'adjuntos.solicitante@tdf.gob.ar' },
+    });
     const file = selectTestFile();
     fireEvent.click(screen.getByRole('button', { name: 'Crear Pedido Interno' }));
     await waitFor(() => {
@@ -74,6 +77,9 @@ describe('CAM-11 — adjuntos durante carga interna', () => {
     render(<CargaInternaModal isOpen onClose={vi.fn()} onSuccess={onSuccess} />);
     fireEvent.change(screen.getByPlaceholderText(/Cobertura Acto Malvinas/i), {
       target: { value: 'Pedido interno con reintento' },
+    });
+    fireEvent.change(screen.getByLabelText(/Correo electrónico del solicitante/i), {
+      target: { value: 'reintento.solicitante@tdf.gob.ar' },
     });
     selectTestFile();
     fireEvent.click(screen.getByRole('button', { name: 'Crear Pedido Interno' }));

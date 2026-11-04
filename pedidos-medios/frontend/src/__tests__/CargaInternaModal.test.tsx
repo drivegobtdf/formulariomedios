@@ -63,8 +63,12 @@ describe('CargaInternaModal Component', () => {
     const tituloInput = screen.getByPlaceholderText(/Cobertura Acto Malvinas 2026/i);
     fireEvent.change(tituloInput, { target: { value: 'ab' } });
 
+    const correoInput = screen.getByLabelText(/Correo electrónico del solicitante/i);
+    fireEvent.change(correoInput, { target: { value: 'solicitante@tdf.gob.ar' } });
+
     const submitBtn = screen.getByRole('button', { name: /Crear Pedido Interno/i });
-    fireEvent.click(submitBtn);
+    const form = submitBtn.closest('form')!;
+    fireEvent.submit(form);
 
     expect(
       await screen.findByText(/El título del pedido es obligatorio y debe tener al menos 3 caracteres/i)
@@ -77,6 +81,9 @@ describe('CargaInternaModal Component', () => {
 
     const tituloInput = screen.getByPlaceholderText(/Cobertura Acto Malvinas 2026/i);
     fireEvent.change(tituloInput, { target: { value: 'Campaña Vial Invierno 2026' } });
+
+    const correoInput = screen.getByLabelText(/Correo electrónico del solicitante/i);
+    fireEvent.change(correoInput, { target: { value: 'solicitante@tdf.gob.ar' } });
 
     const linkInput = screen.getByPlaceholderText(/https:\/\/drive\.google\.com\/\.\.\. o https:\/\/figma\.com\/\.\.\./i);
     fireEvent.change(linkInput, { target: { value: 'ftp://servidor-externo/archivo.pdf' } });
@@ -110,6 +117,9 @@ describe('CargaInternaModal Component', () => {
     const tituloInput = screen.getByPlaceholderText(/Cobertura Acto Malvinas 2026/i);
     fireEvent.change(tituloInput, { target: { value: 'Campaña de Vacunación Antigripal' } });
 
+    const correoInput = screen.getByLabelText(/Correo electrónico del solicitante/i);
+    fireEvent.change(correoInput, { target: { value: 'maria.fernandez@externo.org' } });
+
     const descInput = screen.getByPlaceholderText(/Detalles sobre las necesidades del pedido/i);
     fireEvent.change(descInput, { target: { value: 'Materiales gráficos urgentes para centros de salud' } });
 
@@ -126,6 +136,7 @@ describe('CargaInternaModal Component', () => {
           titulo: 'Campaña de Vacunación Antigripal',
           descripcion: 'Materiales gráficos urgentes para centros de salud',
           solicitante_nombre: 'Dra. María Fernández',
+          solicitante_correo: 'maria.fernandez@externo.org',
         })
       );
       expect(mockOnSuccess).toHaveBeenCalledWith('ped-int-123', 'PED-2026-I000001');
@@ -283,8 +294,12 @@ describe('CargaInternaModal Component', () => {
       const tituloInput = screen.getByPlaceholderText(/Cobertura Acto Malvinas 2026/i);
       fireEvent.change(tituloInput, { target: { value: 'Lanzamiento Oficial 2026' } });
 
+      const correoInput = screen.getByLabelText(/Correo electrónico del solicitante/i);
+      fireEvent.change(correoInput, { target: { value: 'prensa@tdf.gob.ar' } });
+
       const submitBtn = screen.getByRole('button', { name: /Crear Pedido Interno/i });
-      fireEvent.click(submitBtn);
+      const form = submitBtn.closest('form')!;
+      fireEvent.submit(form);
 
       await waitFor(() => {
         expect(mockOnSuccess).toHaveBeenCalledWith('ped-int-999', 'PED-2026-I000099');

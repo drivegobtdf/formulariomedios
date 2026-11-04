@@ -190,6 +190,18 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
       return;
     }
 
+    const cleanCorreo = solicitanteCorreo.trim().toLowerCase();
+    if (!cleanCorreo) {
+      setError('El correo electrónico del solicitante es obligatorio.');
+      return;
+    }
+
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    if (!emailRegex.test(cleanCorreo)) {
+      setError('El formato del correo electrónico es inválido.');
+      return;
+    }
+
     const cleanEtiqueta = etiquetaInterna.trim();
     if (cleanEtiqueta.length > 10) {
       setError('La etiqueta interna no puede superar los 10 caracteres.');
@@ -214,7 +226,7 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
         descripcion: descripcion.trim() || undefined,
         solicitante_nombre: solicitanteNombre.trim() || undefined,
         solicitante_area: solicitanteArea.trim() || undefined,
-        solicitante_correo: solicitanteCorreo.trim() || undefined,
+        solicitante_correo: cleanCorreo,
         solicitante_telefono: solicitanteTelefono.trim() || undefined,
         categoria_id: categoriaId || null,
         tipo_servicio_id: (categoriaId && tipoServicioId) ? tipoServicioId : null,
@@ -430,11 +442,12 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     htmlFor="input-solicitante-correo"
                     className="pedidos-modal-label"
                   >
-                    Correo Electrónico (referencial)
+                    Correo electrónico del solicitante *
                   </label>
                   <input
                     id="input-solicitante-correo"
                     type="email"
+                    required
                     placeholder="contacto@tdf.gob.ar"
                     value={solicitanteCorreo}
                     onChange={(e) => setSolicitanteCorreo(e.target.value)}
