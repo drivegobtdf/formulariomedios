@@ -152,7 +152,7 @@ describe('CAM-12: Seguridad de Despliegue y Recuperación', () => {
 
     it('debe cifrar y descifrar conservando 100% de fidelidad de datos y metadatos', () => {
       const encryptedBuffer = encryptBackupData(sampleSnapshot, testKey);
-      expect(encryptedBuffer.length).toBeGreaterThan(64); // Magic + salt + iv + authTag + ciphertext
+      expect(encryptedBuffer.length).toBeGreaterThan(64); // Magic + iv + authTag + ciphertext
 
       const decryptedSnapshot = decryptBackupPackage(encryptedBuffer, testKey);
       expect(decryptedSnapshot.metadata.project_ref).toBe('test_ref');
@@ -246,7 +246,7 @@ describe('CAM-12: Seguridad de Despliegue y Recuperación', () => {
     });
   });
 
-  describe('3. check-prod-environment-gate.mjs — Separación Estricta TEST/PROD', () => {
+  describe('3. check-prod-environment-gate.mjs — Separación Estricta TEST/PROD y Manejo de Secretos Ocultos', () => {
     function makeJwt(role: string, ref: string = 'uwzgyirilafgnbpmrkic'): string {
       const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
       const payload = Buffer.from(JSON.stringify({ role, ref, exp: 9999999999 })).toString('base64url');
@@ -273,66 +273,106 @@ describe('CAM-12: Seguridad de Despliegue y Recuperación', () => {
       DRIVE_SERVICE_ACCOUNT_JSON: '{"client_email":"test@tdf.iam.gserviceaccount.com"}',
     };
 
-    function assertGatePasses(prod: any, test: any) {
-      const res = validateEnvironmentSecrets(prod, test);
-      if (!res.passed) throw new Error(res.errors.join('; '));
-      return res;
-    }
-
-    it('debe aceptar una configuración PROD y TEST completamente aislada y válida', () => {
-      const res = assertGatePasses(validProd, validTest);
+    it('debe aceptar una configuración PROD y TEST completamente verificada y aislada', () => {
+      const res = validateEnvironmentSecrets(validProd, validTest);
       expect(res.passed).toBe(true);
+      expect(res.status).toBe('PASSED');
       expect(res.errors).toHaveLength(0);
+      expect(res.unverifiable).toHaveLength(0);
     });
 
-    it('debe rechazar PROD si ENVIRONMENT no está configurado como "production"', () => {
+    // PRUEBAS NEGATIVAS — OBJETIVO 1
+    it('PRUEBA NEGATIVA 1.1: Si los secretos vienen sin valor (output real supabase secrets list), NUNCA debe declarar APTO (status INSUFFICIENT_DATA)', () => {
+      // Simular exactamente la salida de supabase secrets list (solo name y digest, sin valor plano)
+      const cliProdSecrets = [
+        { name: 'ENVIRONMENT', digest: 'sha256-prod-env' },
+        { name: 'PUBLIC_APP_URL', digest: 'sha256-prod-url' },
+        { name: 'SUPABASE_URL', digest: 'sha256-prod-sb' },
+        { name: 'GOOGLE_DRIVE_FOLDER_ID', digest: 'sha256-prod-drive' },
+      ];
+      const cliTestSecrets = [
+        { name: 'ENVIRONMENT', digest: 'sha256-test-env' },
+        { name: 'SUPABASE_URL', digest: 'sha256-test-sb' },
+        { name: 'GOOGLE_DRIVE_FOLDER_ID', digest: 'sha256-test-drive' },
+      ];
+
+      const res = validateEnvironmentSecrets(cliProdSecrets, cliTestSecrets);
+      expect(res.passed).toBe(false);
+      expect(res.status).toBe('INSUFFICIENT_DATA');
+      expect(res.unverifiable.length).toBeGreaterThan(0);
+      expect(res.unverifiable.some(u => u.includes('ENVIRONMENT'))).toBe(true);
+      expect(res.unverifiable.some(u => u.includes('PUBLIC_APP_URL'))).toBe(true);
+    });
+
+    it('PRUEBA NEGATIVA 1.2: Debe rechazar PROD si ENVIRONMENT no está configurado como "production"', () => {
       const invalidProd = { ...validProd, ENVIRONMENT: 'staging' };
-      expect(() => {
-        assertGatePasses(invalidProd, validTest);
-      }).toThrow(/ENVIRONMENT must be set to 'production'/);
-
-      const noEnvProd = { ...validProd, ENVIRONMENT: '' };
-      expect(() => {
-        assertGatePasses(noEnvProd, validTest);
-      }).toThrow(/ENVIRONMENT must be set to 'production'/);
+      const res = validateEnvironmentSecrets(invalidProd, validTest);
+      expect(res.passed).toBe(false);
+      expect(res.status).toBe('FAILED');
+      expect(res.errors.some(e => e.includes("ENVIRONMENT must be set to 'production'"))).toBe(true);
     });
 
-    it('debe rechazar TEST si ENVIRONMENT está configurado como "production" (prevención de colisión)', () => {
+    it('PRUEBA NEGATIVA 1.3: Debe rechazar TEST si ENVIRONMENT está configurado como "production" (prevención de colisión)', () => {
       const dangerousTest = { ...validTest, ENVIRONMENT: 'production' };
-      expect(() => {
-        assertGatePasses(validProd, dangerousTest);
-      }).toThrow(/TEST environment must NOT have ENVIRONMENT='production'/);
+      const res = validateEnvironmentSecrets(validProd, dangerousTest);
+      expect(res.passed).toBe(false);
+      expect(res.status).toBe('FAILED');
+      expect(res.errors.some(e => e.includes("TEST environment must NOT have ENVIRONMENT='production'"))).toBe(true);
     });
 
-    it('debe rechazar PROD si PUBLIC_APP_URL no utiliza HTTPS o apunta a localhost', () => {
+    it('PRUEBA NEGATIVA 1.4: Debe rechazar PROD si PUBLIC_APP_URL no utiliza HTTPS o apunta a localhost/Supabase', () => {
       const httpProd = { ...validProd, PUBLIC_APP_URL: 'http://pedidos.gobiernotdf.gob.ar' };
-      expect(() => {
-        assertGatePasses(httpProd, validTest);
-      }).toThrow(/PUBLIC_APP_URL must use https:\/\//);
+      const resHttp = validateEnvironmentSecrets(httpProd, validTest);
+      expect(resHttp.passed).toBe(false);
+      expect(resHttp.errors.some(e => e.includes('must use https://'))).toBe(true);
 
       const localProd = { ...validProd, PUBLIC_APP_URL: 'https://localhost:3000' };
-      expect(() => {
-        assertGatePasses(localProd, validTest);
-      }).toThrow(/PUBLIC_APP_URL must not point to localhost/);
+      const resLocal = validateEnvironmentSecrets(localProd, validTest);
+      expect(resLocal.passed).toBe(false);
+      expect(resLocal.errors.some(e => e.includes('must not point to localhost'))).toBe(true);
+
+      const sbProd = { ...validProd, PUBLIC_APP_URL: 'https://uwzgyirilafgnbpmrkic.supabase.co' };
+      const resSb = validateEnvironmentSecrets(sbProd, validTest);
+      expect(resSb.passed).toBe(false);
+      expect(resSb.errors.some(e => e.includes('no puede apuntar a Supabase'))).toBe(true);
     });
 
-    it('debe rechazar si la clave pública SUPABASE_ANON_KEY contiene el rol service_role', () => {
+    it('PRUEBA NEGATIVA 1.5: Debe rechazar si la clave pública SUPABASE_ANON_KEY contiene el rol service_role', () => {
       const leakedProd = { ...validProd, SUPABASE_ANON_KEY: makeJwt('service_role', 'uwzgyirilafgnbpmrkic') };
-      expect(() => {
-        assertGatePasses(leakedProd, validTest);
-      }).toThrow(/SUPABASE_ANON_KEY carries service_role/);
+      const res = validateEnvironmentSecrets(leakedProd, validTest);
+      expect(res.passed).toBe(false);
+      expect(res.errors.some(e => e.includes('SUPABASE_ANON_KEY carries service_role'))).toBe(true);
     });
 
-    it('debe rechazar si PROD y TEST comparten el mismo SUPABASE_URL o GOOGLE_DRIVE_FOLDER_ID', () => {
-      const sharedUrlProd = { ...validProd, SUPABASE_URL: validTest.SUPABASE_URL };
-      expect(() => {
-        assertGatePasses(sharedUrlProd, validTest);
-      }).toThrow(/SUPABASE_URL cannot be identical/);
+    it('PRUEBA NEGATIVA 1.6: Debe rechazar por colisión de digest entre PROD y TEST incluso con valores ocultos', () => {
+      const sameDigestProd = [
+        { name: 'ENVIRONMENT', value: 'production' },
+        { name: 'PUBLIC_APP_URL', value: 'https://pedidos.gobiernotdf.gob.ar' },
+        { name: 'GOOGLE_DRIVE_FOLDER_ID', digest: 'sha256-shared-folder-collided' },
+      ];
+      const sameDigestTest = [
+        { name: 'ENVIRONMENT', value: 'test' },
+        { name: 'GOOGLE_DRIVE_FOLDER_ID', digest: 'sha256-shared-folder-collided' },
+      ];
 
-      const sharedDriveProd = { ...validProd, GOOGLE_DRIVE_FOLDER_ID: validTest.GOOGLE_DRIVE_FOLDER_ID };
-      expect(() => {
-        assertGatePasses(sharedDriveProd, validTest);
-      }).toThrow(/GOOGLE_DRIVE_FOLDER_ID cannot be identical/);
+      const res = validateEnvironmentSecrets(sameDigestProd, sameDigestTest);
+      expect(res.passed).toBe(false);
+      expect(res.status).toBe('FAILED');
+      expect(res.errors.some(e => e.includes('colisión de almacenamiento'))).toBe(true);
+    });
+
+    it('PRUEBA NEGATIVA 1.7: allowUnverifiedPresence permite pruebas locales sin bloquearse cuando los valores no son legibles', () => {
+      const cliProdSecrets = [
+        { name: 'ENVIRONMENT' },
+        { name: 'PUBLIC_APP_URL' },
+      ];
+      const cliTestSecrets = [
+        { name: 'ENVIRONMENT' },
+      ];
+
+      const res = validateEnvironmentSecrets(cliProdSecrets, cliTestSecrets, { allowUnverifiedPresence: true });
+      expect(res.passed).toBe(true);
+      expect(res.status).toBe('PRESENCE_ONLY_UNVERIFIED');
     });
   });
 
@@ -366,7 +406,7 @@ describe('CAM-12: Seguridad de Despliegue y Recuperación', () => {
     });
   });
 
-  describe('5. restore-database-backup.mjs — Generación Determinista de Rollback SQL', () => {
+  describe('5. restore-database-backup.mjs — Generación Determinista, Integridad Referencial Universal y Manejo de Conflictos', () => {
     const sampleSnapshot = {
       metadata: {
         version: '1.1',
@@ -408,22 +448,93 @@ describe('CAM-12: Seguridad de Despliegue y Recuperación', () => {
       expect(pedidosIdx).toBeLessThan(commsIdx);
     });
 
-    it('debe generar SQL con session_replication_role = replica y escapar correctamente caracteres especiales', () => {
+    // PRUEBA NEGATIVA — OBJETIVO 2: Integridad referencial universal
+    it('PRUEBA NEGATIVA 2: Debe generar bloque PL/pgSQL dinámico que valida TODAS las Foreign Keys activas de la base de datos', () => {
       const sql = generateRestoreSql(sampleSnapshot);
 
       expect(sql).toContain("session_replication_role = 'replica';");
       expect(sql).toContain("session_replication_role = 'origin';");
       expect(sql).toContain('COMMIT;');
 
-      // Verificar bloque de validación referencial posterior
-      expect(sql).toContain('RESTORE_INTEGRITY_FAIL');
-      expect(sql).toContain('public.notas_pedido');
+      // Verificación de integridad universal dinámica sobre pg_constraint
+      expect(sql).toContain('pg_constraint');
+      expect(sql).toContain("c.contype = 'f'");
+      expect(sql).toContain('[RESTORE_INTEGRITY_FAIL]');
+    });
 
-      // Verificar escape de comillas en texto de pedidos
-      expect(sql).toContain("Anuncio Gubernamental con comillas simples '' y saltos de línea");
+    // PRUEBAS NEGATIVAS — OBJETIVO 3: Divergencia de datos, PKs compuestas y prevención de sobrescritura accidental
+    it('PRUEBA NEGATIVA 3.1: Por defecto, la estrategia debe ser "error" (sin ON CONFLICT) para impedir sobrescrituras inadvertidas', () => {
+      const sql = generateRestoreSql(sampleSnapshot); // default conflictStrategy: 'error'
 
-      // Verificar formateo de JSONB
-      expect(sql).toContain('"formato":"digital"');
+      expect(sql).not.toContain('ON CONFLICT');
+      expect(sql).toContain('INSERT INTO public.pedidos');
+    });
+
+    it('PRUEBA NEGATIVA 3.2: La estrategia "upsert" requiere decisión operativa explícita (confirmOverwrite: true)', () => {
+      expect(() => {
+        generateRestoreSql(sampleSnapshot, { conflictStrategy: 'upsert' });
+      }).toThrow(/Requiere decisión operativa explícita/);
+    });
+
+    it('PRUEBA NEGATIVA 3.3: Con upsert y confirmOverwrite autorizados, genera ON CONFLICT ("id") DO UPDATE SET para converger al backup', () => {
+      const sql = generateRestoreSql(sampleSnapshot, {
+        conflictStrategy: 'upsert',
+        confirmOverwrite: true,
+      });
+
+      expect(sql).toContain('ON CONFLICT ("id") DO UPDATE SET');
+      expect(sql).toContain('"titulo" = EXCLUDED."titulo"');
+      expect(sql).not.toContain('ON CONFLICT DO NOTHING');
+    });
+
+    it('PRUEBA NEGATIVA 3.4: Debe soportar claves primarias compuestas (archivo_pedido) y claves no-id (configuracion_sistema, usuarios_acceso)', () => {
+      const compositeSnapshot = {
+        metadata: { version: '1.1', project_ref: 'test_ref' },
+        tables: {
+          configuracion_sistema: [{ key: 'app_title', valor: 'Sistema Pedidos' }],
+          archivo_pedido: [{ archivo_id: 'a1', pedido_id: 'p1', tipo_archivo: 'adjunto' }],
+          usuarios_acceso: [{ user_id: 'u1', email: 'test@tdf.gob.ar', activo: true }],
+        },
+      };
+
+      const sql = generateRestoreSql(compositeSnapshot, {
+        conflictStrategy: 'upsert',
+        confirmOverwrite: true,
+      });
+
+      // PK no-id: key
+      expect(sql).toContain('ON CONFLICT ("key") DO UPDATE SET');
+      // PK compuesta: archivo_id, pedido_id
+      expect(sql).toContain('ON CONFLICT ("archivo_id", "pedido_id") DO UPDATE SET');
+      // PK no-id: user_id
+      expect(sql).toContain('ON CONFLICT ("user_id") DO UPDATE SET');
+    });
+
+    it('PRUEBA NEGATIVA 3.5: Solicitar "do_nothing" sin autorización explícita (allowIgnoreDuplicates) debe ser rechazado', () => {
+      expect(() => {
+        generateRestoreSql(sampleSnapshot, { conflictStrategy: 'do_nothing' });
+      }).toThrow(/La estrategia "do_nothing" oculta divergencias de datos en silencio/);
+    });
+
+    // PRUEBAS NEGATIVAS — OBJETIVO 4: Modo destructivo bloqueado
+    it('PRUEBA NEGATIVA 4.1: Intentar truncar tablas sin confirmación explícita debe ser bloqueado de raíz', () => {
+      expect(() => {
+        generateRestoreSql(sampleSnapshot, { destructiveTruncate: true });
+      }).toThrow(/Modo destructivo no autorizado/);
+    });
+
+    it('PRUEBA NEGATIVA 4.2: Intentar truncar tablas en entorno productivo debe ser bloqueado incondicionalmente (SECURITY_FATAL)', () => {
+      const prodSnapshot = {
+        ...sampleSnapshot,
+        metadata: { ...sampleSnapshot.metadata, project_ref: 'uwzgyirilafgnbpmrkic' },
+      };
+
+      expect(() => {
+        generateRestoreSql(prodSnapshot, {
+          destructiveTruncate: true,
+          confirmDestructiveAction: 'CONFIRM_DESTRUCTIVE_TRUNCATE_RESET',
+        });
+      }).toThrow(/Prohibido terminantemente ejecutar truncados destructivos en entorno productivo/);
     });
   });
 });
