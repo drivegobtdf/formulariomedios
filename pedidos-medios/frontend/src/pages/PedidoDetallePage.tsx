@@ -1337,8 +1337,8 @@ export const PedidoDetallePage: React.FC = () => {
                     </>
                   )}
 
-                  {/* 4. Solicitud de Información 72h (Solo para pedidos públicos) */}
-                  {pedido.origen !== 'interno' && ['Nuevo', 'En revisión', 'En proceso'].includes(pedido.estado) && !hasPendingInfo && (
+                  {/* CAM-07C: Solicitud de información 72h (públicos e internos con correo) */}
+                  {['Nuevo', 'En revisión', 'En proceso'].includes(pedido.estado) && !hasPendingInfo && (pedido.origen !== 'interno' || Boolean((pedido.informacion_especifica as any)?.solicitante?.correo?.trim())) && (
                     <button
                       type="button"
                       onClick={() => {

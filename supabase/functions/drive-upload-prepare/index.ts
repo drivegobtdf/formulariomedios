@@ -159,6 +159,18 @@ export default async function handler(req: Request): Promise<Response> {
               { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
+          // CAM-07C: verify parent ownership before streaming any bytes to Drive.
+          const { data: ownerPed } = await supabase.from('pedidos')
+            .select('origen, informacion_especifica, envios_formulario:envio_id(correo)')
+            .eq('id', solData.pedido_id).maybeSingle();
+          const ownerEmail = ownerPed?.origen === 'interno'
+            ? (ownerPed.informacion_especifica as any)?.solicitante?.correo
+            : (ownerPed?.envios_formulario as any)?.correo;
+          if (typeof ownerEmail !== 'string' ||
+              ownerEmail.trim().toLowerCase() !== solSession.correo.trim().toLowerCase()) {
+            return new Response(JSON.stringify({ error: 'FORBIDDEN', message: 'Reserva ajena al solicitante' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
         }
       } else if (resData.session_id) {
         // Validación estándar para reservas de formulario público
@@ -399,6 +411,19 @@ export default async function handler(req: Request): Promise<Response> {
             JSON.stringify({ error: 'SOLICITUD_EXPIRED', message: expiredMsg }),
             { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
+        }
+
+        // CAM-07C: session owner must match the parent PED, not just know a UUID.
+        const { data: pedOwner } = await supabase.from('pedidos')
+          .select('origen, informacion_especifica, envios_formulario:envio_id(correo)')
+          .eq('id', sol.pedido_id).maybeSingle();
+        const ownerEmail = pedOwner?.origen === 'interno'
+          ? (pedOwner.informacion_especifica as any)?.solicitante?.correo
+          : (pedOwner?.envios_formulario as any)?.correo;
+        if (typeof ownerEmail !== 'string' ||
+            ownerEmail.trim().toLowerCase() !== solSession.correo.trim().toLowerCase()) {
+          return new Response(JSON.stringify({ error: 'FORBIDDEN', message: 'La solicitud no pertenece a esta sesión' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
         targetSolicitudId = sol.id;
