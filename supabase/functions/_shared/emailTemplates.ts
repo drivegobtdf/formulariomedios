@@ -350,6 +350,7 @@ export function renderEmail(
     case 'pedido_finalizado': {
       const pedVisible = escapeHtml(payload.pedido_visible || 'PED');
       const rawPedVisible = (payload.pedido_visible || '').trim();
+      const isPedidoInterno = payload.origen === 'interno';
       const versionNum = Number(payload.extra?.version_number || payload.version_number || payload.entrega_version || 1);
       const isNuevaVersion = versionNum > 1;
       const subject = isNuevaVersion
@@ -359,9 +360,9 @@ export function renderEmail(
       const portalUrl = rawToken
         ? `${cleanAppUrl}/mis-solicitudes#access_token=${encodeURIComponent(rawToken)}${rawPedVisible ? `&pedido=${encodeURIComponent(rawPedVisible)}` : ''}`
         : `${cleanAppUrl}/mis-solicitudes`;
-      const urlEntrega = payload.extra?.url_entrega || payload.url_entrega || '';
+      const urlEntrega = isPedidoInterno ? '' : (payload.extra?.url_entrega || payload.url_entrega || '');
       // NOTA C13: Solo se usa nota_cierre pública, nunca notas_internas
-      const notaCierreRaw = payload.nota_cierre || payload.nota || payload.extra?.nota_cierre || '';
+      const notaCierreRaw = isPedidoInterno ? '' : (payload.nota_cierre || payload.nota || payload.extra?.nota_cierre || '');
       const notaCierreSafe = escapeHtml(notaCierreRaw);
       const catSafe = escapeHtml(payload.categoria || '');
       const tipSafe = escapeHtml(payload.tipo || '');
@@ -411,13 +412,13 @@ export function renderEmail(
           <a href="${portalUrl}" style="display: inline-block; background-color: ${BRAND_PRIMARY}; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
             VER MI PEDIDO
           </a>
-          <a href="${portalUrl}" style="display: inline-block; background-color: #F59E0B; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+          ${isPedidoInterno ? '' : `<a href="${portalUrl}" style="display: inline-block; background-color: #F59E0B; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
             Solicitar Revisión
-          </a>
+          </a>`}
         </div>
       `;
 
-      const text = `SOLICITUD FINALIZADA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nEl pedido ${payload.pedido_visible || 'PED'} ha sido completado y finalizado.${entregaBlockText}\nPuede consultar el historial o solicitar revisión en: ${portalUrl}\n`;
+      const text = `SOLICITUD FINALIZADA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nEl pedido ${payload.pedido_visible || 'PED'} ha sido completado y finalizado.${entregaBlockText}\n${isPedidoInterno ? 'Puede consultar el historial en:' : 'Puede consultar el historial o solicitar revisión en:'} ${portalUrl}\n`;
 
       return {
         subject,
