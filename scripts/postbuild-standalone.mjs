@@ -177,6 +177,13 @@ export function resolveStandaloneProfile(env = process.env) {
 export function validateStandaloneConfig(config, profile) {
   const claims = parseJwtPayloadClaims(config.supabaseAnonKey);
 
+  // Guarda transversal de seguridad contra fugas de credenciales privilegiadas
+  if (claims.role && claims.role !== 'anon') {
+    throw new Error(
+      `[Seguridad Crítica] La clave configurada posee role="${claims.role}". Prohibido usar credenciales privilegiadas (como service_role) en el cliente público.`
+    );
+  }
+
   if (profile === 'production') {
     if (!config.supabaseUrl.includes(PROD_SUPABASE_REF)) {
       throw new Error(`[Validación PROD] URL de Supabase no coincide con PROD (${PROD_SUPABASE_REF}): ${config.supabaseUrl}`);
