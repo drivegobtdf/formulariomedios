@@ -14,6 +14,8 @@ import {
   archivePedido,
   restorePedido,
   createNotaPedido,
+  updateNotaPedido,
+  deleteNotaPedido,
   createInfoRequest,
   downloadArchivo,
   updatePedidoMetadata,
@@ -275,6 +277,8 @@ export const PedidoDetallePage: React.FC = () => {
 
   // Notes state (Internal only)
   const [notaTexto, setNotaTexto] = useState('');
+  const [notaEditandoId, setNotaEditandoId] = useState<string | null>(null);
+  const [notaEdicionTexto, setNotaEdicionTexto] = useState('');
 
   // Info request state (48h)
   const [showInfoReqModal, setShowInfoReqModal] = useState(false);
@@ -679,6 +683,41 @@ export const PedidoDetallePage: React.FC = () => {
       await loadData();
     } catch (err: any) {
       setError(err.message || 'Error al guardar nota.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateNota = async (notaId: string, revision: number) => {
+    if (!pedido || isObserver || !notaEdicionTexto.trim()) return;
+    setActionLoading(true);
+    setError(null);
+    try {
+      await updateNotaPedido(notaId, notaEdicionTexto.trim(), revision);
+      setNotaEditandoId(null);
+      setNotaEdicionTexto('');
+      setSuccessMessage('Nota interna editada; cambio registrado en auditoría.');
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || 'Error al editar nota interna.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteNota = async (notaId: string, revision: number) => {
+    if (!pedido || isObserver) return;
+    if (!window.confirm('¿Eliminar esta nota interna? Quedará registrada en el historial de auditoría.')) return;
+    setActionLoading(true);
+    setError(null);
+    try {
+      await deleteNotaPedido(notaId, revision);
+      setNotaEditandoId(null);
+      setNotaEdicionTexto('');
+      setSuccessMessage('Nota interna eliminada del listado; historial conservado.');
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || 'Error al eliminar nota interna.');
     } finally {
       setActionLoading(false);
     }
@@ -2390,9 +2429,38 @@ export const PedidoDetallePage: React.FC = () => {
                       {n.visibilidad === 'solicitante' ? 'MENSAJE PÚBLICO' : 'NOTA INTERNA'}
                     </span>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #1e293b)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                    {n.texto}
-                  </p>
+                  {notaEditandoId === n.id ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <textarea aria-label="Editar nota interna" rows={3} value={notaEdicionTexto}
+                        onChange={(e) => setNotaEdicionTexto(e.target.value)}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '0.6rem', borderRadius: '0.375rem' }} />
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button type="button" disabled={actionLoading || !notaEdicionTexto.trim()}
+                          onClick={() => handleUpdateNota(n.id, n.revision ?? 0)}>Guardar edición</button>
+                        <button type="button" disabled={actionLoading}
+                          onClick={() => { setNotaEditandoId(null); setNotaEdicionTexto(''); }}>Cancelar</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--pedidos-text-primary, #1e293b)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                      {n.texto}
+                    </p>
+                  )}
+                  {n.edited_at && (
+                    <span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
+                      Editada · {new Date(n.edited_at).toLocaleString('es-AR')}
+                    </span>
+                  )}
+                  {!isObserver && n.visibilidad === 'interna' && (isAdmin || n.autor_user_id === user?.id) && (
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      {notaEditandoId !== n.id && (
+                        <button type="button" disabled={actionLoading}
+                          onClick={() => { setNotaEditandoId(n.id); setNotaEdicionTexto(n.texto); }}>Editar</button>
+                      )}
+                      <button type="button" disabled={actionLoading}
+                        onClick={() => handleDeleteNota(n.id, n.revision ?? 0)}>Eliminar</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

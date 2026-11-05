@@ -202,6 +202,9 @@ export interface PedidoDetailItem extends PedidoListItem {
     visibilidad: 'interna' | 'solicitante';
     texto: string;
     created_at: string;
+    edited_at?: string | null;
+    revision?: number;
+    deleted_at?: string | null;
   }>;
   solicitudes: Array<{
     id: string;
@@ -706,8 +709,9 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
   // Notas
   const { data: notas } = await supabase
     .from('notas_pedido')
-    .select('id, autor_user_id, visibilidad, texto, created_at')
+    .select('id, autor_user_id, visibilidad, texto, created_at, edited_at, revision, deleted_at')
     .eq('pedido_id', pedidoId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   // Solicitudes de información con archivos y enlaces contextuales
@@ -1360,6 +1364,27 @@ export async function createNotaPedido(pedidoId: string, texto: string, visibili
     p_pedido_id: pedidoId,
     p_contenido: texto,
     p_visibilidad: visibilidad,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateNotaPedido(notaId: string, texto: string, expectedRevision: number) {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('nota_pedido_update', {
+    p_nota_id: notaId,
+    p_contenido: texto,
+    p_expected_revision: expectedRevision,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteNotaPedido(notaId: string, expectedRevision: number) {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('nota_pedido_delete', {
+    p_nota_id: notaId,
+    p_expected_revision: expectedRevision,
   });
   if (error) throw new Error(error.message);
   return data;
