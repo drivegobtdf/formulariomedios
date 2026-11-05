@@ -78,7 +78,7 @@ export default async function handler(req: Request): Promise<Response> {
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let pedQuery = supabase
       .from('pedidos')
-      .select('id, pedido_visible, envios_formulario:envio_id(correo)');
+      .select('id, pedido_visible, origen, informacion_especifica, envios_formulario:envio_id(correo)');
 
     if (UUID_REGEX.test(pedidoRef)) {
       pedQuery = pedQuery.eq('id', pedidoRef);
@@ -95,8 +95,12 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const ownerEmail = (ped.envios_formulario as any)?.correo;
-    if (!ownerEmail || ownerEmail.toLowerCase() !== solSession.correo.toLowerCase()) {
+    // CAM-07B: verify origin-scoped ownership before checking delivery association.
+    const ownerEmail = ped.origen === 'interno'
+      ? (ped.informacion_especifica as any)?.solicitante?.correo
+      : (ped.envios_formulario as any)?.correo;
+    if (typeof ownerEmail !== 'string' ||
+        ownerEmail.trim().toLowerCase() !== solSession.correo.trim().toLowerCase()) {
       return new Response(
         JSON.stringify({ error: 'FORBIDDEN', message: 'Acceso denegado a este pedido' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -147,6 +151,17 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(
         JSON.stringify({ error: 'NOT_FOUND', message: 'Archivo no encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // CAM-07B: la asociación a una entrega vigente no basta por sí sola.
+    // Los adjuntos CAM-11 de contexto interno NUNCA son material descargable
+    // para el solicitante, incluso si una relación de entrega está mal cargada.
+    if (archivo.contexto === 'interno' ||
+        (ped.origen === 'interno' && archivo.contexto !== 'entrega')) {
+      return new Response(
+        JSON.stringify({ error: 'FILE_FORBIDDEN', message: 'Este archivo no es un entregable autorizado' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
