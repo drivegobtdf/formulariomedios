@@ -64,6 +64,7 @@ const INITIAL_STATE: FormWizardState = {
   },
   selected_categorias: [],
   diseno_piezas: [],
+  titulos_pedidos: {},
   diseno_data: {
     flyer_rrss: { formato: '', texto: '', fecha_limite: '' },
     invitacion_digital: { nombre_evento: '', fecha: '', hora: '', lugar: '', modalidad: '', programa: '' },
@@ -242,10 +243,24 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
       });
     }
 
-    return list;
+    return list.map((piece) => ({
+      ...piece,
+      titulo_pedido: state.titulos_pedidos?.[piece.tipo_slug] || '',
+    }));
   }, [state, pieceRefs]);
 
   // Actualizadores de Estado reactivos
+  const updateTituloPedido = (tipoSlug: string, titulo: string) => {
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        titulos_pedidos: { ...(prev.titulos_pedidos || {}), [tipoSlug]: titulo },
+      };
+      setErrors((prevErrors) => revalidateErrors(prevErrors, validateStep2(nextState)));
+      return nextState;
+    });
+  };
+
   const updateContacto = (fields: Partial<typeof state.contacto>) => {
     setState((prev) => {
       const nextContacto = { ...prev.contacto, ...fields };
@@ -834,6 +849,13 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
 
   // Envío Final Multi-PED
   const handleSubmit = async () => {
+    // Defensa antes de enviar por si el usuario regresó a modificar servicios.
+    const step2Errors = validateStep2(state);
+    if (Object.keys(step2Errors).length > 0) {
+      setErrors(step2Errors);
+      goToStep(2);
+      return;
+    }
     const errs = validateStep4(state.confirmado);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -853,7 +875,10 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
           client_request_ref: p.client_request_ref,
           categoria_slug: p.categoria_slug,
           tipo_slug: p.tipo_slug,
-          informacion_especifica: p.data,
+          informacion_especifica: {
+            ...p.data,
+            titulo: (state.titulos_pedidos?.[p.tipo_slug] || '').trim(),
+          },
         })),
         file_bindings: state.archivos
           .filter((a) => a.status === 'verified')
@@ -979,6 +1004,8 @@ export const FormularioPublicoPage: React.FC<FormularioPublicoPageProps> = ({ in
       {state.current_step === 2 && (
         <Step2Servicios
           state={state}
+          availablePieces={availablePieces}
+          onChangeTituloPedido={updateTituloPedido}
           onToggleDisenoPieza={toggleDisenoPieza}
           onChangeFlyer={updateFlyer}
           onChangeInvitacion={updateInvitacion}

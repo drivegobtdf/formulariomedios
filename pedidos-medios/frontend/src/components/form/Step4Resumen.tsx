@@ -224,6 +224,11 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
                 <div className="pedidos-summary-piece-header">
                   <span className="pedidos-piece-number">#{idx + 1}</span>
                   <strong className="pedidos-piece-title">{p.piece_title}</strong>
+              {p.titulo_pedido && (
+                <div style={{ fontWeight: 600, marginTop: '0.4rem' }}>
+                  Título: {p.titulo_pedido}
+                </div>
+              )}
                 </div>
 
                 <div className="pedidos-summary-piece-details">

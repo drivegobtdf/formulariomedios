@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   FormWizardState,
+  FormPieceItem,
   DisenoPiezaSlug,
   FlyerRrssData,
   InvitacionDigitalData,
@@ -26,6 +27,8 @@ import { SitiosWebForm } from './SitiosWebForm';
 
 interface Step2ServiciosProps {
   state: FormWizardState;
+  availablePieces: FormPieceItem[];
+  onChangeTituloPedido: (tipoSlug: string, title: string) => void;
   onToggleDisenoPieza: (pieza: DisenoPiezaSlug) => void;
   onChangeFlyer: (data: Partial<FlyerRrssData>) => void;
   onChangeInvitacion: (data: Partial<InvitacionDigitalData>) => void;
@@ -46,6 +49,8 @@ interface Step2ServiciosProps {
 
 export const Step2Servicios: React.FC<Step2ServiciosProps> = ({
   state,
+  availablePieces,
+  onChangeTituloPedido,
   onToggleDisenoPieza,
   onChangeFlyer,
   onChangeInvitacion,
@@ -186,6 +191,38 @@ export const Step2Servicios: React.FC<Step2ServiciosProps> = ({
           onEditContacto={onGoToStep1}
           errors={errors}
         />
+      )}
+
+      {availablePieces.length > 0 && (
+        <section aria-label="Títulos de los pedidos" style={{ marginTop: '1.25rem' }}>
+          <h3>Identificá cada pedido</h3>
+          <p>Ingresá un título para cada pieza o servicio solicitado.</p>
+          {availablePieces.map((piece) => {
+            const inputId = `titulo-pedido-${piece.tipo_slug}`;
+            const error = errors[`titulo_pedido.${piece.tipo_slug}`];
+            return (
+              <div key={piece.client_request_ref} style={{ marginBottom: '1rem' }}>
+                <label htmlFor={inputId} style={{ display: 'block', fontWeight: 600 }}>
+                  Título del pedido · {piece.piece_title} (obligatorio)
+                </label>
+                <input
+                  id={inputId}
+                  type="text"
+                  required
+                  minLength={3}
+                  maxLength={200}
+                  value={state.titulos_pedidos?.[piece.tipo_slug] || ''}
+                  onChange={(e) => onChangeTituloPedido(piece.tipo_slug, e.target.value)}
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? `${inputId}-error` : undefined}
+                  placeholder="Ej.: Campaña de vacunación de noviembre"
+                  style={{ display: 'block', boxSizing: 'border-box', width: '100%', padding: '0.55rem', borderRadius: '0.375rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', background: 'var(--pedidos-control-bg, #fff)', color: 'var(--pedidos-control-text, #1e293b)' }}
+                />
+                {error && <p id={`${inputId}-error`} role="alert" style={{ color: '#b91c1c' }}>{error}</p>}
+              </div>
+            );
+          })}
+        </section>
       )}
 
       <div className="pedidos-step-actions">

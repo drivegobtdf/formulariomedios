@@ -251,6 +251,7 @@ export interface FormPieceItem {
   categoria_slug: CategoriaSlug;
   tipo_slug: string;
   piece_title: string;
+  titulo_pedido?: string; // CAM-09: título ingresado por el solicitante
   codigo_ped_prefijo: CategoriaCodigo;
   data: PiezaData;
 }
@@ -293,6 +294,7 @@ export interface FormWizardState {
   contacto: ContactoFormState;
   selected_categorias: CategoriaSlug[];
   diseno_piezas: DisenoPiezaSlug[];
+  titulos_pedidos?: Record<string, string>; // CAM-09: un título específico por tipo de pieza
   // Datos específicos indexados por pieza o categoría
   diseno_data: {
     flyer_rrss?: FlyerRrssData;

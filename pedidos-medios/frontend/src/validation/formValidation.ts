@@ -390,6 +390,19 @@ export function validateStep1(contacto: ContactoFormState, selected_categorias: 
 export function validateStep2(state: FormWizardState): ValidationErrors {
   const errors: ValidationErrors = {};
 
+  // CAM-09: cada PED nuevo necesita un título propio, también en multi-PED.
+  const tiposActivos = state.selected_categorias.flatMap((cat) =>
+    cat === 'diseno_grafico' ? (state.diseno_piezas || []) : [cat]
+  );
+  for (const tipo of tiposActivos) {
+    const titulo = (state.titulos_pedidos?.[tipo] || '').trim();
+    if (titulo.length < 3 || titulo.length > 200) {
+      errors[`titulo_pedido.${tipo}`] = 'Ingresá un título de 3 a 200 caracteres para este pedido.';
+    } else if (/<[^>]*>/.test(titulo)) {
+      errors[`titulo_pedido.${tipo}`] = 'El título del pedido no puede contener etiquetas HTML.';
+    }
+  }
+
   for (const cat of state.selected_categorias) {
     switch (cat) {
       case 'diseno_grafico': {

@@ -107,6 +107,16 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       target: { value: 'Se abren las inscripciones para el programa provincial de capacitaciones 2026.' },
     });
 
+    // CAM-09: Título obligatorio por cada PED seleccionado
+    fireEvent.change(
+      screen.getByLabelText(/Título del pedido · Flyer para redes sociales/i),
+      { target: { value: 'Flyer Capacitaciones Provinciales 2026' } }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Título del pedido · Gacetilla de prensa/i),
+      { target: { value: 'Gacetilla Inscripciones Abiertas 2026' } }
+    );
+
     // Continuar al Paso 3 (Adjuntos)
     const nextBtn2 = screen.getByRole('button', { name: /^Continuar$/i });
     fireEvent.click(nextBtn2);
@@ -379,6 +389,10 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
 
       fireEvent.change(dateInput, { target: { value: tomorrowStr } });
       fireEvent.change(textarea, { target: { value: textoPrueba } });
+      fireEvent.change(
+        screen.getByLabelText(/Título del pedido · Flyer para redes sociales/i),
+        { target: { value: 'Flyer Oficial Institucional' } }
+      );
 
       // Verificar que los valores se conservaron en los inputs (Escenario N)
       expect(dateInput).toHaveValue(tomorrowStr);
@@ -426,6 +440,10 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       fireEvent.change(screen.getByLabelText(/Texto y contenido que debe incluir el flyer/i), {
         target: { value: 'Texto de prueba para el flyer' },
       });
+      fireEvent.change(
+        screen.getByLabelText(/Título del pedido · Flyer para redes sociales/i),
+        { target: { value: 'Flyer Difusión Paso 3' } }
+      );
 
       // Avanzar a Paso 3
       fireEvent.click(screen.getByRole('button', { name: /^Continuar$/i }));
@@ -596,6 +614,10 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       fireEvent.click(screen.getByLabelText(/^Sí$/i));
       fireEvent.change(screen.getByLabelText(/¿Qué autoridades asistirán\?/i), { target: { value: 'Gobernador' } });
       fireEvent.change(screen.getByLabelText(/Requerimientos de cobertura/i), { target: { value: 'Cobertura fotográfica completa' } });
+      fireEvent.change(
+        screen.getByLabelText(/Título del pedido · Cobertura de eventos/i),
+        { target: { value: 'Cobertura Acto de Inauguración' } }
+      );
 
       // Ingresar fecha pasada (o de hoy): 2026-09-13 / today
       fireEvent.change(fechaInput, { target: { value: '2026-09-13' } });
@@ -700,6 +722,10 @@ describe('FormularioPublicoPage — Portada Institucional y Wizard Tests', () =>
       fireEvent.change(screen.getByLabelText(/Lugar \/ Dirección/i), { target: { value: 'Salón Malvinas' } });
       fireEvent.change(screen.getByLabelText(/Ciudad/i), { target: { value: 'Ushuaia' } });
       fireEvent.change(screen.getByLabelText(/Requerimientos de cobertura/i), { target: { value: 'Fotos institucionales' } });
+      fireEvent.change(
+        screen.getByLabelText(/Título del pedido · Cobertura de eventos/i),
+        { target: { value: 'Cobertura Acto de Conmemoración' } }
+      );
 
       // 1. Estado inicial = '' -> ni Sí ni No están seleccionados
       const radioSi = screen.getByLabelText(/^Sí$/i) as HTMLInputElement;
