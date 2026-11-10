@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 // 1. Resolve environment variables
 function loadEnv() {
   const env = { ...process.env };
-  
+
   const userProfile = process.env.USERPROFILE || process.env.HOME || '';
   const pedidosEnvPath = path.join(userProfile, '.pedidos', 'n8n-antigravity.env');
   if (fs.existsSync(pedidosEnvPath)) {
@@ -325,13 +325,38 @@ export function renderEmail(tipo, payload, customAppUrl) {
     case 'info_requested':
     case 'informacion_faltante': {
       const pedVisible = escapeHtml(payload?.pedido_visible || 'PED');
-      const subject = `[PEDIDOS] Requerimiento de Información (48h): ${payload?.pedido_visible || 'PED'}`;
-      const portalUrl = `${cleanAppUrl}/mis-solicitudes`;
+      const rawPlazo = Number(payload?.plazo_horas);
+      let plazoHoras = Number.isFinite(rawPlazo) && rawPlazo > 0 ? Math.round(rawPlazo) : null;
+      if (plazoHoras === null && payload?.expires_at && payload?.created_at) {
+        const expMs = new Date(String(payload.expires_at)).getTime();
+        const creMs = new Date(String(payload.created_at)).getTime();
+        if (!Number.isNaN(expMs) && !Number.isNaN(creMs) && expMs > creMs) {
+          plazoHoras = Math.max(1, Math.round((expMs - creMs) / 3600000));
+        }
+      }
+
+      const subject = plazoHoras !== null
+        ? `[PEDIDOS] Requerimiento de Información (${plazoHoras}h): ${payload?.pedido_visible || 'PED'}`
+        : `[PEDIDOS] Requerimiento de Información: ${payload?.pedido_visible || 'PED'}`;
+      const rawToken = String(payload?.token || payload?.raw_token || payload?.info_token || '').trim();
+      const portalUrl = rawToken
+        ? `${cleanAppUrl}/solicitud-informacion#token=${encodeURIComponent(rawToken)}`
+        : `${cleanAppUrl}/mis-solicitudes`;
       const rawMensaje = payload?.mensaje || payload?.motivo || 'Se requiere información complementaria para avanzar con el pedido.';
       const mensajeSafe = escapeHtml(rawMensaje);
       const catSafe = escapeHtml(payload?.categoria || '');
       const tipSafe = escapeHtml(payload?.tipo || '');
-      const expiresAt = payload?.expires_at ? new Date(payload.expires_at).toLocaleString('es-AR') : '48 horas corridas desde la emisión';
+      const parsedExpiresAt = payload?.expires_at ? new Date(String(payload.expires_at)) : null;
+      const hasValidExpiresAt = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt.getTime());
+      const expiresAt = hasValidExpiresAt
+        ? parsedExpiresAt.toLocaleString('es-AR', { timeZone: 'America/Argentina/Ushuaia' })
+        : plazoHoras !== null
+        ? `${plazoHoras} horas corridas desde la emisión`
+        : 'según fecha de vencimiento indicada en el portal';
+
+      const plazoBannerHtml = plazoHoras !== null
+        ? `⚠️ PLAZO CONTRACTUAL: Dispone de ${plazoHoras} HORAS CORRIDAS para responder este requerimiento (Vence: ${escapeHtml(expiresAt)}).`
+        : `⚠️ PLAZO CONTRACTUAL: Debe responder este requerimiento antes de su vencimiento (Vence: ${escapeHtml(expiresAt)}).`;
 
       const contentHtml = `
         <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
@@ -353,7 +378,7 @@ export function renderEmail(tipo, payload, customAppUrl) {
         </div>
         <div style="background-color: #FEE2E2; border-left: 4px solid #DC2626; padding: 14px; margin: 20px 0; border-radius: 4px;">
           <p style="margin: 0; font-weight: 700; color: #991B1B; font-size: 13px;">
-            ⚠️ PLAZO CONTRACTUAL: Dispone de 48 HORAS CORRIDAS para responder este requerimiento (Vence: ${escapeHtml(expiresAt)}).
+            ${plazoBannerHtml}
           </p>
         </div>
         <div style="text-align: center; margin: 28px 0;">
@@ -363,7 +388,14 @@ export function renderEmail(tipo, payload, customAppUrl) {
         </div>
       `;
 
-      const text = `REQUERIMIENTO DE INFORMACIÓN COMPLEMENTARIA (48 HORAS CORRIDAS)\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nSe requiere información adicional para su pedido ${payload?.pedido_visible || 'PED'}:\n\n"${rawMensaje}"\n\nATENCIÓN: Dispone de 48 horas corridas (Vence: ${expiresAt}) para responder.\nPortal: ${portalUrl}\n`;
+      const textHeader = plazoHoras !== null
+        ? `REQUERIMIENTO DE INFORMACIÓN COMPLEMENTARIA (${plazoHoras} HORAS CORRIDAS)`
+        : 'REQUERIMIENTO DE INFORMACIÓN COMPLEMENTARIA';
+      const textAtencion = plazoHoras !== null
+        ? `ATENCIÓN: Dispone de ${plazoHoras} horas corridas (Vence: ${expiresAt}) para responder.`
+        : `ATENCIÓN: Debe responder este requerimiento antes de su vencimiento (Vence: ${expiresAt}).`;
+
+      const text = `${textHeader}\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nEstimado/a ${rawNombre},\nSe requiere información adicional para su pedido ${payload?.pedido_visible || 'PED'}:\n\n"${rawMensaje}"\n\n${textAtencion}\nPortal: ${portalUrl}\n`;
 
       return {
         subject,
@@ -384,9 +416,25 @@ export function renderEmail(tipo, payload, customAppUrl) {
       const solicitanteSafe = escapeHtml(payload?.solicitante_nombre || payload?.nombre_apellido || 'Solicitante');
       const areaSafe = escapeHtml(payload?.area_solicitante || 'Gobierno');
 
+      const rawRespPlazo = Number(payload?.plazo_horas);
+      let respPlazoHoras = Number.isFinite(rawRespPlazo) && rawRespPlazo > 0 ? Math.round(rawRespPlazo) : null;
+      if (respPlazoHoras === null && payload?.expires_at && payload?.created_at) {
+        const expMs = new Date(String(payload.expires_at)).getTime();
+        const creMs = new Date(String(payload.created_at)).getTime();
+        if (!Number.isNaN(expMs) && !Number.isNaN(creMs) && expMs > creMs) {
+          respPlazoHoras = Math.max(1, Math.round((expMs - creMs) / 3600000));
+        }
+      }
+      const headingTitle = respPlazoHoras !== null
+        ? `Respuesta a Solicitud de Información (${respPlazoHoras} h)`
+        : 'Respuesta a Solicitud de Información';
+      const textHeader = respPlazoHoras !== null
+        ? `RESPUESTA A SOLICITUD DE INFORMACIÓN (${respPlazoHoras} H)`
+        : 'RESPUESTA A SOLICITUD DE INFORMACIÓN';
+
       const contentHtml = `
         <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
-          Respuesta a Solicitud de Información (48 h)
+          ${headingTitle}
         </h2>
         <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5;">
           Hola <strong>${nombreSafe}</strong>,
@@ -417,7 +465,7 @@ export function renderEmail(tipo, payload, customAppUrl) {
         </div>
       `;
 
-      const text = `RESPUESTA A SOLICITUD DE INFORMACIÓN (48 H)\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nHola ${rawNombre},\nEl solicitante ha respondido la solicitud de información del pedido ${payload?.pedido_visible || 'PED'}.\n\nCódigo: ${payload?.pedido_visible || 'PED'}\nCategoría: ${payload?.categoria || 'Servicio'} — ${payload?.tipo || 'General'}\nSolicitante: ${payload?.solicitante_nombre || payload?.nombre_apellido || 'Solicitante'} (${payload?.area_solicitante || 'Gobierno'})\n\nVer pedido: ${gestionUrl}\n`;
+      const text = `${textHeader}\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nHola ${rawNombre},\nEl solicitante ha respondido la solicitud de información del pedido ${payload?.pedido_visible || 'PED'}.\n\nCódigo: ${payload?.pedido_visible || 'PED'}\nCategoría: ${payload?.categoria || 'Servicio'} — ${payload?.tipo || 'General'}\nSolicitante: ${payload?.solicitante_nombre || payload?.nombre_apellido || 'Solicitante'} (${payload?.area_solicitante || 'Gobierno'})\n\nVer pedido: ${gestionUrl}\n`;
 
       return {
         subject,
@@ -875,7 +923,7 @@ export function renderEmail(tipo, payload, customAppUrl) {
 
 export async function dispatchBatch(batchSize = 10, leaseSeconds = 300) {
   console.log(`[DISPATCHER] Claiming batch of up to ${batchSize} pending communications (lease: ${leaseSeconds}s)...`);
-  
+
   const { data: claimedItems, error: claimError } = await supabase.rpc('comunicacion_claim_batch', {
     p_batch_size: batchSize,
     p_lease_seconds: leaseSeconds
@@ -1150,7 +1198,7 @@ export async function dispatchBatch(batchSize = 10, leaseSeconds = 300) {
       }
 
       const rendered = renderEmail(item.tipo_comunicacion, payloadToRender, appUrl);
-      
+
       const headers = { 'Content-Type': 'application/json' };
       if (integrationSecret) {
         headers['x-n8n-integration-secret'] = integrationSecret;
@@ -1241,7 +1289,7 @@ export async function dispatchBatch(batchSize = 10, leaseSeconds = 300) {
     } catch (err) {
       const errMsg = err?.message || 'Unknown dispatch error';
       console.error(`[DISPATCHER] Item ${item.id} FAILED -> ${errMsg}`);
-      
+
       let retrySecs = 300;
       if (
         err.semanticType === 'PERMANENT_VALIDATION_ERROR' ||

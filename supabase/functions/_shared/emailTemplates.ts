@@ -295,11 +295,20 @@ export function renderEmail(
       const solicitanteSafe = escapeHtml(payload.solicitante_nombre || payload.nombre_apellido || 'Solicitante');
       const areaSafe = escapeHtml(payload.area_solicitante || 'Gobierno');
       const rawRespPlazo = Number(payload.plazo_horas);
-      const respPlazoHoras = Number.isFinite(rawRespPlazo) && rawRespPlazo > 0 ? Math.round(rawRespPlazo) : null;
+      let respPlazoHoras: number | null = Number.isFinite(rawRespPlazo) && rawRespPlazo > 0 ? Math.round(rawRespPlazo) : null;
+      if (respPlazoHoras === null && payload.expires_at && payload.created_at) {
+        const expMs = new Date(String(payload.expires_at)).getTime();
+        const creMs = new Date(String(payload.created_at)).getTime();
+        if (!Number.isNaN(expMs) && !Number.isNaN(creMs) && expMs > creMs) {
+          respPlazoHoras = Math.max(1, Math.round((expMs - creMs) / 3600000));
+        }
+      }
       const headingTitle = respPlazoHoras !== null
         ? `Respuesta a Solicitud de Información (${respPlazoHoras} h)`
         : 'Respuesta a Solicitud de Información';
-
+      const textHeader = respPlazoHoras !== null
+        ? `RESPUESTA A SOLICITUD DE INFORMACIÓN (${respPlazoHoras} H)`
+        : 'INFORMACIÓN RESPONDIDA';
       const contentHtml = `
         <h2 style="margin: 0 0 16px 0; color: ${BRAND_PRIMARY}; font-size: 18px;">
           ${headingTitle}
@@ -333,7 +342,7 @@ export function renderEmail(
         </div>
       `;
 
-      const text = `INFORMACIÓN RESPONDIDA\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nHola ${rawNombre},\nEl solicitante respondió la solicitud de información del pedido ${payload.pedido_visible || 'PED'}.\n\n* Código: ${payload.pedido_visible || 'PED'}\n* Categoría: ${payload.categoria || ''} - ${payload.tipo || ''}\n* Solicitante: ${payload.solicitante_nombre || payload.nombre_apellido || ''} (${payload.area_solicitante || ''})\n\nIngresá al pedido en:\n${gestionUrl}\n`;
+      const text = `${textHeader}\nGobierno de Tierra del Fuego AIAS — Secretaría de Medios\n\nHola ${rawNombre},\nEl solicitante respondió la solicitud de información del pedido ${payload.pedido_visible || 'PED'}.\n\n* Código: ${payload.pedido_visible || 'PED'}\n* Categoría: ${payload.categoria || ''} - ${payload.tipo || ''}\n* Solicitante: ${payload.solicitante_nombre || payload.nombre_apellido || ''} (${payload.area_solicitante || ''})\n\nIngresá al pedido en:\n${gestionUrl}\n`;
 
       return {
         subject,
@@ -1066,4 +1075,3 @@ export function renderRevisionSolicitadaEmail(payload: Record<string, any>, appB
 }
 
 export const renderEmailForCommunication = renderEmail;
-
