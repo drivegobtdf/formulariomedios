@@ -1293,9 +1293,14 @@ describe('PedidoDetallePage Unit Tests', () => {
     expect(screen.getByText('INTERNO')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Cobertura Especial Festival Invierno' })).toBeInTheDocument();
 
-    // El botón de pedir información (72h / 48h) NUNCA debe estar presente para pedidos internos
-    expect(screen.queryByRole('button', { name: /Pedir información · 72 h/i })).not.toBeInTheDocument();
+    // CAM-01 / CAM-07C: El botón debe estar presente tanto para públicos como para internos en Nuevo, En revisión y En proceso
+    const infoReqBtn = screen.getByRole('button', { name: /Pedir información · 72 h/i });
+    expect(infoReqBtn).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pedir información · 48 h/i })).not.toBeInTheDocument();
+
+    // Sin responsable asignado, el botón está bloqueado y muestra mensaje explicativo
+    expect(infoReqBtn).toBeDisabled();
+    expect(infoReqBtn).toHaveAttribute('title', 'Debe asignar un responsable antes de solicitar información');
   });
 
   it('debe permitir abrir modal de finalización y finalizar pedido interno sin requerir archivos ni links', async () => {

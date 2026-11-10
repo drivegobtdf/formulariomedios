@@ -723,9 +723,49 @@ export const PedidoDetallePage: React.FC = () => {
     }
   };
 
+    // CAM-02: Identificación de pedidos reabiertos desde Cancelado o Finalizado
+  const isReabierto = Boolean(
+    pedido?.is_reabierto ||
+    (historial && historial.some((h) => h.evento === 'pedido.reopened'))
+  );
+
+  // Destinatario y validación de correo para solicitud de información 72h (CAM-01 / CAM-07C)
+  const recipientEmail = pedido?.origen === 'interno'
+    ? ((pedido.informacion_especifica as any)?.solicitante?.correo?.trim() || null)
+    : (pedido?.envio?.correo?.trim() || null);
+
+  const isValidRecipientEmail = Boolean(
+    recipientEmail && /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/i.test(recipientEmail)
+  );
+
   const handleCreateInfoRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pedido || !infoReqMensaje.trim()) return;
+
+    // Validaciones de guarda defensivas equivalentes a la RPC
+    if (!['Nuevo', 'En revisión', 'En proceso'].includes(pedido.estado)) {
+      setModalError(`Solo se puede solicitar información sobre pedidos en estado Nuevo, En revisión o En proceso (estado actual: ${pedido.estado}).`);
+      return;
+    }
+
+    const hasPending = Boolean(
+      (pedido.solicitudes || (pedido as any).solicitudes_informacion || []).some((si: any) => si.estado === 'pendiente')
+    );
+    if (hasPending) {
+      setModalError('Ya existe una solicitud de información pendiente de respuesta para este pedido.');
+      return;
+    }
+
+    if (!pedido.responsable_user_id) {
+      setModalError('Debe asignar un responsable antes de solicitar información.');
+      return;
+    }
+
+    if (!isValidRecipientEmail) {
+      setModalError('El pedido no tiene un correo válido para solicitar información.');
+      return;
+    }
+
     setActionLoading(true);
     setModalError(null);
     setError(null);
@@ -1140,6 +1180,15 @@ export const PedidoDetallePage: React.FC = () => {
                   RETRABAJADO · {formatReworkHistoricalText(pedido.revision_count || 0)}
                 </span>
               ) : null}
+              {isReabierto && (
+                <span
+                  className="pedidos-detail-reabierto-badge"
+                  data-testid="badge-reabierto"
+                  title="Pedido reabierto para revisión o actualización"
+                >
+                  ↩️ REABIERTO
+                </span>
+              )}
               {pedido.archivado && (
                 <span style={{ background: 'var(--pedidos-status-cancelado-bg, #fee2e2)', color: 'var(--pedidos-status-cancelado-text, #b91c1c)', border: '1px solid var(--pedidos-status-cancelado-border, #fca5a5)', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.75rem' }}>
                   ARCHIVADO
@@ -1376,24 +1425,30 @@ export const PedidoDetallePage: React.FC = () => {
                     </>
                   )}
 
-                  {/* CAM-07C: Solicitud de información 72h (públicos e internos con correo) */}
-                  {['Nuevo', 'En revisión', 'En proceso'].includes(pedido.estado) && !hasPendingInfo && (pedido.origen !== 'interno' || Boolean((pedido.informacion_especifica as any)?.solicitante?.correo?.trim())) && (
+                  {/* CAM-01 / CAM-07C: Solicitud de información 72h disponible para públicos e internos en Nuevo, En revisión y En proceso (requiere responsable asignado) */}
+                  {['Nuevo', 'En revisión', 'En proceso'].includes(pedido.estado) && !hasPendingInfo && (
                     <button
                       type="button"
                       onClick={() => {
+                        if (!pedido.responsable_user_id) {
+                          setError('Debe asignar un responsable antes de solicitar información.');
+                          return;
+                        }
                         setModalError(null);
                         setShowInfoReqModal(true);
                       }}
-                      disabled={actionLoading}
+                      disabled={actionLoading || !pedido.responsable_user_id}
+                      title={!pedido.responsable_user_id ? 'Debe asignar un responsable antes de solicitar información' : 'Pedir información · 72 h'}
                       style={{
                         background: 'var(--pedidos-status-revision-bg, #fef3c7)',
-                        color: 'var(--pedidos-status-revision-text, #b45309)',
+                        color: !pedido.responsable_user_id ? 'var(--pedidos-text-muted, #94a3b8)' : 'var(--pedidos-status-revision-text, #b45309)',
                         border: '1px solid var(--pedidos-status-revision-border, #fcd34d)',
                         padding: '0.45rem 0.85rem',
                         borderRadius: '0.375rem',
                         fontSize: '0.8125rem',
                         fontWeight: 600,
-                        cursor: actionLoading ? 'not-allowed' : 'pointer',
+                        cursor: actionLoading || !pedido.responsable_user_id ? 'not-allowed' : 'pointer',
+                        opacity: !pedido.responsable_user_id ? 0.6 : 1,
                       }}
                     >
                       Pedir información · 72 h
@@ -2970,16 +3025,35 @@ export const PedidoDetallePage: React.FC = () => {
               </div>
             )}
 
+            {!pedido?.responsable_user_id && (
+              <div style={{ background: 'var(--pedidos-status-rejected-bg, #fef2f2)', border: '1px solid var(--pedidos-status-rejected-border, #f87171)', color: 'var(--pedidos-status-rejected-text, #991b1b)', padding: '0.75rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
+                <strong>⚠️ Responsable requerido:</strong> Debe asignar un usuario responsable al pedido antes de solicitar información de 72 horas.
+              </div>
+            )}
+
+            {!isValidRecipientEmail && (
+              <div style={{ background: 'var(--pedidos-status-rejected-bg, #fef2f2)', border: '1px solid var(--pedidos-status-rejected-border, #f87171)', color: 'var(--pedidos-status-rejected-text, #991b1b)', padding: '0.75rem 0.85rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.8125rem' }}>
+                <strong>⚠️ Sin destinatario válido:</strong> Este pedido {pedido?.origen === 'interno' ? 'interno' : 'público'} no tiene un correo de solicitante válido registrado. No es posible emitir la solicitud de información de 72 horas sin un correo destinatario.
+              </div>
+            )}
+
+            {isValidRecipientEmail && (
+              <div style={{ background: 'var(--pedidos-surface-sunken, #f8fafc)', border: '1px solid var(--pedidos-border-subtle, #e2e8f0)', borderRadius: '0.375rem', padding: '0.5rem 0.75rem', marginBottom: '1rem', fontSize: '0.8125rem', color: 'var(--pedidos-text-secondary, #475569)' }}>
+                <strong>Destinatario:</strong> {recipientEmail} &bull; <strong>Plazo:</strong> 72 horas corridas
+              </div>
+            )}
+
             <form onSubmit={handleCreateInfoRequest}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--pedidos-text-primary, #1e293b)' }}>Detalle de la solicitud</label>
                 <textarea
                   rows={4}
                   required
-                  placeholder="Detallá los datos, archivos o aclaraciones necesarias..."
+                  disabled={!isValidRecipientEmail || !pedido?.responsable_user_id}
+                  placeholder={!pedido?.responsable_user_id ? "Acción bloqueada: falta responsable asignado" : (!isValidRecipientEmail ? "Acción bloqueada: falta correo válido del solicitante" : "Detallá los datos, archivos o aclaraciones necesarias...")}
                   value={infoReqMensaje}
                   onChange={(e) => setInfoReqMensaje(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', backgroundColor: 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #1e293b)', borderRadius: '0.375rem', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--pedidos-control-border, #cbd5e1)', backgroundColor: (!isValidRecipientEmail || !pedido?.responsable_user_id) ? 'var(--pedidos-surface-sunken, #f1f5f9)' : 'var(--pedidos-control-bg, #ffffff)', color: 'var(--pedidos-control-text, #1e293b)', borderRadius: '0.375rem', boxSizing: 'border-box' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -2996,8 +3070,9 @@ export const PedidoDetallePage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={actionLoading || !infoReqMensaje.trim()}
-                  style={{ background: '#d97706', color: '#ffffff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', fontWeight: 600, cursor: actionLoading || !infoReqMensaje.trim() ? 'not-allowed' : 'pointer' }}
+                  disabled={actionLoading || !infoReqMensaje.trim() || !isValidRecipientEmail || !pedido?.responsable_user_id}
+                  title={!pedido?.responsable_user_id ? 'Debe asignar un responsable antes de solicitar información' : (!isValidRecipientEmail ? 'No se puede emitir la solicitud sin un correo de destinatario válido' : undefined)}
+                  style={{ background: '#d97706', color: '#ffffff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.375rem', fontWeight: 600, opacity: (!isValidRecipientEmail || !infoReqMensaje.trim()) ? 0.6 : 1, cursor: actionLoading || !infoReqMensaje.trim() || !isValidRecipientEmail ? 'not-allowed' : 'pointer' }}
                 >
                   {actionLoading ? 'Enviando...' : 'Enviar solicitud'}
                 </button>

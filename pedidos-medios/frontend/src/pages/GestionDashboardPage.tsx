@@ -1351,6 +1351,15 @@ export const GestionDashboardPage: React.FC = () => {
                           RETRABAJADO · {formatReworkHistoricalText(ped.revision_count || 0)}
                         </div>
                       ) : null}
+                      {ped.is_reabierto && (
+                        <div
+                          className="pedidos-badge-reabierto"
+                          data-testid="badge-reabierto"
+                          title="Pedido reabierto para revisión o actualización"
+                        >
+                          ↩️ REABIERTO
+                        </div>
+                      )}
                       <div
                         className={`kanban-card-title ${ped.titulo ? 'has-explicit-title' : ''}`}
                         title={getPedidoCardTitle(ped)}
@@ -1540,6 +1549,15 @@ export const GestionDashboardPage: React.FC = () => {
                           {ped.retrabajo_activo && (
                             <div className="pedidos-badge-retrabajo">
                               🔄 DEVUELTO - RETRABAJAR {ped.revision_count ? `· Rev #${ped.revision_count}` : ''}
+                            </div>
+                          )}
+                          {ped.is_reabierto && (
+                            <div
+                              className="pedidos-badge-reabierto"
+                              data-testid="badge-reabierto"
+                              title="Pedido reabierto para revisión o actualización"
+                            >
+                              ↩️ REABIERTO
                             </div>
                           )}
 
@@ -1783,6 +1801,15 @@ export const GestionDashboardPage: React.FC = () => {
                               RETRABAJADO · {formatReworkHistoricalText(ped.revision_count || 0)}
                             </span>
                           ) : null}
+                          {ped.is_reabierto && (
+                            <span
+                              className="pedidos-table-reabierto-badge"
+                              data-testid="badge-reabierto"
+                              title="Pedido reabierto para revisión o actualización"
+                            >
+                              ↩️ REABIERTO
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="pedidos-table-td pedidos-table-td-assignee">

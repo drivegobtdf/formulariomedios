@@ -81,7 +81,40 @@ export interface PedidoListItem {
   created_at: string;
   updated_at: string;
   finalizado_at?: string | null;
+  cancelado_at?: string | null;
+  is_reabierto?: boolean;
   solicitudes_pendientes_count?: number;
+}
+
+/**
+ * CAM-02: Determina de forma canónica e histórica si un pedido ha sido reabierto.
+ * - Basado estrictamente en la bandera canónica auditada `is_reabierto` persistida
+ *   en PostgreSQL mediante el trigger transaccional sobre domain_events ('pedido.reopened').
+ * - Si se provee el historial de eventos canónicos (ej. en PedidoDetallePage),
+ *   valida directamente la existencia del evento 'pedido.reopened'.
+ * - Invariante: CERO inferencias basadas en versiones, fechas o estados transitorios.
+ *   Conserva la distinción histórica independientemente del estado actual y separado de retrabajo.
+ */
+export function computeIsReabierto(pedido?: {
+  is_reabierto?: boolean | null;
+  historial?: Array<{ evento?: string; event_name?: string }> | null;
+  [key: string]: any;
+} | null): boolean {
+  if (!pedido) return false;
+
+  // 1. Indicador canónico persistido en la entidad pedidos (is_reabierto)
+  if (pedido.is_reabierto === true) {
+    return true;
+  }
+
+  // 2. Historial de eventos canónicos (domain_events vía RPC autorizada)
+  if (Array.isArray(pedido.historial)) {
+    return pedido.historial.some(
+      (h) => h?.evento === 'pedido.reopened' || h?.event_name === 'pedido.reopened'
+    );
+  }
+
+  return false;
 }
 
 export function getPrioridadWeight(prioridad?: string | null): number {
@@ -446,6 +479,7 @@ function createPedidosQueryBuilder(supabase: any, filters?: FetchPedidosFilters)
       created_by_user_id,
       prioridad,
       etiqueta_interna,
+      is_reabierto,
       retrabajo_activo,
       revision_requested_at,
       revision_count,
@@ -457,6 +491,7 @@ function createPedidosQueryBuilder(supabase: any, filters?: FetchPedidosFilters)
       version,
       archivado,
       finalizado_at,
+      cancelado_at,
       created_at,
       updated_at,
       categorias_servicio!pedidos_categoria_id_fkey ( nombre ),
@@ -635,6 +670,8 @@ export async function fetchPedidos(filters?: FetchPedidosFilters): Promise<Pedid
       }
       return p.finalizado_at || null;
     })(),
+    cancelado_at: p.cancelado_at || null,
+    is_reabierto: computeIsReabierto(p),
   }));
 
   if (filters?.estado === 'Finalizado') {
@@ -661,6 +698,7 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       created_by_user_id,
       prioridad,
       etiqueta_interna,
+      is_reabierto,
       retrabajo_activo,
       revision_requested_at,
       revision_count,
@@ -672,6 +710,7 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       version,
       archivado,
       finalizado_at,
+      cancelado_at,
       created_at,
       updated_at,
       categorias_servicio!pedidos_categoria_id_fkey ( nombre ),
@@ -819,6 +858,8 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     finalizado_at: (versionesData && versionesData.length > 0 && versionesData[0]?.finalizado_at)
       ? versionesData[0].finalizado_at
       : (p.finalizado_at || null),
+    cancelado_at: p.cancelado_at || null,
+    is_reabierto: computeIsReabierto(p),
     envio: p.envios_formulario ? {
       id: (p.envios_formulario as any).id,
       nombre_apellido: (p.envios_formulario as any).nombre_apellido,
@@ -841,6 +882,8 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       visibilidad: n.visibilidad,
       texto: n.texto,
       created_at: n.created_at,
+      revision: n.revision,
+      edited_at: n.edited_at,
     })),
     solicitudes: (solicitudes || []).map((s: any) => ({
       id: s.id,

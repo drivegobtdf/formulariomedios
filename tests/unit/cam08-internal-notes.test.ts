@@ -36,4 +36,12 @@ describe('CAM-08 notas internas',()=>{
     expect(ui).toContain('n.autor_user_id === user?.id');
     expect(ui).toContain('Editada');
   });
+  it('mapeo de notas internas propaga revision y edited_at para control de concurrencia y UI', () => {
+    expect(api).toContain('revision: n.revision,');
+    expect(api).toContain('edited_at: n.edited_at,');
+    const notasMapMatch = api.match(/notas:\s*\(notas\s*\|\|\s*\[\]\)\.map\(\(n:\s*any\)\s*=>\s*\(\{([\s\S]*?)\}\)\),/);
+    expect(notasMapMatch).toBeTruthy();
+    expect(notasMapMatch[1]).toContain('revision: n.revision');
+    expect(notasMapMatch[1]).toContain('edited_at: n.edited_at');
+  });
 });
