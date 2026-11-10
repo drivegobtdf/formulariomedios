@@ -1,6 +1,6 @@
 # 18 — Trazabilidad
 
-**Revisión documental:** 3.0 · 2026-09-11  
+**Revisión documental:** 3.4 · 2026-11-10
 **Estado de implementación:** NO VERIFICADO; esta revisión documenta decisiones aprobadas, no ejecuta desarrollo.  
 **Autoridad:** decisiones funcionales aprobadas por el propietario el 2026-09-11, ADR vigentes y requisitos de esta revisión.  
 **Arquitectura:** `PEDIDOS-WSN-GD-v2` — WordPress.org + Supabase + n8n + Google Drive, con Supabase como fuente de verdad de negocio.  
@@ -34,6 +34,12 @@
 | cancelar/reabrir | ADR-050 | RPC | QA-EST-007..012 |
 | archivar/restaurar | ADR-047 | archivado_at/audit | QA archivo |
 | tablero+tabla (refresco sin parpadeo `CAM-05`) | ADR-048 | GestionDashboardPage.tsx (`loadData` isSilent, `latestLoadId`) | UI/E2E / QA `CAM-05` |
+| MockDrive dual persistente y fail-closed (`INC-05`) | ADR-042 / INC-05 | `_mock_drive_storage` + `MockDriveAdapter` (bloqueo estricto en test/prod) | `inc05-inc06-storage-and-retry.test.ts` |
+| Idempotencia y retry en subida (`INC-06`) | SRS-PED-008 / INC-06 | `drive-upload-prepare` `(session_id, client_file_ref)` relay streaming | `inc05-inc06-storage-and-retry.test.ts` |
+| Purga reservas huérfanas (`INC-07`) | ADR-043 / OPEN-003 / INC-07 | RPC `cleanup_orphaned_upload_reservations` (gracia configurable, protege verificados) | `inc05-inc06-storage-and-retry.test.ts` |
+| Evento canónico respuesta info (`INC-02`) | ADR-046 / INC-02 | `pedido.info_responded` en `solicitudes_informacion_responder` | `inc02-canonical-event.test.ts` |
+| Accesibilidad fechas y contraste (`INC-01`, `INC-03`, `INC-09`) | WCAG 2.1 AA / Paquete 3 | `MisSolicitudesPage`, `CargaInternaModal`, `app.css` | `inc01-inc03-inc09-ux-contrast.test.ts` |
+| Títulos 3-50 y soporte MP4 25MB (`INC-04`, `INC-08`) | PRD §6 / INC-04 / INC-08 | `submission_create_core`, triggers y validaciones frontend | `inc04-inc08-title-and-mp4.test.ts` |
 
 ## 2. Revisión 2.0 → 3.0
 
@@ -106,3 +112,22 @@ No marcar requisito cumplido solo porque está escrito; se exige evidencia imple
 - **Backlog 2026-11 — Fase 2 (`CAM-03` y `CAM-05`):**
   - `CAM-03` (`docs/backlog/PEDIDOS_backlog_cambios_2026-11-02.md` §CAM-03 → `02_REQUISITOS_FUNCIONALES.md` §18 → `gestionApi.ts`, `GestionDashboardPage.tsx`, `app.css` → `cam03-finalizados-ordering-and-filters.test.tsx` (15 pruebas PASS) y `cam03-pagination-large-datasets-1205.test.tsx` (11 pruebas PASS, 680 pruebas totales en 63 suites), 5 capturas QA visuales Playwright): IMPLEMENTADO Y APROBADO (`22be9172ce9b14907bd7d09fa64d96153ace52bd`).
   - `CAM-05` (`docs/backlog/PEDIDOS_backlog_cambios_2026-11-02.md` §CAM-05 → `02_REQUISITOS_FUNCIONALES.md` §19 → `GestionDashboardPage.tsx` → `GestionDashboardPage.test.tsx` (2 pruebas unitarias PASS), 682 pruebas totales en 63 suites, 7 capturas QA visuales Playwright): IMPLEMENTADO (Pendiente revisión Dirección Técnica).
+
+- **Post-QA — Paquete 1 (`INC-05`, `INC-06`, `INC-07`):**
+  - `INC-05` (Aislamiento storage mock en pruebas locales → migración `20261110000001`, `MockDriveAdapter.ts` con persistencia dual y fail-closed en test/prod → `inc05-inc06-storage-and-retry.test.ts`): IMPLEMENTADO Y VERIFICADO (`414b2ceca8`).
+  - `INC-06` (Idempotencia de subida por `(session_id, client_file_ref)` y resiliencia ante cortes → `drive-upload-prepare`, `drive-adapter.ts` → `inc05-inc06-storage-and-retry.test.ts`): IMPLEMENTADO Y VERIFICADO (`414b2ceca8`).
+  - `INC-07` (Limpieza de reservas de carga huérfanas expiradas → migración `20261110000000`, RPC `cleanup_orphaned_upload_reservations` → `inc05-inc06-storage-and-retry.test.ts`): IMPLEMENTADO Y VERIFICADO (`414b2ceca8`).
+- **Post-QA — Paquete 2 (`INC-02`, `INC-10`):**
+  - `INC-02` (Evento canónico `pedido.info_responded` ante respuesta de solicitante → migración `20261110000002`, triggers y Edge Function dispatcher → `inc02-canonical-event.test.ts`): IMPLEMENTADO Y VERIFICADO (`971e5bb`, `45a052d`).
+  - `INC-10` (Normalización de plazos 72h corridas en plantillas de notificación → `renderEmailHtml.ts` → `inc10-deadline-strings.test.ts`): IMPLEMENTADO Y VERIFICADO (`971e5bb`).
+- **Post-QA — Paquete 3 (`INC-01`, `INC-03`, `INC-09`):**
+  - `INC-01` (Accesibilidad de fechas y formateo unificado en vistas de solicitante → `MisSolicitudesPage.tsx`, `formatUtils.ts`): IMPLEMENTADO Y VERIFICADO (`f8b7012`).
+  - `INC-03` (Accesibilidad y navegación por teclado en carga interna → `CargaInternaModal.tsx`): IMPLEMENTADO Y VERIFICADO (`f8b7012`).
+  - `INC-09` (Contraste de controles WCAG 2.1 AA >= 3:1 en temas claro y oscuro → `app.css` → `inc01-inc03-inc09-ux-contrast.test.ts`): IMPLEMENTADO Y VERIFICADO (`f8b7012`).
+- **Post-QA — Paquete 4 (`INC-04`, `INC-08`):**
+  - `INC-04` (Límite estricto de títulos 3–50 caracteres para pedidos nuevos, preservación de históricos → migración `20261110000003`, validaciones frontend y RPCs → `inc04-inc08-title-and-mp4.test.ts`): IMPLEMENTADO Y VERIFICADO (`3d5dcdc`).
+  - `INC-08` (Soporte aditivo para archivos `video/mp4` hasta 25 MB → migración `20261110000003`, `submission_create_core` y carga interna → `inc04-inc08-title-and-mp4.test.ts`): IMPLEMENTADO Y VERIFICADO (`3d5dcdc`).
+- **Consolidación Integral (`CAM-01`, `CAM-02`, `CAM-08`):**
+  - `CAM-01` (Responsable obligatorio al solicitar información → migración `20261106004000`, `solicitud_informacion_crear`): IMPLEMENTADO Y VERIFICADO (`58dd9a9`).
+  - `CAM-02` (Insignia `is_reabierto` y trazabilidad de reapertura → migración `20261106030000`, `GestionDashboardPage.tsx`, `PedidoDetallePage.tsx`, `app.css`): IMPLEMENTADO Y VERIFICADO (`fe83027`).
+  - `CAM-08` (Historial de notas internas y permisos → migración `20261105002000`, `GestionDashboardPage.tsx`, `PedidoDetallePage.tsx`, `app.css`): IMPLEMENTADO Y VERIFICADO (`35ed5e5`).

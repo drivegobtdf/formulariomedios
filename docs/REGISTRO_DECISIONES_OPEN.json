@@ -1,11 +1,12 @@
 {
-  "version": "3.2",
-  "updated_at": "2026-09-13T23:10:00-03:00",
+  "version": "3.3",
+  "updated_at": "2026-11-10T18:50:00-03:00",
   "canonical_decisions": {
     "OPEN-003": {
       "id": "OPEN-003",
       "estado": "ABIERTO",
       "descripcion": "Retención, borrado, backups y custodio/responsables.",
+      "nota": "La función técnica cleanup_orphaned_upload_reservations (INC-07) resuelve la purga de reservas huérfanas de carga, pero la política general de retención, purga de pedidos y custodia institucional permanece ABIERTA.",
       "categoria": "Infraestructura y Datos",
       "alcance": "Política de retención institucional, purgas y custodia fuera de F10."
     },
@@ -29,8 +30,9 @@
       "id": "OPEN-014",
       "estado": "ABIERTO",
       "descripcion": "Formatos y extensiones audiovisuales adicionales.",
+      "nota": "El formato video/mp4 hasta 25 MB está habilitado técnicamente para pedidos públicos e internos (INC-08, migración 103); extensiones y códecs adicionales permanecen ABIERTOS para autorización institucional.",
       "categoria": "Contenido Multimedia",
-      "alcance": "Formatos base PDF/PNG/JPG/DOCX/ZIP activos; extensiones de video/audio adicionales pendientes."
+      "alcance": "Formatos base PDF/PNG/JPG/DOCX/ZIP y video/mp4 activos; extensiones de video/audio adicionales pendientes."
     },
     "OPEN-015": {
       "id": "OPEN-015",
@@ -47,4 +49,4 @@
       "evidencia": "tests/e2e/integrated-cloud-drive.spec.ts, tests/integration/drive-upload-local.test.ts, scripts/google-drive-oauth-bootstrap.js"
     }
   }
-}
+}
