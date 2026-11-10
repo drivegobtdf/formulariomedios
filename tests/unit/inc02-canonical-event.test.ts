@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const root = process.cwd();
 const migrationInc02Path = join(root, 'supabase/migrations/20261110000002_inc02_info_responded_canonical_event.sql');
-const migrationInc02 = readFileSync(migrationInc02Path, 'utf8');
+const migrationInc02 = readFileSync(migrationInc02Path, 'utf8').replace(/\r\n/g, '\n');
 
 describe('INC-02: Evento canónico pedido.info_responded, compatibilidad y encolado idempotente', () => {
   it('1. solicitante_submit_info_response emite el evento canónico pedido.info_responded', () => {
