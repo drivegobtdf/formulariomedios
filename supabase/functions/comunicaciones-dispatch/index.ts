@@ -131,17 +131,29 @@ export default async function handler(req: Request): Promise<Response> {
       let retrySeconds: number | null = 300;
 
       try {
-        // C12: Validación de destinatario de prueba en entorno controlado
+        // C12 / Bloqueante 2: Validación estricta de destinatario específico de QA (fail-closed)
         const toEmail = (item.destinatario_email || '').trim().toLowerCase();
-        const isAuthorizedTestEmail = toEmail === 'pablosaldiviainfo@gmail.com' ||
-          toEmail.endsWith('@tierradelfuego.gob.ar') ||
-          toEmail.endsWith('@tdf.gob.ar');
+        const customQaEmails = (getEnv('TEST_QA_ALLOWLIST') || '')
+          .split(',')
+          .map((e: string) => e.trim().toLowerCase())
+          .filter(Boolean);
+
+        const canonicalQaEmails = new Set<string>([
+          'pablosaldiviainfo@gmail.com',
+          'solicitante.qa@tierradelfuego.gob.ar',
+          'qa.pedidos@tierradelfuego.gob.ar',
+          'operador.qa@tierradelfuego.gob.ar',
+          'admin.qa@tierradelfuego.gob.ar',
+          ...customQaEmails,
+        ]);
+
+        const isAuthorizedTestEmail = canonicalQaEmails.has(toEmail);
 
         if (!isAuthorizedTestEmail && getEnv('ENVIRONMENT') !== 'production') {
           throw {
             semanticType: 'PERMANENT_RECIPIENT_REJECTED',
             status: 422,
-            message: `Destinatario '${toEmail}' no está en la allowlist de pruebas autorizadas.`,
+            message: `Destinatario '${toEmail}' no está en la allowlist de pruebas autorizadas (QA específico).`,
           };
         }
 

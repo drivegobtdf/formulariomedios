@@ -951,17 +951,36 @@ export async function dispatchBatch(batchSize = 10, leaseSeconds = 300) {
     console.log(`[DISPATCHER] Processing item ${item.id} (claim_id=${claimId}, ${item.tipo_comunicacion} -> ${item.destinatario_email})...`);
 
     try {
-      // Allowlist check in test mode
+      // Allowlist estricta de direcciones específicas de QA en modo no productivo (fail-closed)
       const toEmail = (item.destinatario_email || '').trim().toLowerCase();
-      const isAuthorizedTestEmail = toEmail === 'pablosaldiviainfo@gmail.com' ||
-        toEmail.endsWith('@tierradelfuego.gob.ar') ||
-        toEmail.endsWith('@tdf.gob.ar');
+      const customQaEmails = (env.TEST_QA_ALLOWLIST || process.env.TEST_QA_ALLOWLIST || '')
+        .split(',')
+        .map(e => e.trim().toLowerCase())
+        .filter(Boolean);
 
-      if (!isAuthorizedTestEmail && process.env.NODE_ENV !== 'production') {
+      const canonicalQaEmails = new Set([
+        'pablosaldiviainfo@gmail.com',
+        'solicitante.qa@tierradelfuego.gob.ar',
+        'qa.pedidos@tierradelfuego.gob.ar',
+        'operador.qa@tierradelfuego.gob.ar',
+        'admin.qa@tierradelfuego.gob.ar',
+        ...customQaEmails
+      ]);
+
+      const isAuthorizedTestEmail = canonicalQaEmails.has(toEmail);
+
+      const isTestOrNonProd =
+        env.ENVIRONMENT === 'test' ||
+        env.ENVIRONMENT === 'staging' ||
+        process.env.ENVIRONMENT === 'test' ||
+        process.env.ENVIRONMENT === 'staging' ||
+        process.env.NODE_ENV !== 'production';
+
+      if (!isAuthorizedTestEmail && isTestOrNonProd) {
         throw {
           semanticType: 'PERMANENT_RECIPIENT_REJECTED',
           status: 422,
-          message: `Destinatario '${toEmail}' no está en la allowlist de pruebas autorizadas.`
+          message: `Destinatario '${toEmail}' no está en la allowlist de pruebas autorizadas (QA específico).`
         };
       }
 
