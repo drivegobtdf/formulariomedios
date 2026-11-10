@@ -189,6 +189,14 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
       setError('El título del pedido es obligatorio y debe tener al menos 3 caracteres.');
       return;
     }
+    if (cleanTitulo.length > 50) {
+      setError('El título del pedido no puede superar los 50 caracteres.');
+      return;
+    }
+    if (/<[^>]*>/.test(cleanTitulo)) {
+      setError('El título del pedido no puede contener etiquetas HTML.');
+      return;
+    }
 
     const cleanCorreo = solicitanteCorreo.trim().toLowerCase();
     if (!cleanCorreo) {
@@ -366,6 +374,8 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
                     id="input-titulo"
                     type="text"
                     required
+                    minLength={3}
+                    maxLength={50}
                     placeholder="Ej: Cobertura Acto Malvinas 2026 / Gráficas Semana Antártica"
                     value={titulo}
                     onChange={(e) => setTitulo(e.target.value)}

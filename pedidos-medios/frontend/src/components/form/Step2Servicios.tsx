@@ -210,7 +210,7 @@ export const Step2Servicios: React.FC<Step2ServiciosProps> = ({
                   type="text"
                   required
                   minLength={3}
-                  maxLength={200}
+                  maxLength={50}
                   value={state.titulos_pedidos?.[piece.tipo_slug] || ''}
                   onChange={(e) => onChangeTituloPedido(piece.tipo_slug, e.target.value)}
                   aria-invalid={Boolean(error)}

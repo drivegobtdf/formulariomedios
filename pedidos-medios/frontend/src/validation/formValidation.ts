@@ -396,8 +396,8 @@ export function validateStep2(state: FormWizardState): ValidationErrors {
   );
   for (const tipo of tiposActivos) {
     const titulo = (state.titulos_pedidos?.[tipo] || '').trim();
-    if (titulo.length < 3 || titulo.length > 200) {
-      errors[`titulo_pedido.${tipo}`] = 'Ingresá un título de 3 a 200 caracteres para este pedido.';
+    if (titulo.length < 3 || titulo.length > 50) {
+      errors[`titulo_pedido.${tipo}`] = 'Ingresá un título de 3 a 50 caracteres para este pedido.';
     } else if (/<[^>]*>/.test(titulo)) {
       errors[`titulo_pedido.${tipo}`] = 'El título del pedido no puede contener etiquetas HTML.';
     }
