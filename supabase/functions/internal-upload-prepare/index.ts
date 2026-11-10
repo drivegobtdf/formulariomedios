@@ -85,7 +85,7 @@ export default async function handler(req: Request): Promise<Response> {
         const bytes = new Uint8Array(await req.arrayBuffer());
         if (bytes.byteLength !== Number(reservation.expected_size)) return json({ error: 'FILE_SIZE_MISMATCH' }, 422);
         fileId ||= `mock_drive_file_${reservationId}`;
-        (adapter as { storeFileBuffer: (...args: unknown[]) => unknown }).storeFileBuffer(
+        await (adapter as { storeFileBuffer: (...args: unknown[]) => unknown }).storeFileBuffer(
           fileId, reservation.expected_name, reservation.expected_mime,
           Buffer.from(bytes), { pedido_id: ped.id, reservation_id: reservationId, contexto: 'interno' }
         );

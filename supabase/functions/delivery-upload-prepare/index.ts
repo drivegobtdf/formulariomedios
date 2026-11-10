@@ -108,7 +108,7 @@ export default async function handler(req: Request): Promise<Response> {
         const adapter = getDriveAdapter();
         if ('storeFileBuffer' in adapter) {
           const bodyBytes = req.body ? new Uint8Array(await req.arrayBuffer()) : new Uint8Array();
-          (adapter as { storeFileBuffer: (...args: unknown[]) => unknown }).storeFileBuffer(
+          await (adapter as { storeFileBuffer: (...args: unknown[]) => unknown }).storeFileBuffer(
             driveFileId || `mock_drive_file_${reservationId}`,
             resData.expected_name,
             resData.expected_mime || 'application/octet-stream',

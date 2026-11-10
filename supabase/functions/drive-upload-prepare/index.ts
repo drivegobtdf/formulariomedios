@@ -258,12 +258,12 @@ export default async function handler(req: Request): Promise<Response> {
         const adapter = getDriveAdapter();
         if ('storeFileBuffer' in adapter) {
           const bodyBytes = req.body ? new Uint8Array(await req.arrayBuffer()) : new Uint8Array();
-          (adapter as { storeFileBuffer: (...args: unknown[]) => unknown }).storeFileBuffer(
+          await (adapter as { storeFileBuffer: (...args: unknown[]) => unknown }).storeFileBuffer(
             driveFileId || `mock_drive_file_${reservationId}`,
             resData.expected_name,
             resData.expected_mime || 'application/octet-stream',
             Buffer.from(bodyBytes),
-            { reservation_id: reservationId },
+            { reservation_id: reservationId, client_file_ref: resData.client_file_ref, submission_key: resData.submission_sessions?.submission_key },
             resData.drive_parent_id
           );
         }
@@ -610,69 +610,193 @@ export default async function handler(req: Request): Promise<Response> {
     const rootFolderId = await adapter.ensureRootFolder();
     const stagingFolderId = await adapter.ensureStagingFolder(rootFolderId);
 
-    const reservationId = crypto.randomUUID();
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const clientFileRef = (body.client_file_ref && typeof body.client_file_ref === 'string' && UUID_REGEX.test(body.client_file_ref.trim()))
       ? body.client_file_ref.trim()
       : crypto.randomUUID();
-    const archivoId = crypto.randomUUID();
 
-    const resumableSession = await adapter.createResumableUploadSession({
-      fileName: expected_name,
-      mimeType: mime_type,
-      fileSize: Number(expected_size),
-      parentFolderId: stagingFolderId,
-      appProperties: {
-        submission_key: targetSubmissionKey,
+    // INC-06: Verificación de reserva previa para idempotencia de reintentos
+    let existingResQuery = supabase
+      .from('upload_reservations')
+      .select('*, archivos(*)')
+      .eq('client_file_ref', clientFileRef);
+
+    if (targetSessionId) {
+      existingResQuery = existingResQuery.eq('session_id', targetSessionId);
+    } else if (targetSolicitudId) {
+      existingResQuery = existingResQuery.eq('solicitud_id', targetSolicitudId);
+    } else if (targetPedidoId) {
+      existingResQuery = existingResQuery.eq('pedido_id', targetPedidoId);
+    }
+
+    const { data: existingRes, error: findResErr } = await existingResQuery.maybeSingle();
+    if (findResErr) {
+      return new Response(
+        JSON.stringify({ error: 'DB_ERROR', message: 'Error al verificar reserva previa', details: findResErr.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    let reservationId: string;
+    let archivoId: string;
+    let resumableSession: ResumableSessionResult;
+
+    if (existingRes) {
+      // Si la reserva previa ya fue completada o verificada, no se puede reutilizar ni sobrescribir
+      if (existingRes.state === 'completed' || existingRes.state === 'verified') {
+        return new Response(
+          JSON.stringify({
+            error: 'RESERVATION_ALREADY_USED',
+            message: 'El archivo ya fue cargado y verificado previamente para esta referencia',
+            reservation_id: existingRes.id,
+            archivo_id: existingRes.archivo_id,
+            client_file_ref: clientFileRef,
+            state: existingRes.state,
+          }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Reutilizar la reserva existente (estados pending, uploading, failed)
+      reservationId = existingRes.id;
+      archivoId = existingRes.archivo_id;
+
+      resumableSession = await adapter.createResumableUploadSession({
+        fileName: expected_name,
+        mimeType: mime_type,
+        fileSize: Number(expected_size),
+        parentFolderId: stagingFolderId,
+        appProperties: {
+          submission_key: targetSubmissionKey,
+          client_file_ref: clientFileRef,
+          reservation_id: reservationId,
+        },
+      });
+
+      // Actualizar archivo existente en archivos
+      const { error: archUpdateErr } = await supabase.from('archivos').update({
+        nombre_original: expected_name,
+        mime_type: mime_type,
+        size_bytes: Number(expected_size),
+        drive_file_id: resumableSession.driveFileId || null,
+        estado: 'reserved',
+      }).eq('id', archivoId);
+
+      if (archUpdateErr) {
+        return new Response(
+          JSON.stringify({ error: 'DB_ERROR', message: 'Error al actualizar metadata de archivo en reintento', details: archUpdateErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Actualizar reserva en upload_reservations
+      const { error: resUpdateErr } = await supabase.from('upload_reservations').update({
+        drive_file_id: resumableSession.driveFileId || null,
+        drive_session_ref: resumableSession.uploadUrl,
+        expected_name: expected_name,
+        expected_size: Number(expected_size),
+        expected_mime: mime_type,
+        targets: targets || 'all',
+        state: 'pending',
+        expires_at: targetExpiresAt,
+      }).eq('id', reservationId);
+
+      if (resUpdateErr) {
+        return new Response(
+          JSON.stringify({ error: 'DB_ERROR', message: 'Error al actualizar reserva en reintento', details: resUpdateErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // Primera vez: insertar nueva tupla de archivo y reserva
+      reservationId = crypto.randomUUID();
+      archivoId = crypto.randomUUID();
+
+      resumableSession = await adapter.createResumableUploadSession({
+        fileName: expected_name,
+        mimeType: mime_type,
+        fileSize: Number(expected_size),
+        parentFolderId: stagingFolderId,
+        appProperties: {
+          submission_key: targetSubmissionKey,
+          client_file_ref: clientFileRef,
+          reservation_id: reservationId,
+        },
+      });
+
+      const { error: archErr } = await supabase.from('archivos').insert({
+        id: archivoId,
+        provider: 'google_drive',
+        drive_file_id: resumableSession.driveFileId || null,
+        drive_parent_id: stagingFolderId,
+        nombre_original: expected_name,
+        mime_type: mime_type,
+        size_bytes: Number(expected_size),
+        contexto: targetContexto,
+        estado: 'reserved',
+      });
+
+      if (archErr) {
+        return new Response(
+          JSON.stringify({ error: 'DB_ERROR', message: 'Error al registrar archivo', details: archErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error: resErr } = await supabase.from('upload_reservations').insert({
+        id: reservationId,
+        session_id: targetSessionId,
+        solicitud_id: targetSolicitudId,
+        pedido_id: targetPedidoId,
         client_file_ref: clientFileRef,
-        reservation_id: reservationId,
-      },
-    });
+        archivo_id: archivoId,
+        drive_file_id: resumableSession.driveFileId || null,
+        drive_session_ref: resumableSession.uploadUrl,
+        expected_name: expected_name,
+        expected_size: Number(expected_size),
+        expected_mime: mime_type,
+        targets: targets || 'all',
+        state: 'pending',
+        expires_at: targetExpiresAt,
+      });
 
-    // 5. Registrar metadata de archivo y reserva en base de datos
-    const { error: archErr } = await supabase.from('archivos').insert({
-      id: archivoId,
-      provider: 'google_drive',
-      drive_file_id: resumableSession.driveFileId || null,
-      drive_parent_id: stagingFolderId,
-      nombre_original: expected_name,
-      mime_type: mime_type,
-      size_bytes: Number(expected_size),
-      contexto: targetContexto,
-      estado: 'reserved',
-    });
+      if (resErr) {
+        // Limpieza de fila en archivos para evitar registros huérfanos
+        await supabase.from('archivos').delete().eq('id', archivoId);
 
-    if (archErr) {
-      return new Response(
-        JSON.stringify({ error: 'DB_ERROR', message: 'Error al registrar archivo', details: archErr.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+        // Manejo defensivo de carrera concurrente (unique constraint 23505)
+        if ((resErr as any).code === '23505') {
+          const { data: winningRes } = await existingResQuery.maybeSingle();
+          if (winningRes && winningRes.state !== 'completed' && winningRes.state !== 'verified') {
+            let baseUrl: string;
+            try {
+              baseUrl = resolvePublicRelayBaseUrl();
+            } catch (cfgErr) {
+              return new Response(
+                JSON.stringify({ error: 'CONFIG_ERROR', message: (cfgErr as Error).message }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            return new Response(
+              JSON.stringify({
+                reservation_id: winningRes.id,
+                client_file_ref: clientFileRef,
+                archivo_id: winningRes.archivo_id,
+                upload_url: winningRes.drive_session_ref,
+                relay_url: `${baseUrl}/functions/v1/drive-upload-prepare?reservation_id=${winningRes.id}`,
+                expires_at: winningRes.expires_at,
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ error: 'DB_ERROR', message: 'Error al registrar reserva de carga', details: resErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
-
-    const { error: resErr } = await supabase.from('upload_reservations').insert({
-      id: reservationId,
-      session_id: targetSessionId,
-      solicitud_id: targetSolicitudId,
-      pedido_id: targetPedidoId,
-      client_file_ref: clientFileRef,
-      archivo_id: archivoId,
-      drive_file_id: resumableSession.driveFileId || null,
-      drive_session_ref: resumableSession.uploadUrl,
-      expected_name: expected_name,
-      expected_size: Number(expected_size),
-      expected_mime: mime_type,
-      targets: targets || 'all',
-      state: 'pending',
-      expires_at: targetExpiresAt,
-    });
-
-    if (resErr) {
-      return new Response(
-        JSON.stringify({ error: 'DB_ERROR', message: 'Error al registrar reserva de carga', details: resErr.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     let baseUrl: string;
     try {
       baseUrl = resolvePublicRelayBaseUrl();

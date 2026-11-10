@@ -70,3 +70,5 @@ desktop.ini
 # Scratch temporary files
 scratch/
 
+
+.mock_drive_storage/
