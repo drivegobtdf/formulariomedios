@@ -142,19 +142,10 @@ export function formatHistoryDate(rawDate?: string | null): string {
   if (!rawDate) return 'Fecha no disponible';
   const trimmed = typeof rawDate === 'string' ? rawDate.trim() : '';
   if (!trimmed) return 'Fecha no disponible';
-  try {
-    const d = new Date(trimmed);
-    if (isNaN(d.getTime())) return 'Fecha no disponible';
-    return d.toLocaleString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return 'Fecha no disponible';
-  }
+  const d = new Date(trimmed);
+  if (Number.isNaN(d.getTime())) return 'Fecha no disponible';
+  const formatted = formatIngresoDateTime(trimmed);
+  return formatted || 'Fecha no disponible';
 }
 
 /**

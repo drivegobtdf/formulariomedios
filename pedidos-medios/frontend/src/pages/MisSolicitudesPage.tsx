@@ -1233,7 +1233,7 @@ export const MisSolicitudesPage: React.FC = () => {
                         🔄 Solicitud de Revisión Activa · Revisión #{selectedPedido.revision_activa.revision_number}
                       </h3>
                       <span style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: 600 }}>
-                        Solicitada: {new Date(selectedPedido.revision_activa.requested_at).toLocaleString('es-AR')}
+                        Solicitada: {formatIngresoDateTime(selectedPedido.revision_activa.requested_at)}
                       </span>
                     </div>
                     <p style={{ margin: '0 0 0.75rem 0', color: '#1e293b', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>
@@ -1307,9 +1307,7 @@ export const MisSolicitudesPage: React.FC = () => {
                       const expDate = new Date(s.expires_at);
                       const isExpired = Date.now() >= expDate.getTime();
                       const isPending = s.estado === 'pendiente' && !isExpired;
-                      const venceStr = !Number.isNaN(expDate.getTime())
-                        ? expDate.toLocaleString('es-AR', { timeZone: 'America/Argentina/Ushuaia' })
-                        : s.expires_at;
+                      const venceStr = formatIngresoDateTime(s.expires_at) || s.expires_at;
                       const diffHours = s.created_at && s.expires_at && !Number.isNaN(expDate.getTime())
                         ? Math.round((expDate.getTime() - new Date(s.created_at).getTime()) / 3600000)
                         : null;
@@ -1429,7 +1427,7 @@ export const MisSolicitudesPage: React.FC = () => {
                                   <span>Versión {v.version_number} {isLatest && '(Actual)'}</span>
                                 </span>
                                 <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b' }}>
-                                  Finalizado: {new Date(v.finalizado_at).toLocaleDateString('es-AR')}
+                                  Finalizado: {formatIngresoDateTime(v.finalizado_at)}
                                 </span>
                               </summary>
 

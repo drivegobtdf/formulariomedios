@@ -395,11 +395,14 @@ export const CargaInternaModal: React.FC<CargaInternaModalProps> = ({
               </div>
             </div>
 
-            {/* SECCIÓN 2: SOLICITANTE / ÁREA (OPCIONAL) */}
+            {/* SECCIÓN 2: SOLICITANTE / ÁREA */}
             <div className="pedidos-modal-section pedidos-modal-section-divided">
               <h3 className="pedidos-modal-section-title">
-                2. Solicitante / Organismo (Opcional)
+                2. Solicitante / Organismo
               </h3>
+              <p className="pedidos-modal-section-hint">
+                El correo electrónico es obligatorio para el seguimiento. Nombre, área y teléfono son opcionales.
+              </p>
               <div className="pedidos-modal-grid-2col">
                 <div className="pedidos-modal-field">
                   <label
