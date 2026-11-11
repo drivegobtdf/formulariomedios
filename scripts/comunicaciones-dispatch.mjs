@@ -1216,20 +1216,65 @@ export async function dispatchBatch(batchSize = 10, leaseSeconds = 300) {
         }
       }
 
-      const rendered = renderEmail(item.tipo_comunicacion, payloadToRender, appUrl);
+      // UAT-05: Enrutamiento seguro para QA en TEST (estricto y fail-closed)
+      const isTestEnv = (env.ENVIRONMENT || process.env.ENVIRONMENT) === 'test';
+      const rawAppUrl = (appUrl || '').trim().replace(/\/+$/, '');
+      const CANONICAL_PROD_URL = 'https://formulariomedios.pages.dev';
+      const CANONICAL_PREVIEW_URL = 'https://release-test-cam-integral-20.formulariomedios.pages.dev';
+      const QA_PHYSICAL_DEST = 'pablosaldiviainfo@gmail.com';
+
+      // 1. Salvaguarda fail-closed: si la URL base configurada es PROD en TEST, bloquear inmediatamente
+      if (isTestEnv) {
+        const parsedHost = (() => { try { return new URL(rawAppUrl).hostname.toLowerCase(); } catch { return ''; } })();
+        if (parsedHost === 'formulariomedios.pages.dev' || parsedHost === 'formulariomedios.tierradelfuego.gob.ar') {
+          throw new Error('PROD_URL_LEAK_PREVENTED: Bloqueo de seguridad: la URL base configurada (PUBLIC_APP_URL) apunta a Producción en entorno TEST.');
+        }
+      }
+
+      const isForwardEnabled = (env.TEST_QA_FORWARD_ENABLED || process.env.TEST_QA_FORWARD_ENABLED) === 'true';
+      const isExactTarget = toEmail === 'solicitante.qa@tierradelfuego.gob.ar';
+      const isMagicLink = item.tipo_comunicacion === 'magic_link_access' || item.tipo_comunicacion === 'access_requested';
+
+      const isForwardActive = Boolean(
+        isTestEnv &&
+        isForwardEnabled &&
+        isExactTarget &&
+        isMagicLink &&
+        canonicalQaEmails.has(QA_PHYSICAL_DEST)
+      );
+
+      let effectiveAppUrl = rawAppUrl;
+      if (isForwardActive) {
+        const candidatePreview = (env.TEST_PREVIEW_URL || process.env.TEST_PREVIEW_URL || CANONICAL_PREVIEW_URL).trim().replace(/\/+$/, '');
+        let parsedPreview;
+        try { parsedPreview = new URL(candidatePreview); } catch { throw new Error('CONFIG_ERROR: TEST_PREVIEW_URL no es una URL válida'); }
+        if (parsedPreview.protocol !== 'https:') throw new Error('CONFIG_ERROR: TEST_PREVIEW_URL debe usar protocolo HTTPS.');
+        const host = parsedPreview.hostname.toLowerCase();
+        if (!host.match(/^([a-z0-9_-]+)\.formulariomedios\.pages\.dev$/i) || host === 'formulariomedios.pages.dev') {
+          throw new Error('CONFIG_ERROR: TEST_PREVIEW_URL no es un origen válido de Cloudflare Pages Preview.');
+        }
+        effectiveAppUrl = candidatePreview;
+      }
+
+      const rendered = renderEmail(item.tipo_comunicacion, payloadToRender, effectiveAppUrl);
 
       const headers = { 'Content-Type': 'application/json' };
       if (integrationSecret) {
         headers['x-n8n-integration-secret'] = integrationSecret;
       }
 
+      const physicalTo = isForwardActive ? QA_PHYSICAL_DEST : item.destinatario_email;
+      const physicalSubject = isForwardActive
+        ? `[QA TEST -> ${item.destinatario_email}] ${rendered.subject}`
+        : rendered.subject;
+
       const n8nPayload = {
         communication_id: item.id,
         pedido_id: item.pedido_id || '',
         servicio_id: item.payload?.servicio_id || '',
         tipo: rendered.n8nTipo,
-        to: item.destinatario_email,
-        subject: rendered.subject,
+        to: physicalTo,
+        subject: physicalSubject,
         html: rendered.html,
         text: rendered.text
       };
