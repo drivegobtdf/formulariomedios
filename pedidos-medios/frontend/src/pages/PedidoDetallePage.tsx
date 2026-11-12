@@ -71,12 +71,14 @@ export function getHistorialEventInfo(evento: string, payload: any) {
     };
   }
   if (norm.includes('assigned') || norm.includes('asign') || norm.includes('responsable')) {
-    const resp = payload?.responsable_nombre || payload?.nuevo_responsable_nombre || payload?.responsable_user_id || 'Responsable asignado';
+    const resp = payload?.responsable_nuevo || payload?.responsable_nombre || payload?.nuevo_responsable_nombre || payload?.responsable_user_id || 'Responsable asignado';
+    const anterior = payload?.responsable_anterior && payload.responsable_anterior.trim() ? ` (anterior: ${payload.responsable_anterior})` : '';
+    const motivo = payload?.motivo ? ` · Motivo: "${payload.motivo}"` : '';
     return {
       title: 'Asignación de Responsable',
       icon: '👤',
       color: '#2563eb',
-      desc: `Pedido asignado al equipo técnico (${resp})`,
+      desc: `Pedido asignado a ${resp}${anterior}${motivo}`,
     };
   }
   if (norm.includes('info_request_responded') || (norm.includes('info') && norm.includes('respond')) || norm.includes('solicitud_informacion_respondida')) {
@@ -342,7 +344,23 @@ export const PedidoDetallePage: React.FC = () => {
       setSelectedResponsable(p.responsable_user_id || '');
 
       const h = await fetchPedidoHistorialOperativo(p.id).catch(() => []);
-      setHistorial(h);
+      // Deduplicar eventos de asignación redundantes que compartan ventana temporal
+      const sanitizedHistorial = (h || []).filter((item: any, idx: number, arr: any[]) => {
+        if (item.evento === 'pedido.assigned') {
+          const hasRichAsignacion = arr.some(
+            (other, oIdx) =>
+              oIdx !== idx &&
+              other.evento === 'pedido.assigned' &&
+              other.tipo === 'asignacion' &&
+              Math.abs(new Date(item.created_at).getTime() - new Date(other.created_at).getTime()) < 10000
+          );
+          if (item.tipo === 'evento' && hasRichAsignacion) {
+            return false;
+          }
+        }
+        return true;
+      });
+      setHistorial(sanitizedHistorial);
       return p;
     } catch (err: any) {
       if (!isSilent) setError(err.message || 'Error cargando pedido.');
@@ -1657,7 +1675,7 @@ export const PedidoDetallePage: React.FC = () => {
               </h3>
               {activeRev?.requested_at && (
                 <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-rework-text, #92400e)', fontWeight: 600 }}>
-                  Solicitada: {new Date(activeRev.requested_at).toLocaleString('es-AR')}
+                  Solicitada: {formatIngresoDateTime(activeRev.requested_at)}
                 </span>
               )}
             </div>
@@ -2469,7 +2487,7 @@ export const PedidoDetallePage: React.FC = () => {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)', marginBottom: '0.35rem' }}>
                     <span style={{ fontWeight: 600, color: 'var(--pedidos-text-secondary, #475569)' }}>
-                      {n.autor_nombre || 'Usuario'} · {new Date(n.created_at).toLocaleString('es-AR')}
+                      {n.autor_nombre || 'Usuario'} · {formatIngresoDateTime(n.created_at)}
                     </span>
                     <span
                       style={{
@@ -2503,7 +2521,7 @@ export const PedidoDetallePage: React.FC = () => {
                   )}
                   {n.edited_at && (
                     <span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
-                      Editada · {new Date(n.edited_at).toLocaleString('es-AR')}
+                      Editada · {formatIngresoDateTime(n.edited_at)}
                     </span>
                   )}
                   {!isObserver && n.visibilidad === 'interna' && (isAdmin || n.autor_user_id === user?.id) && (
@@ -2601,7 +2619,7 @@ export const PedidoDetallePage: React.FC = () => {
                         )}
                         <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
                           {ver.finalizado_por_nombre ? `${ver.finalizado_por_nombre} · ` : ''}
-                          {new Date(ver.finalizado_at).toLocaleDateString('es-AR')}
+                          {formatIngresoDateTime(ver.finalizado_at)}
                         </span>
                       </div>
                     </div>
@@ -2643,7 +2661,7 @@ export const PedidoDetallePage: React.FC = () => {
                       Entrega v{ent.version} {ent.es_vigente && '(Vigente)'}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--pedidos-text-muted, #64748b)' }}>
-                      {new Date(ent.created_at).toLocaleDateString('es-AR')}
+                      {formatIngresoDateTime(ent.created_at)}
                     </span>
                   </div>
                   {ent.enlace_externo && (

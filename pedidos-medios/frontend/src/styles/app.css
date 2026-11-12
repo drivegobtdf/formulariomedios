@@ -1340,6 +1340,8 @@
 .pedidos-app .pedidos-summary-item {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .pedidos-app .pedidos-summary-item .label {
@@ -1370,9 +1372,39 @@
 
 .pedidos-app .pedidos-summary-piece-header {
   display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.pedidos-app .pedidos-summary-piece-meta {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pedidos-app .pedidos-summary-piece-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  font-size: 0.95rem;
+  color: #0f172a;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.pedidos-app .pedidos-summary-piece-title-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.pedidos-app .pedidos-summary-piece-title-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .pedidos-app .pedidos-piece-number {

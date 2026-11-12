@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatIngresoDateTime } from '../../utils/formatUtils';
 import {
   PedidoChecklistItem,
   fetchPedidoChecklist,
@@ -628,13 +629,7 @@ export const PedidoChecklistSection: React.FC<PedidoChecklistSectionProps> = ({
                               <span>por <strong>{item.completado_por_nombre}</strong> </span>
                             )}
                             {item.completado_at && (
-                              <span>el {new Date(item.completado_at).toLocaleDateString('es-AR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}</span>
+                              <span>el {formatIngresoDateTime(item.completado_at)}</span>
                             )}
                           </div>
                         )}

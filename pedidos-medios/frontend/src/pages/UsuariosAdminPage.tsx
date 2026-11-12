@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { formatLocalDate } from '../utils/formatUtils';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -500,7 +501,7 @@ export const UsuariosAdminPage: React.FC = () => {
                       </td>
 
                       <td style={{ padding: '0.75rem 1rem', color: 'var(--pedidos-text-muted, #64748b)', fontSize: '0.8rem' }}>
-                        {new Date(u.solicitado_at).toLocaleDateString()}
+                        {formatLocalDate(u.solicitado_at)}
                       </td>
 
                       <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>

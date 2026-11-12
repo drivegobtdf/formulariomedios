@@ -105,6 +105,7 @@ export function formatLocalDate(dateStr: string | null | undefined): string {
     const d = new Date(trimmed);
     if (isNaN(d.getTime())) return trimmed;
     return d.toLocaleDateString('es-AR', {
+      timeZone: 'America/Argentina/Ushuaia',
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

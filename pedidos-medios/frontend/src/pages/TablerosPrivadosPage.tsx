@@ -1507,7 +1507,7 @@ export const TablerosPrivadosPage: React.FC = () => {
                           <div className="tablero-comment-header">
                             <span>{com.autor?.nombre} {com.autor?.apellido}</span>
                             <span style={{ fontSize: '0.7rem', color: 'var(--pedidos-text-muted)' }}>
-                              {new Date(com.created_at).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                              {new Date(com.created_at).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Argentina/Ushuaia' })}
                             </span>
                           </div>
                           <p className="tablero-comment-text">{com.contenido}</p>

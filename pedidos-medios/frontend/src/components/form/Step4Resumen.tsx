@@ -222,13 +222,16 @@ export const Step4Resumen: React.FC<Step4ResumenProps> = ({
             return (
               <div key={p.client_request_ref} className="pedidos-summary-piece-card">
                 <div className="pedidos-summary-piece-header">
-                  <span className="pedidos-piece-number">#{idx + 1}</span>
-                  <strong className="pedidos-piece-title">{p.piece_title}</strong>
-              {p.titulo_pedido && (
-                <div style={{ fontWeight: 600, marginTop: '0.4rem' }}>
-                  Título: {p.titulo_pedido}
-                </div>
-              )}
+                  <div className="pedidos-summary-piece-meta">
+                    <span className="pedidos-piece-number">#{idx + 1}</span>
+                    <strong className="pedidos-piece-title">{p.piece_title}</strong>
+                  </div>
+                  {p.titulo_pedido && (
+                    <div className="pedidos-summary-piece-title-row">
+                      <span className="pedidos-summary-piece-title-label">Título:</span>{' '}
+                      <span className="pedidos-summary-piece-title-text">{p.titulo_pedido}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pedidos-summary-piece-details">
