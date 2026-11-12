@@ -464,7 +464,25 @@ function applyQueryRange(query: any, from: number, to: number) {
   return query;
 }
 
-function createPedidosQueryBuilder(supabase: any, filters?: FetchPedidosFilters) {
+export function isMissingColumnError(error: any, columnHint?: string): boolean {
+  if (!error) return false;
+  const code = String(error.code || '');
+  const msg = String(error.message || error.details || '');
+  const isUndefinedCol =
+    code === '42703' ||
+    code === 'PGRST204' ||
+    msg.includes('does not exist') ||
+    msg.includes('Could not find');
+  if (!isUndefinedCol) return false;
+  return columnHint ? msg.includes(columnHint) : true;
+}
+
+function createPedidosQueryBuilder(
+  supabase: any,
+  filters?: FetchPedidosFilters,
+  options?: { omitIsReabierto?: boolean }
+) {
+  const reabiertoField = options?.omitIsReabierto ? '' : 'is_reabierto,\n      ';
   let query = supabase
     .from('pedidos')
     .select(`
@@ -479,8 +497,7 @@ function createPedidosQueryBuilder(supabase: any, filters?: FetchPedidosFilters)
       created_by_user_id,
       prioridad,
       etiqueta_interna,
-      is_reabierto,
-      retrabajo_activo,
+      ${reabiertoField}retrabajo_activo,
       revision_requested_at,
       revision_count,
       envio_id,
@@ -572,10 +589,22 @@ function createPedidosQueryBuilder(supabase: any, filters?: FetchPedidosFilters)
 export async function fetchPedidos(filters?: FetchPedidosFilters): Promise<PedidoListItem[]> {
   const supabase = getSupabaseClient();
 
-  const [initialRes, users] = await Promise.all([
+  let queryOptions: { omitIsReabierto?: boolean } | undefined;
+  let [initialRes, users] = await Promise.all([
     applyQueryRange(createPedidosQueryBuilder(supabase, filters), 0, POSTGREST_PAGE_SIZE - 1),
     fetchInternalUsers().catch(() => []),
   ]);
+
+  // Compatibilidad transicional pre-migración: si la columna is_reabierto aún no fue aplicada en DB,
+  // reintentar automáticamente sin dicha columna para permitir despliegue Frontend-First cero-downtime.
+  if (initialRes?.error && isMissingColumnError(initialRes.error, 'is_reabierto')) {
+    queryOptions = { omitIsReabierto: true };
+    initialRes = await applyQueryRange(
+      createPedidosQueryBuilder(supabase, filters, queryOptions),
+      0,
+      POSTGREST_PAGE_SIZE - 1
+    );
+  }
 
   if (initialRes?.error) throw new Error(initialRes.error.message);
 
@@ -587,7 +616,7 @@ export async function fetchPedidos(filters?: FetchPedidosFilters): Promise<Pedid
     const remainingTasks: Promise<any>[] = [];
     for (let offset = POSTGREST_PAGE_SIZE; offset < totalCount; offset += POSTGREST_PAGE_SIZE) {
       const chunkQuery = applyQueryRange(
-        createPedidosQueryBuilder(supabase, filters),
+        createPedidosQueryBuilder(supabase, filters, queryOptions),
         offset,
         Math.min(offset + POSTGREST_PAGE_SIZE - 1, totalCount - 1)
       );
@@ -606,7 +635,7 @@ export async function fetchPedidos(filters?: FetchPedidosFilters): Promise<Pedid
     let hasMore = true;
     while (hasMore) {
       const nextRes = await applyQueryRange(
-        createPedidosQueryBuilder(supabase, filters),
+        createPedidosQueryBuilder(supabase, filters, queryOptions),
         nextOffset,
         nextOffset + POSTGREST_PAGE_SIZE - 1
       );
@@ -684,9 +713,10 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
   const supabase = getSupabaseClient();
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrVisible);
 
-  let query = supabase
-    .from('pedidos')
-    .select(`
+  const buildDetailQuery = (omitIsReabierto = false): any => {
+    const reabiertoField = omitIsReabierto ? '' : 'is_reabierto,\n      ';
+    let q = (supabase.from('pedidos') as any)
+      .select(`
       id,
       pedido_visible,
       anio,
@@ -698,8 +728,7 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       created_by_user_id,
       prioridad,
       etiqueta_interna,
-      is_reabierto,
-      retrabajo_activo,
+      ${reabiertoField}retrabajo_activo,
       revision_requested_at,
       revision_count,
       envio_id,
@@ -718,23 +747,28 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
       envios_formulario ( id, nombre_apellido, telefono, correo, area_solicitante ),
       pedido_etiquetas ( id, texto, color, created_at )
     `);
+    if (isUuid) {
+      q = q.eq('id', idOrVisible);
+    } else {
+      q = q.eq('pedido_visible', idOrVisible.toUpperCase());
+    }
+    return q;
+  };
 
-  if (isUuid) {
-    query = query.eq('id', idOrVisible);
-  } else {
-    query = query.eq('pedido_visible', idOrVisible.toUpperCase());
-  }
-
-  const [pedidoRes, users] = await Promise.all([
-    query.single(),
+  let [pedidoRes, users] = await Promise.all([
+    buildDetailQuery(false).single(),
     fetchInternalUsers().catch(() => []),
   ]);
+
+  if (pedidoRes?.error && isMissingColumnError(pedidoRes.error, 'is_reabierto')) {
+    pedidoRes = await buildDetailQuery(true).single();
+  }
 
   if (pedidoRes.error || !pedidoRes.data) {
     throw new Error(pedidoRes.error?.message || 'Pedido no encontrado');
   }
 
-  const p = pedidoRes.data;
+  const p: any = pedidoRes.data;
   const pedidoId = p.id;
   const userMap = new Map((users || []).map((u) => [u.user_id, `${u.nombre} ${u.apellido}`.trim()]));
 
@@ -745,13 +779,22 @@ export async function fetchPedidoById(idOrVisible: string): Promise<PedidoDetail
     .eq('pedido_id', pedidoId)
     .order('created_at', { ascending: false });
 
-  // Notas
-  const { data: notas } = await supabase
+  // Notas (con fallback pre-migración si edited_at / revision / deleted_at aún no existen en DB)
+  let notasRes: any = await supabase
     .from('notas_pedido')
     .select('id, autor_user_id, visibilidad, texto, created_at, edited_at, revision, deleted_at')
     .eq('pedido_id', pedidoId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
+
+  if (notasRes?.error && isMissingColumnError(notasRes.error)) {
+    notasRes = await supabase
+      .from('notas_pedido')
+      .select('id, autor_user_id, visibilidad, texto, created_at')
+      .eq('pedido_id', pedidoId)
+      .order('created_at', { ascending: false });
+  }
+  const notas: any[] | null = notasRes?.data;
 
   // Solicitudes de información con archivos y enlaces contextuales
   const { data: solicitudes } = await supabase
