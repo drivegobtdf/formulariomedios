@@ -9,6 +9,7 @@ import {
   OPTIONAL_PRE_MIGRATION_TABLES,
   PROD_BASELINE_LAST_MIGRATION,
   BACKUP_COVERAGE_SPEC,
+  capturePedidosTitleSnapshot,
   buildSchemaSnapshot,
   fetchTableRowsPaged,
   encryptBackupData,
@@ -38,6 +39,7 @@ import {
   generateRestoreSql,
   generateSchemaRollbackSql,
   runIsolatedRestoreRehearsal,
+  verifyCp4PedidosTitleIntegrity,
   runLogicalRestore,
 } from '../../scripts/restore-database-backup.mjs';
 
@@ -950,6 +952,77 @@ describe('CAM-12 & Preflight PROD Blockers: Seguridad de Despliegue, Respaldo y 
           sha256: '01e54f3ea75a4e79a92bb07b8c4c890e0df4624931c076dfb3cb8d500be05ae2',
         },
       ]);
+    });
+
+    it('CP-1 -> CP-4: preserva títulos históricos (incluidos NULL y >50 chars), admite pedidos concurrentes entre CP-1 y la migración sin falsos errores, y exige CAM-09 (3-50 chars, sin HTML) tras activarse el trigger', () => {
+      const cp1Pedidos = [
+        { id: 'ped-hist-pub-1', titulo: null, created_at: '2026-10-10T12:00:00Z' },
+        { id: 'ped-hist-pub-2', titulo: null, created_at: '2026-11-11T19:11:41Z' },
+        { id: 'ped-hist-int-1', titulo: 'Cobertura Institucional', created_at: '2026-10-15T10:00:00Z' },
+        {
+          id: 'ped-hist-int-long',
+          titulo: 'Título histórico interno legítimo de más de cincuenta caracteres que no debe alterarse',
+          created_at: '2026-10-20T15:00:00Z',
+        },
+      ];
+
+      const cp1Snapshot = capturePedidosTitleSnapshot(cp1Pedidos);
+      expect(cp1Snapshot.total_count).toBe(4);
+      expect(cp1Snapshot.null_title_count).toBe(2);
+      expect(cp1Snapshot.non_null_title_count).toBe(2);
+
+      const triggerActivatedAt = '2026-11-12T20:10:00Z';
+
+      // En CP-4 existen:
+      // 1) Los 4 pedidos de CP-1 intactos (incluidos NULL y >50 chars)
+      // 2) 2 pedidos creados en concurrencia ENTRE CP-1 y triggerActivatedAt (uno sin título y uno con título)
+      // 3) 2 pedidos nuevos creados DESPUÉS de triggerActivatedAt cumpliendo CAM-09 (3-50 chars, sin HTML)
+      const postMigrationPedidos = [
+        ...cp1Pedidos,
+        { id: 'ped-concurrent-pre-trigger-null', titulo: null, created_at: '2026-11-12T20:05:00Z' },
+        { id: 'ped-concurrent-pre-trigger-titled', titulo: 'Pedido en transición', created_at: '2026-11-12T20:09:59Z' },
+        { id: 'ped-post-trigger-1', titulo: 'Campaña Vacunación 2026', created_at: '2026-11-12T20:10:01Z' },
+        { id: 'ped-post-trigger-2', titulo: 'Gacetilla Oficial Vial', created_at: '2026-11-12T20:15:00Z' },
+      ];
+
+      const result = verifyCp4PedidosTitleIntegrity(cp1Snapshot, postMigrationPedidos, {
+        triggerActivatedAt,
+      });
+
+      expect(result.passed).toBe(true);
+      expect(result.cp1Count).toBe(4);
+      expect(result.preservedHistoricalCount).toBe(4);
+      expect(result.preservedNullCount).toBe(2);
+      expect(result.preservedNonNullCount).toBe(2);
+      expect(result.concurrentPreTriggerCount).toBe(2);
+      expect(result.postTriggerValidCount).toBe(2);
+      expect(result.missingHistoricalIds).toEqual([]);
+      expect(result.historicalTitleMismatches).toEqual([]);
+      expect(result.postTriggerInvalidPedidos).toEqual([]);
+
+      // Falla si un pedido histórico NULL fue alterado por backfill o modificado
+      expect(() => {
+        verifyCp4PedidosTitleIntegrity(
+          cp1Snapshot,
+          [
+            { id: 'ped-hist-pub-1', titulo: 'Backfill no autorizado', created_at: '2026-10-10T12:00:00Z' },
+            ...cp1Pedidos.slice(1),
+          ],
+          { triggerActivatedAt }
+        );
+      }).toThrow(/\[CP4_TITLE_INTEGRITY_FAIL\]/);
+
+      // Falla si un pedido insertado DESPUÉS de triggerActivatedAt viola CAM-09 (NULL, <3, >50 o con HTML)
+      expect(() => {
+        verifyCp4PedidosTitleIntegrity(
+          cp1Snapshot,
+          [
+            ...cp1Pedidos,
+            { id: 'ped-post-invalid-html', titulo: '<b>Título con HTML</b>', created_at: '2026-11-12T20:12:00Z' },
+          ],
+          { triggerActivatedAt }
+        );
+      }).toThrow(/TITLE_HTML_FORBIDDEN/);
     });
   });
 });

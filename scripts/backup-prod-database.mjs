@@ -96,6 +96,48 @@ export const TABLES = [
 ];
 
 /**
+ * Toma en CP-1 una fotografía consistente y determinista de los IDs y valores exactos `titulo`
+ * existentes en `public.pedidos` (incluidos `null` y títulos históricos > 50 chars), sin alterar
+ * ni realizar backfill sobre ningún registro.
+ * Los valores `titulo` se almacenan únicamente dentro del paquete cifrado `.enc`, mientras que
+ * `.meta.json` guarda solo el resumen numérico y el hash SHA-256 de la fotografía.
+ */
+export function capturePedidosTitleSnapshot(pedidosRows = []) {
+  const normalized = (Array.isArray(pedidosRows) ? pedidosRows : [])
+    .filter(r => r && r.id !== undefined && r.id !== null)
+    .map(r => ({
+      id: String(r.id),
+      titulo: r.titulo === undefined || r.titulo === null ? null : String(r.titulo),
+      created_at: r.created_at ? String(r.created_at) : null,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  let nullTitleCount = 0;
+  let nonNullTitleCount = 0;
+  for (const item of normalized) {
+    if (item.titulo === null) {
+      nullTitleCount++;
+    } else {
+      nonNullTitleCount++;
+    }
+  }
+
+  const canonicalPairs = normalized.map(({ id, titulo }) => ({ id, titulo }));
+  const snapshotSha256 = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(canonicalPairs), 'utf8')
+    .digest('hex');
+
+  return {
+    total_count: normalized.length,
+    null_title_count: nullTitleCount,
+    non_null_title_count: nonNullTitleCount,
+    snapshot_sha256: snapshotSha256,
+    records: normalized,
+  };
+}
+
+/**
  * Construye un manifiesto verificable del esquema SQL a partir del directorio `supabase/migrations`,
  * distinguiendo las 88 migraciones base productivas (<= 20261029164500) y las migraciones candidatas (202611*),
  * e incluyendo sentencias deterministas de rollback de esquema no destructivo.
@@ -517,6 +559,10 @@ export async function runLogicalBackup(options = {}) {
     }
   }
 
+  // Fotografía consistente en CP-1 de IDs y valores exactos `titulo` de pedidos (incluidos NULL)
+  const cp1PedidosTitles = capturePedidosTitleSnapshot(snapshot.tables.pedidos || []);
+  snapshot.metadata.cp1_pedidos_titles = cp1PedidosTitles;
+
   // Cifrado AES-256-GCM
   const encryptionKey = resolveEncryptionKey(options);
   const finalPackage = encryptBackupData(snapshot, encryptionKey);
@@ -525,7 +571,7 @@ export async function runLogicalBackup(options = {}) {
   const backupFilePath = path.join(backupDir, 'prod-backup-' + timestamp + '.enc');
   fs.writeFileSync(backupFilePath, finalPackage, { mode: 0o600 });
 
-  // Archivo de metadata y checksums SHA-256 (datos + esquema)
+  // Archivo de metadata y checksums SHA-256 (datos + esquema + resumen sin PII de títulos CP-1)
   const sha256 = crypto.createHash('sha256').update(finalPackage).digest('hex');
   const metaPath = path.join(backupDir, 'prod-backup-' + timestamp + '.meta.json');
   fs.writeFileSync(metaPath, JSON.stringify({
@@ -538,6 +584,12 @@ export async function runLogicalBackup(options = {}) {
     candidate_migrations_count: schemaSnapshot.candidate_migrations_count,
     created_at: snapshot.metadata.created_at,
     missing_tables: snapshot.metadata.missing_tables,
+    cp1_pedidos_titles_summary: {
+      total_count: cp1PedidosTitles.total_count,
+      null_title_count: cp1PedidosTitles.null_title_count,
+      non_null_title_count: cp1PedidosTitles.non_null_title_count,
+      snapshot_sha256: cp1PedidosTitles.snapshot_sha256,
+    },
     counts: snapshot.metadata.counts,
   }, null, 2), { mode: 0o600, encoding: 'utf8' });
 

@@ -4,7 +4,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import {
   TABLES,
+  DEFAULT_PROD_REF,
   PROD_BASELINE_LAST_MIGRATION,
+  capturePedidosTitleSnapshot,
+  fetchTableRowsPaged,
+  getServiceKey,
   resolveEncryptionKey,
   decryptBackupPackage,
   verifyBackupFile,
@@ -590,6 +594,163 @@ export function runIsolatedRestoreRehearsal(backupFilePath, options = {}) {
 }
 
 /**
+ * Verifica en CP-4 la preservación exacta de los títulos históricos capturados en CP-1 y
+ * valida CAM-09 (3–50 caracteres, sin HTML) exclusivamente para los pedidos insertados
+ * después de activarse el trigger (`triggerActivatedAt`), permitiendo sin falsos errores
+ * pedidos creados en concurrencia entre CP-1 y la aplicación de las migraciones.
+ *
+ * Cohorte 1 (IDs presentes en CP-1):
+ *   - Deben existir todos en CP-4 (`missingHistoricalIds = []`).
+ *   - Deben conservar exactamente su valor `titulo` original de CP-1 (`null === null` o mismo string,
+ *     incluidos títulos históricos > 50 caracteres), sin backfill ni alteración.
+ * Cohorte 2 (IDs nuevos no presentes en CP-1 con `created_at < triggerActivatedAt`):
+ *   - Creados en concurrencia entre CP-1 y la activación del trigger; se admiten con o sin título
+ *     sin provocar falsos errores.
+ * Cohorte 3 (IDs nuevos no presentes en CP-1 con `created_at >= triggerActivatedAt`):
+ *   - Insertados tras activarse `trg_cam09_require_new_pedido_title`; deben tener `titulo` de 3 a 50
+ *     caracteres y sin etiquetas HTML (`<[^>]*>`).
+ */
+export function verifyCp4PedidosTitleIntegrity(cp1Input, postMigrationPedidos = [], options = {}) {
+  let cp1Records = [];
+  if (Array.isArray(cp1Input)) {
+    cp1Records = capturePedidosTitleSnapshot(cp1Input).records;
+  } else if (cp1Input?.metadata?.cp1_pedidos_titles?.records) {
+    cp1Records = cp1Input.metadata.cp1_pedidos_titles.records;
+  } else if (Array.isArray(cp1Input?.tables?.pedidos)) {
+    cp1Records = capturePedidosTitleSnapshot(cp1Input.tables.pedidos).records;
+  } else if (Array.isArray(cp1Input?.records)) {
+    cp1Records = cp1Input.records;
+  } else {
+    throw new Error('[CP4_VERIFY_ERROR] Entrada CP-1 inválida: no contiene fotografía de pedidos.');
+  }
+
+  const triggerActivatedMs = options.triggerActivatedAt
+    ? Date.parse(String(options.triggerActivatedAt))
+    : null;
+  if (options.triggerActivatedAt && Number.isNaN(triggerActivatedMs)) {
+    throw new Error(`[CP4_VERIFY_ERROR] Timestamp triggerActivatedAt inválido: ${options.triggerActivatedAt}`);
+  }
+
+  const cp1Map = new Map();
+  for (const item of cp1Records) {
+    cp1Map.set(String(item.id), {
+      id: String(item.id),
+      titulo: item.titulo === undefined || item.titulo === null ? null : String(item.titulo),
+      created_at: item.created_at ? String(item.created_at) : null,
+    });
+  }
+
+  const postMap = new Map();
+  for (const row of Array.isArray(postMigrationPedidos) ? postMigrationPedidos : []) {
+    if (!row || row.id === undefined || row.id === null) continue;
+    postMap.set(String(row.id), {
+      id: String(row.id),
+      titulo: row.titulo === undefined || row.titulo === null ? null : String(row.titulo),
+      created_at: row.created_at ? String(row.created_at) : null,
+    });
+  }
+
+  const missingHistoricalIds = [];
+  const historicalTitleMismatches = [];
+  let preservedHistoricalCount = 0;
+  let preservedNullCount = 0;
+  let preservedNonNullCount = 0;
+
+  // 1. Verificar que todos los pedidos de CP-1 sigan existiendo y conserven su `titulo` exacto (incluido null)
+  for (const [id, cp1Row] of cp1Map.entries()) {
+    const postRow = postMap.get(id);
+    if (!postRow) {
+      missingHistoricalIds.push(id);
+      continue;
+    }
+    if (postRow.titulo !== cp1Row.titulo) {
+      historicalTitleMismatches.push({
+        id,
+        expectedTitulo: cp1Row.titulo,
+        actualTitulo: postRow.titulo,
+      });
+      continue;
+    }
+    preservedHistoricalCount++;
+    if (cp1Row.titulo === null) {
+      preservedNullCount++;
+    } else {
+      preservedNonNullCount++;
+    }
+  }
+
+  const concurrentPreTriggerIds = [];
+  const postTriggerValidIds = [];
+  const postTriggerInvalidPedidos = [];
+
+  // 2. Evaluar pedidos nuevos (no presentes en CP-1) distinguiendo entre pre-trigger y post-trigger
+  for (const [id, postRow] of postMap.entries()) {
+    if (cp1Map.has(id)) continue;
+
+    const createdMs = postRow.created_at ? Date.parse(postRow.created_at) : NaN;
+    const isPostTrigger =
+      triggerActivatedMs !== null &&
+      !Number.isNaN(createdMs) &&
+      createdMs >= triggerActivatedMs;
+
+    if (!isPostTrigger) {
+      // Creado entre CP-1 y la activación del trigger en CP-4: permitido sin provocar falsos errores
+      concurrentPreTriggerIds.push(id);
+      continue;
+    }
+
+    // Creado después de activarse trg_cam09_require_new_pedido_title: debe cumplir CAM-09 / INC-04 (3..50 chars, sin HTML)
+    const rawTitle = postRow.titulo;
+    const trimmed = typeof rawTitle === 'string' ? rawTitle.trim() : '';
+    const hasHtml = /<[^>]*>/.test(trimmed);
+    if (rawTitle === null || trimmed.length < 3 || trimmed.length > 50 || hasHtml) {
+      postTriggerInvalidPedidos.push({
+        id,
+        titulo: rawTitle,
+        created_at: postRow.created_at,
+        reason: rawTitle === null || trimmed.length === 0
+          ? 'TITLE_REQUIRED'
+          : hasHtml
+            ? 'TITLE_HTML_FORBIDDEN'
+            : 'TITLE_LENGTH_OUT_OF_RANGE',
+      });
+    } else {
+      postTriggerValidIds.push(id);
+    }
+  }
+
+  const passed =
+    missingHistoricalIds.length === 0 &&
+    historicalTitleMismatches.length === 0 &&
+    postTriggerInvalidPedidos.length === 0;
+
+  if (!passed && options.throwOnError !== false) {
+    throw new Error(
+      `[CP4_TITLE_INTEGRITY_FAIL] Falló verificación CP-4 de títulos: ` +
+      `missingHistoricalIds=${JSON.stringify(missingHistoricalIds)}, ` +
+      `historicalTitleMismatches=${JSON.stringify(historicalTitleMismatches)}, ` +
+      `postTriggerInvalidPedidos=${JSON.stringify(postTriggerInvalidPedidos)}`
+    );
+  }
+
+  return {
+    passed,
+    cp1Count: cp1Map.size,
+    postTotalCount: postMap.size,
+    preservedHistoricalCount,
+    preservedNullCount,
+    preservedNonNullCount,
+    concurrentPreTriggerCount: concurrentPreTriggerIds.length,
+    concurrentPreTriggerIds,
+    postTriggerValidCount: postTriggerValidIds.length,
+    postTriggerValidIds,
+    missingHistoricalIds,
+    historicalTitleMismatches,
+    postTriggerInvalidPedidos,
+  };
+}
+
+/**
  * Procedimiento de restauración lógica y rollback.
  */
 export async function runLogicalRestore(backupFilePath, options = {}) {
@@ -616,6 +777,37 @@ export async function runLogicalRestore(backupFilePath, options = {}) {
     fs.writeFileSync(schemaRollbackPath, rollbackSql, { mode: 0o600, encoding: 'utf8' });
     console.log(`[RESTORE] Script SQL de rollback de esquema (solo DDL, 0% PII) generado en: ${schemaRollbackPath}`);
     return { success: true, sqlPath: null, schemaRollbackPath, verification };
+  }
+
+  if (options.target === 'verify_cp4_titles') {
+    let postPedidos = options.postMigrationPedidos;
+    if (!Array.isArray(postPedidos)) {
+      const projectRef = options.projectRef || snapshot?.metadata?.project_ref || DEFAULT_PROD_REF;
+      const supabaseUrl = options.supabaseUrl || process.env.SUPABASE_URL || (`https://${projectRef}.supabase.co`);
+      const serviceKey = options.serviceKey || getServiceKey(projectRef);
+      const fetchFn = options.fetchFn || (async (table, rangeHeader) => {
+        return fetch(`${supabaseUrl}/rest/v1/${table}?select=id,titulo,created_at`, {
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            Range: rangeHeader,
+            Prefer: 'count=exact',
+          },
+        });
+      });
+      postPedidos = await fetchTableRowsPaged('pedidos', fetchFn, { pageSize: 1000 });
+    }
+    const cp4Result = verifyCp4PedidosTitleIntegrity(snapshot, postPedidos, {
+      triggerActivatedAt: options.triggerActivatedAt,
+      throwOnError: options.throwOnError,
+    });
+    console.log(
+      `[CP-4] Verificación de títulos superada: CP-1=${cp4Result.cp1Count} ` +
+      `(NULL=${cp4Result.preservedNullCount}, con título=${cp4Result.preservedNonNullCount}), ` +
+      `concurrentes pre-trigger=${cp4Result.concurrentPreTriggerCount}, ` +
+      `nuevos post-trigger validados CAM-09=${cp4Result.postTriggerValidCount}.`
+    );
+    return { success: true, cp4Result, verification };
   }
 
   if (options.target === 'sql_file') {
@@ -653,6 +845,9 @@ if (process.argv[1] && process.argv[1].includes('restore-database-backup.mjs')) 
   const verifyOnly = args.includes('--verify-only');
   const asSql = args.includes('--as-sql');
   const schemaRollbackOnly = args.includes('--schema-rollback-only');
+  const verifyCp4Titles = args.includes('--verify-cp4-titles');
+  const triggerAtIdx = args.indexOf('--trigger-activated-at');
+  const triggerActivatedAt = triggerAtIdx !== -1 && args[triggerAtIdx + 1] ? args[triggerAtIdx + 1] : undefined;
   const includeSchemaRollback = args.includes('--include-schema-rollback');
   const allowPlaintextPiiExport = args.includes('--allow-plaintext-pii-export');
   const isolatedRehearsal = args.includes('--isolated-rehearsal');
@@ -661,7 +856,7 @@ if (process.argv[1] && process.argv[1].includes('restore-database-backup.mjs')) 
 
   if (!filePath) {
     console.error(
-      'Uso: node restore-database-backup.mjs <ruta-al-backup.enc> [--verify-only] [--isolated-rehearsal] [--schema-rollback-only] [--as-sql --allow-plaintext-pii-export] [--include-schema-rollback] [--upsert --confirm-overwrite]'
+      'Uso: node restore-database-backup.mjs <ruta-al-backup.enc> [--verify-only] [--isolated-rehearsal] [--schema-rollback-only] [--verify-cp4-titles --trigger-activated-at <ISO>] [--as-sql --allow-plaintext-pii-export] [--include-schema-rollback] [--upsert --confirm-overwrite]'
     );
     process.exit(1);
   }
@@ -672,9 +867,12 @@ if (process.argv[1] && process.argv[1].includes('restore-database-backup.mjs')) 
       ? 'isolated_rehearsal'
       : schemaRollbackOnly
         ? 'schema_rollback_only'
-        : asSql
-          ? 'sql_file'
-          : undefined,
+        : verifyCp4Titles
+          ? 'verify_cp4_titles'
+          : asSql
+            ? 'sql_file'
+            : undefined,
+    triggerActivatedAt,
     includeSchemaRollback,
     allowPlaintextPiiExport,
     conflictStrategy,
