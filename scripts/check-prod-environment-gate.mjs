@@ -1,7 +1,52 @@
 import { execSync } from 'node:child_process';
+import crypto from 'node:crypto';
 
 export const PROD_REF = 'uwzgyirilafgnbpmrkic';
 export const TEST_REF = 'yqfkzgqvezarzhlwiilo';
+
+export function sha256Hex(value) {
+  return crypto.createHash('sha256').update(String(value), 'utf8').digest('hex').toLowerCase();
+}
+
+export function isSha256Hex(value) {
+  return typeof value === 'string' && /^[0-9a-f]{64}$/i.test(value.trim());
+}
+
+export const CANONICAL_PROD_ENV_DIGEST = sha256Hex('production');
+
+export const CANONICAL_PROD_APP_URLS = [
+  'https://formulariomedios.pages.dev',
+  'https://formulariomedios.pages.dev/',
+  'https://pedidos.gobiernotdf.gob.ar',
+  'https://pedidos.gobiernotdf.gob.ar/',
+];
+
+export const FORBIDDEN_HTTP_APP_URLS = [
+  'http://formulariomedios.pages.dev',
+  'http://formulariomedios.pages.dev/',
+  'http://pedidos.gobiernotdf.gob.ar',
+  'http://pedidos.gobiernotdf.gob.ar/',
+];
+
+export const FORBIDDEN_LOCALHOST_APP_URLS = [
+  'http://localhost',
+  'https://localhost',
+  'http://localhost:3000',
+  'https://localhost:3000',
+  'http://localhost:5173',
+  'https://localhost:5173',
+  'http://127.0.0.1',
+  'https://127.0.0.1',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+];
+
+export const FORBIDDEN_SUPABASE_APP_URLS = [
+  `https://${PROD_REF}.supabase.co`,
+  `https://${PROD_REF}.supabase.co/`,
+  `https://${TEST_REF}.supabase.co`,
+  `https://${TEST_REF}.supabase.co/`,
+];
 
 export function defaultGetSecrets(projectRef, runner = execSync) {
   try {
@@ -20,17 +65,54 @@ export function defaultGetSecrets(projectRef, runner = execSync) {
   }
 }
 
-function normalizeSecrets(input) {
-  if (Array.isArray(input)) return input;
-  if (input && typeof input === 'object') {
-    return Object.entries(input).map(([name, val]) => {
+/**
+ * Normaliza la lista de secretos distinguiendo entre valores en texto plano
+ * y digests SHA-256 de 64 caracteres hexadecimales devueltos por Supabase CLI
+ * en el campo `value` o `digest`. Nunca expone valores secretos.
+ */
+export function normalizeSecrets(input) {
+  let rawList = [];
+  if (Array.isArray(input)) {
+    rawList = input;
+  } else if (input && typeof input === 'object') {
+    rawList = Object.entries(input).map(([name, val]) => {
       if (val && typeof val === 'object' && ('value' in val || 'digest' in val)) {
         return { name, ...val };
       }
-      return { name, value: String(val) };
+      return { name, value: String(val), isPlaintextInput: true };
     });
   }
-  return [];
+
+  return rawList.map(item => {
+    if (!item || typeof item !== 'object') return item;
+    const rawValue = item.value !== undefined && item.value !== null && item.value !== ''
+      ? String(item.value).trim()
+      : null;
+    const rawDigest = item.digest !== undefined && item.digest !== null && item.digest !== ''
+      ? String(item.digest).trim()
+      : null;
+
+    // Supabase CLI devuelve el hash SHA-256 (64 hex chars) dentro de la propiedad `value`.
+    if (rawValue && isSha256Hex(rawValue) && !item.isPlaintextInput) {
+      return {
+        ...item,
+        value: null,
+        digest: rawValue.toLowerCase(),
+        isSha256Digest: true,
+      };
+    }
+
+    const effectiveDigest = rawDigest
+      ? (isSha256Hex(rawDigest) ? rawDigest.toLowerCase() : rawDigest)
+      : (rawValue ? sha256Hex(rawValue) : null);
+
+    return {
+      ...item,
+      value: rawValue,
+      digest: effectiveDigest,
+      isSha256Digest: Boolean(rawDigest && isSha256Hex(rawDigest)) || Boolean(rawValue),
+    };
+  });
 }
 
 function parseTokenRole(jwt) {
@@ -46,11 +128,11 @@ function parseTokenRole(jwt) {
 }
 
 /**
- * Valida de forma pura los secretos de PROD y TEST.
+ * Valida de forma pura los secretos de PROD y TEST sin exponer jamás valores secretos.
  * Diferencia estrictamente entre:
- *  - VERIFIED_OK: Secreto presente y valor validado con éxito.
- *  - UNVERIFIABLE: Secreto presente en proveedor, pero valor no accesible en 'secrets list'.
- *  - FAILED: Secreto ausente o valor inválido/colisionante.
+ *  - VERIFIED_OK: Secreto presente y valor o digest SHA-256 validado con éxito.
+ *  - UNVERIFIABLE: Secreto presente en proveedor, pero sin valor ni digest SHA-256 verificable.
+ *  - FAILED: Secreto ausente o valor/digest inválido o colisionante.
  *
  * REGLA FAIL-CLOSED: Nunca declara APTO (passed=true) con datos insuficientes.
  * Retorna { status, passed, checks, errors, unverifiable, warnings }.
@@ -59,6 +141,14 @@ export function validateEnvironmentSecrets(rawProdSecrets = [], rawTestSecrets =
   const prodSecrets = normalizeSecrets(rawProdSecrets);
   const testSecrets = normalizeSecrets(rawTestSecrets);
   const knownValues = options.knownSecretValues || {};
+  const allowedProdAppUrls = [
+    ...CANONICAL_PROD_APP_URLS,
+    ...(Array.isArray(options.allowedProdAppUrls) ? options.allowedProdAppUrls : []),
+  ];
+  const allowedProdAppUrlDigests = new Set(allowedProdAppUrls.map(u => sha256Hex(u)));
+  const forbiddenHttpDigests = new Set(FORBIDDEN_HTTP_APP_URLS.map(u => sha256Hex(u)));
+  const forbiddenLocalhostDigests = new Set(FORBIDDEN_LOCALHOST_APP_URLS.map(u => sha256Hex(u)));
+  const forbiddenSupabaseDigests = new Set(FORBIDDEN_SUPABASE_APP_URLS.map(u => sha256Hex(u)));
 
   const checks = [];
   const errors = [];
@@ -72,13 +162,24 @@ export function validateEnvironmentSecrets(rawProdSecrets = [], rawTestSecrets =
     if (status === 'WARNING') warnings.push(message);
   }
 
-  // Helper para resolver valor de un secreto (objeto o knownValues)
   function resolveValue(secret, knownEnvName) {
     if (secret?.value !== undefined && secret?.value !== null && secret.value !== '') {
       return secret.value;
     }
-    if (knownValues[secret?.name || knownEnvName]) {
-      return knownValues[secret?.name || knownEnvName];
+    const known = knownValues[secret?.name || knownEnvName];
+    if (known !== undefined && known !== null && known !== '') {
+      return String(known);
+    }
+    return null;
+  }
+
+  function resolveSha256Digest(secret, knownEnvName) {
+    if (secret?.digest && isSha256Hex(secret.digest)) {
+      return secret.digest.toLowerCase();
+    }
+    const val = resolveValue(secret, knownEnvName);
+    if (val !== null) {
+      return sha256Hex(val);
     }
     return null;
   }
@@ -93,11 +194,18 @@ export function validateEnvironmentSecrets(rawProdSecrets = [], rawTestSecrets =
     recordCheck('PROD_ENVIRONMENT', 'FAILED', 'FALLO CRÍTICO: El secret ENVIRONMENT está ausente en PRODUCCIÓN.');
   } else {
     const val = resolveValue(prodEnv, 'ENVIRONMENT');
+    const shaDigest = resolveSha256Digest(prodEnv, 'ENVIRONMENT');
     if (val !== null) {
       if (val === 'production') {
         recordCheck('PROD_ENVIRONMENT', 'VERIFIED_OK', 'ENVIRONMENT verificado exitosamente como "production" en PROD.');
       } else {
-        recordCheck('PROD_ENVIRONMENT', 'FAILED', `FALLO CRÍTICO: ENVIRONMENT must be set to 'production' in PRODUCCIÓN. Valor detectado: "${val}".`);
+        recordCheck('PROD_ENVIRONMENT', 'FAILED', "FALLO CRÍTICO: ENVIRONMENT must be set to 'production' in PRODUCCIÓN.");
+      }
+    } else if (shaDigest !== null) {
+      if (shaDigest === CANONICAL_PROD_ENV_DIGEST) {
+        recordCheck('PROD_ENVIRONMENT', 'VERIFIED_OK', 'ENVIRONMENT verificado criptográficamente (SHA-256) como "production" en PROD.');
+      } else {
+        recordCheck('PROD_ENVIRONMENT', 'FAILED', "FALLO CRÍTICO: ENVIRONMENT must be set to 'production' in PRODUCCIÓN (digest SHA-256 divergente).");
       }
     } else {
       recordCheck('PROD_ENVIRONMENT', 'UNVERIFIABLE', 'INSUFFICIENT_DATA: ENVIRONMENT existe en PROD pero su valor no es legible desde el proveedor. Imposible certificar.');
@@ -106,15 +214,19 @@ export function validateEnvironmentSecrets(rawProdSecrets = [], rawTestSecrets =
 
   // 1.2 PUBLIC_APP_URL en PROD
   const prodAppUrl = prodSecrets.find(s => s.name === 'PUBLIC_APP_URL');
+  const testAppUrl = testSecrets.find(s => s.name === 'PUBLIC_APP_URL');
   if (!prodAppUrl) {
     recordCheck('PROD_PUBLIC_APP_URL', 'FAILED', 'FALLO CRÍTICO: PUBLIC_APP_URL está ausente en PRODUCCIÓN.');
   } else {
     const val = resolveValue(prodAppUrl, 'PUBLIC_APP_URL');
+    const shaDigest = resolveSha256Digest(prodAppUrl, 'PUBLIC_APP_URL');
+    const testUrlDigest = testAppUrl ? (resolveSha256Digest(testAppUrl, 'PUBLIC_APP_URL') || testAppUrl.digest) : null;
+
     if (val !== null) {
       const trimmed = String(val).trim();
       let hasUrlError = false;
       if (!trimmed.startsWith('https://')) {
-        recordCheck('PROD_PUBLIC_APP_URL', 'FAILED', `FALLO CRÍTICO: PUBLIC_APP_URL must use https://. Valor detectado: "${trimmed}".`);
+        recordCheck('PROD_PUBLIC_APP_URL', 'FAILED', 'FALLO CRÍTICO: PUBLIC_APP_URL must use https://.');
         hasUrlError = true;
       }
       if (trimmed.includes('localhost') || trimmed.includes('127.0.0.1')) {
@@ -126,17 +238,48 @@ export function validateEnvironmentSecrets(rawProdSecrets = [], rawTestSecrets =
         hasUrlError = true;
       }
       if (!hasUrlError) {
-        recordCheck('PROD_PUBLIC_APP_URL', 'VERIFIED_OK', `PUBLIC_APP_URL verificada con HTTPS válido: "${trimmed}".`);
+        recordCheck('PROD_PUBLIC_APP_URL', 'VERIFIED_OK', 'PUBLIC_APP_URL verificada con dominio HTTPS productivo válido.');
+      }
+    } else if (shaDigest !== null) {
+      let hasDigestError = false;
+      if (forbiddenHttpDigests.has(shaDigest)) {
+        recordCheck('PROD_PUBLIC_APP_URL', 'FAILED', 'FALLO CRÍTICO: PUBLIC_APP_URL must use https:// (digest SHA-256 coincide con URL HTTP).');
+        hasDigestError = true;
+      }
+      if (forbiddenLocalhostDigests.has(shaDigest)) {
+        recordCheck('PROD_PUBLIC_APP_URL', 'FAILED', 'FALLO CRÍTICO: PUBLIC_APP_URL must not point to localhost (digest SHA-256 coincide con localhost).');
+        hasDigestError = true;
+      }
+      if (forbiddenSupabaseDigests.has(shaDigest)) {
+        recordCheck('PROD_PUBLIC_APP_URL', 'FAILED', 'FALLO CRÍTICO: PUBLIC_APP_URL en PRODUCCIÓN no puede apuntar a Supabase.');
+        hasDigestError = true;
+      }
+      if (testUrlDigest && shaDigest === testUrlDigest) {
+        recordCheck('PROD_PUBLIC_APP_URL', 'FAILED', 'FALLO CRÍTICO: PUBLIC_APP_URL en PRODUCCIÓN colisiona con TEST.');
+        hasDigestError = true;
+      }
+      if (!hasDigestError) {
+        if (allowedProdAppUrlDigests.has(shaDigest)) {
+          recordCheck('PROD_PUBLIC_APP_URL', 'VERIFIED_OK', 'PUBLIC_APP_URL verificada criptográficamente (SHA-256) contra dominio HTTPS productivo canónico.');
+        } else {
+          recordCheck('PROD_PUBLIC_APP_URL', 'UNVERIFIABLE', 'INSUFFICIENT_DATA: PUBLIC_APP_URL existe en PROD pero su digest SHA-256 no corresponde a un dominio productivo canónico registrado.');
+        }
       }
     } else {
       recordCheck('PROD_PUBLIC_APP_URL', 'UNVERIFIABLE', 'INSUFFICIENT_DATA: PUBLIC_APP_URL existe en PROD pero su valor no es legible desde el proveedor.');
     }
   }
 
-  // 1.3 SUPABASE_ANON_KEY en PROD (Rol de credencial)
+  // 1.3 SUPABASE_ANON_KEY en PROD (Rol de credencial / no colisión con service_role)
   const prodAnon = prodSecrets.find(s => s.name === 'SUPABASE_ANON_KEY');
+  const prodServiceRole = prodSecrets.find(s => s.name === 'SUPABASE_SERVICE_ROLE_KEY');
+  const testAnon = testSecrets.find(s => s.name === 'SUPABASE_ANON_KEY');
   if (prodAnon) {
     const val = resolveValue(prodAnon, 'SUPABASE_ANON_KEY');
+    const anonDigest = resolveSha256Digest(prodAnon, 'SUPABASE_ANON_KEY');
+    const serviceDigest = prodServiceRole ? resolveSha256Digest(prodServiceRole, 'SUPABASE_SERVICE_ROLE_KEY') : null;
+    const testAnonDigest = testAnon ? resolveSha256Digest(testAnon, 'SUPABASE_ANON_KEY') : null;
+
     if (val !== null) {
       const role = parseTokenRole(val);
       if (role === 'service_role') {
@@ -144,8 +287,16 @@ export function validateEnvironmentSecrets(rawProdSecrets = [], rawTestSecrets =
       } else {
         recordCheck('PROD_ANON_KEY_ROLE', 'VERIFIED_OK', `SUPABASE_ANON_KEY validada con rol seguro: "${role || 'anon'}".`);
       }
+    } else if (anonDigest !== null && serviceDigest !== null) {
+      if (anonDigest === serviceDigest) {
+        recordCheck('PROD_ANON_KEY_ROLE', 'FAILED', 'FALLO CRÍTICO: SUPABASE_ANON_KEY carries service_role in PRODUCCIÓN (digest SHA-256 idéntico a SUPABASE_SERVICE_ROLE_KEY).');
+      } else if (testAnonDigest && anonDigest === testAnonDigest) {
+        recordCheck('PROD_ANON_KEY_ROLE', 'FAILED', 'FALLO CRÍTICO: SUPABASE_ANON_KEY en PROD colisiona con TEST.');
+      } else {
+        recordCheck('PROD_ANON_KEY_ROLE', 'VERIFIED_OK', 'SUPABASE_ANON_KEY verificada criptográficamente (SHA-256): distinta de SUPABASE_SERVICE_ROLE_KEY y aislada.');
+      }
     } else {
-      recordCheck('PROD_ANON_KEY_ROLE', 'UNVERIFIABLE', 'INSUFFICIENT_DATA: SUPABASE_ANON_KEY existe en PROD pero el JWT no puede decodificarse sin el valor.');
+      recordCheck('PROD_ANON_KEY_ROLE', 'UNVERIFIABLE', 'INSUFFICIENT_DATA: SUPABASE_ANON_KEY existe en PROD pero el JWT no puede decodificarse ni contrastarse sin SUPABASE_SERVICE_ROLE_KEY.');
     }
   }
 
@@ -157,11 +308,18 @@ export function validateEnvironmentSecrets(rawProdSecrets = [], rawTestSecrets =
   const testEnv = testSecrets.find(s => s.name === 'ENVIRONMENT');
   if (testEnv) {
     const val = resolveValue(testEnv, 'ENVIRONMENT');
+    const shaDigest = resolveSha256Digest(testEnv, 'ENVIRONMENT');
     if (val !== null) {
       if (val === 'production') {
-        recordCheck('TEST_ENVIRONMENT', 'FAILED', 'FALLO CRÍTICO DE SEGURIDAD: TEST environment must NOT have ENVIRONMENT=\'production\'.');
+        recordCheck('TEST_ENVIRONMENT', 'FAILED', "FALLO CRÍTICO DE SEGURIDAD: TEST environment must NOT have ENVIRONMENT='production'.");
       } else {
-        recordCheck('TEST_ENVIRONMENT', 'VERIFIED_OK', `ENVIRONMENT en TEST verificado correctamente como "${val}".`);
+        recordCheck('TEST_ENVIRONMENT', 'VERIFIED_OK', 'ENVIRONMENT en TEST verificado correctamente como entorno no productivo.');
+      }
+    } else if (shaDigest !== null) {
+      if (shaDigest === CANONICAL_PROD_ENV_DIGEST) {
+        recordCheck('TEST_ENVIRONMENT', 'FAILED', "FALLO CRÍTICO DE SEGURIDAD: TEST environment must NOT have ENVIRONMENT='production' (digest SHA-256 coincide con production).");
+      } else {
+        recordCheck('TEST_ENVIRONMENT', 'VERIFIED_OK', 'ENVIRONMENT en TEST verificado criptográficamente (SHA-256): distinto de "production".');
       }
     } else {
       recordCheck('TEST_ENVIRONMENT', 'UNVERIFIABLE', 'INSUFFICIENT_DATA: ENVIRONMENT existe en TEST pero su valor no es legible.');
@@ -197,12 +355,16 @@ export function validateEnvironmentSecrets(rawProdSecrets = [], rawTestSecrets =
     }
   }
 
-  // 3.2 GOOGLE_DRIVE_FOLDER_ID
-  const prodDrive = prodSecrets.find(s => s.name === 'GOOGLE_DRIVE_FOLDER_ID');
-  const testDrive = testSecrets.find(s => s.name === 'GOOGLE_DRIVE_FOLDER_ID');
+  // 3.2 GOOGLE_DRIVE_FOLDER_ID / GOOGLE_DRIVE_ROOT_FOLDER_ID
+  const prodDrive = prodSecrets.find(
+    s => s.name === 'GOOGLE_DRIVE_FOLDER_ID' || s.name === 'GOOGLE_DRIVE_ROOT_FOLDER_ID'
+  );
+  const testDrive = testSecrets.find(
+    s => s.name === 'GOOGLE_DRIVE_FOLDER_ID' || s.name === 'GOOGLE_DRIVE_ROOT_FOLDER_ID'
+  );
   if (prodDrive && testDrive) {
-    const pVal = resolveValue(prodDrive, 'GOOGLE_DRIVE_FOLDER_ID');
-    const tVal = resolveValue(testDrive, 'GOOGLE_DRIVE_FOLDER_ID');
+    const pVal = resolveValue(prodDrive, prodDrive.name);
+    const tVal = resolveValue(testDrive, testDrive.name);
     if (pVal !== null && tVal !== null) {
       if (pVal === tVal) {
         recordCheck('ISOLATION_DRIVE_FOLDER', 'FAILED', 'FALLO CRÍTICO: GOOGLE_DRIVE_FOLDER_ID cannot be identical between PROD and TEST.');

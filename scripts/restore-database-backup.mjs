@@ -1,14 +1,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { fileURLToPath } from 'node:url';
 import {
   TABLES,
+  PROD_BASELINE_LAST_MIGRATION,
   resolveEncryptionKey,
   decryptBackupPackage,
   verifyBackupFile,
 } from './backup-prod-database.mjs';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /**
- * Orden canónico topológico para restauración respetando dependencias referenciales.
+ * Orden canónico topológico para restauración de las 43 tablas respetando dependencias referenciales.
  */
 export const RESTORE_ORDER = [
   // 1. Catálogos y configuración independientes
@@ -18,14 +24,14 @@ export const RESTORE_ORDER = [
   'pedido_sequences',
   'usuarios_acceso',
 
-  // 2. Envíos y pedidos base
+  // 2. Envíos, pedidos base, archivos y enlaces (enlaces_material antes de enlace_pedido)
   'envios_formulario',
   'pedidos',
   'archivos',
   'upload_reservations',
   'archivo_pedido',
-  'enlace_pedido',
   'enlaces_material',
+  'enlace_pedido',
 
   // 3. Solicitudes de información y respuestas
   'solicitudes_informacion',
@@ -56,17 +62,31 @@ export const RESTORE_ORDER = [
   'solicitante_sesiones',
   'solicitante_access_tokens',
   'tracking_recovery_tokens',
-  'notificaciones_usuario'
+  'notificaciones_usuario',
+
+  // 7. Tableros privados colaborativos (Fase 4C)
+  'tableros_privados',
+  'tablero_miembros',
+  'tablero_columnas',
+  'tablero_tarjetas',
+  'tablero_tarjeta_checklists',
+  'tablero_tarjeta_comentarios',
+
+  // 8. Operaciones e ítems de purga administrativa (Saga durable)
+  'admin_purge_operations',
+  'admin_purge_items',
 ];
 
 /**
- * Catálogo canónico de Claves Primarias de las 35 tablas respaldadas.
+ * Catálogo canónico de Claves Primarias de las 43 tablas respaldadas.
  * Contempla claves simples (id u otros nombres) y claves compuestas.
  */
 export const TABLE_PRIMARY_KEYS = {
-  // Claves primarias compuestas
+  // Claves primarias compuestas (4 tablas N:M)
   archivo_pedido: ['archivo_id', 'pedido_id'],
   enlace_pedido: ['enlace_id', 'pedido_id'],
+  archivo_solicitud_informacion: ['solicitud_informacion_id', 'archivo_id'],
+  enlace_solicitud_informacion: ['solicitud_informacion_id', 'enlace_id'],
 
   // Claves primarias simples con nombres distintos de 'id'
   configuracion_sistema: ['key'],
@@ -102,9 +122,63 @@ export const TABLE_PRIMARY_KEYS = {
   revision_solicitudes: ['id'],
   revision_pedidos: ['id'],
   revision_archivos: ['id'],
-  archivo_solicitud_informacion: ['id'],
-  enlace_solicitud_informacion: ['id'],
+  tableros_privados: ['id'],
+  tablero_miembros: ['id'],
+  tablero_columnas: ['id'],
+  tablero_tarjetas: ['id'],
+  tablero_tarjeta_checklists: ['id'],
+  tablero_tarjeta_comentarios: ['id'],
+  admin_purge_operations: ['id'],
+  admin_purge_items: ['id'],
 };
+
+/**
+ * Relaciones de clave foránea entre tablas del esquema public para validación
+ * topológica y pruebas de restauración en entorno aislado.
+ */
+export const TABLE_FOREIGN_KEYS = [
+  { childTable: 'tipos_servicio', childCol: 'categoria_id', parentTable: 'categorias_servicio', parentCol: 'id' },
+  { childTable: 'pedidos', childCol: 'envio_id', parentTable: 'envios_formulario', parentCol: 'id' },
+  { childTable: 'pedidos', childCol: 'categoria_id', parentTable: 'categorias_servicio', parentCol: 'id' },
+  { childTable: 'pedidos', childCol: 'tipo_servicio_id', parentTable: 'tipos_servicio', parentCol: 'id' },
+  { childTable: 'upload_reservations', childCol: 'envio_id', parentTable: 'envios_formulario', parentCol: 'id' },
+  { childTable: 'upload_reservations', childCol: 'archivo_id', parentTable: 'archivos', parentCol: 'id' },
+  { childTable: 'archivo_pedido', childCol: 'archivo_id', parentTable: 'archivos', parentCol: 'id' },
+  { childTable: 'archivo_pedido', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'enlaces_material', childCol: 'envio_id', parentTable: 'envios_formulario', parentCol: 'id' },
+  { childTable: 'enlace_pedido', childCol: 'enlace_id', parentTable: 'enlaces_material', parentCol: 'id' },
+  { childTable: 'enlace_pedido', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'solicitudes_informacion', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'archivo_solicitud_informacion', childCol: 'solicitud_informacion_id', parentTable: 'solicitudes_informacion', parentCol: 'id' },
+  { childTable: 'archivo_solicitud_informacion', childCol: 'archivo_id', parentTable: 'archivos', parentCol: 'id' },
+  { childTable: 'enlace_solicitud_informacion', childCol: 'solicitud_informacion_id', parentTable: 'solicitudes_informacion', parentCol: 'id' },
+  { childTable: 'enlace_solicitud_informacion', childCol: 'enlace_id', parentTable: 'enlaces_material', parentCol: 'id' },
+  { childTable: 'notas_pedido', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'nota_pedido_historial', childCol: 'nota_id', parentTable: 'notas_pedido', parentCol: 'id' },
+  { childTable: 'nota_pedido_historial', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'pedido_asignaciones', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'pedido_drive_folders', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'pedido_versiones', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'pedido_etiquetas', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'pedido_checklist_items', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'entregas_pedido', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'entrega_archivos', childCol: 'entrega_id', parentTable: 'entregas_pedido', parentCol: 'id' },
+  { childTable: 'entrega_archivos', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'revision_solicitudes', childCol: 'envio_id', parentTable: 'envios_formulario', parentCol: 'id' },
+  { childTable: 'revision_pedidos', childCol: 'revision_id', parentTable: 'revision_solicitudes', parentCol: 'id' },
+  { childTable: 'revision_pedidos', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'revision_archivos', childCol: 'revision_pedido_id', parentTable: 'revision_pedidos', parentCol: 'id' },
+  { childTable: 'comunicaciones_pedido', childCol: 'pedido_id', parentTable: 'pedidos', parentCol: 'id' },
+  { childTable: 'tablero_miembros', childCol: 'tablero_id', parentTable: 'tableros_privados', parentCol: 'id' },
+  { childTable: 'tablero_columnas', childCol: 'tablero_id', parentTable: 'tableros_privados', parentCol: 'id' },
+  { childTable: 'tablero_tarjetas', childCol: 'tablero_id', parentTable: 'tableros_privados', parentCol: 'id' },
+  { childTable: 'tablero_tarjetas', childCol: 'columna_id', parentTable: 'tablero_columnas', parentCol: 'id' },
+  { childTable: 'tablero_tarjeta_checklists', childCol: 'tablero_id', parentTable: 'tableros_privados', parentCol: 'id' },
+  { childTable: 'tablero_tarjeta_checklists', childCol: 'tarjeta_id', parentTable: 'tablero_tarjetas', parentCol: 'id' },
+  { childTable: 'tablero_tarjeta_comentarios', childCol: 'tablero_id', parentTable: 'tableros_privados', parentCol: 'id' },
+  { childTable: 'tablero_tarjeta_comentarios', childCol: 'tarjeta_id', parentTable: 'tablero_tarjetas', parentCol: 'id' },
+  { childTable: 'admin_purge_items', childCol: 'operation_id', parentTable: 'admin_purge_operations', parentCol: 'id' },
+];
 
 /**
  * Genera sentencias SQL de restauración transaccional a partir del snapshot.
@@ -166,8 +240,9 @@ export function generateRestoreSql(snapshot, options = {}) {
   }
 
   statements.push('-- RESTORE SCRIPT GENERADO POR SISTEMA PEDIDOS');
-  statements.push(`-- Snapshot version: ${snapshot.metadata?.version || '1.1'}`);
+  statements.push(`-- Snapshot version: ${snapshot.metadata?.version || '1.2'}`);
   statements.push(`-- Timestamp: ${snapshot.metadata?.created_at || new Date().toISOString()}`);
+  statements.push(`-- Schema SHA-256: ${snapshot.schema?.schema_sha256 || snapshot.metadata?.schema_sha256 || 'N/A'}`);
   statements.push(`-- Conflict Strategy: ${conflictStrategy}`);
   statements.push('BEGIN;');
   statements.push("SET LOCAL session_replication_role = 'replica';"); // Desactiva temporalmente triggers durante la carga controlada
@@ -235,7 +310,7 @@ export function generateRestoreSql(snapshot, options = {}) {
   statements.push('  v_sql text;');
   statements.push('  v_orphan_count integer;');
   statements.push('  v_total_violations integer := 0;');
-  statements.push('  v_error_details text := \'\';');
+  statements.push("  v_error_details text := '';");
   statements.push('  v_join_clause text;');
   statements.push('  v_not_null_clause text;');
   statements.push('  i integer;');
@@ -257,25 +332,25 @@ export function generateRestoreSql(snapshot, options = {}) {
   statements.push('    JOIN pg_namespace src_ns ON src_tbl.relnamespace = src_ns.oid');
   statements.push('    JOIN pg_class dst_tbl ON c.confrelid = dst_tbl.oid');
   statements.push('    JOIN pg_namespace dst_ns ON dst_tbl.relnamespace = dst_ns.oid');
-  statements.push('    WHERE c.contype = \'f\'');
-  statements.push('      AND src_ns.nspname = \'public\'');
-  statements.push('      AND dst_ns.nspname = \'public\'');
+  statements.push("    WHERE c.contype = 'f'");
+  statements.push("      AND src_ns.nspname = 'public'");
+  statements.push("      AND dst_ns.nspname = 'public'");
   statements.push('  LOOP');
-  statements.push('    v_join_clause := \'\';');
-  statements.push('    v_not_null_clause := \'\';');
+  statements.push("    v_join_clause := '';");
+  statements.push("    v_not_null_clause := '';");
   statements.push('    FOR i IN 1..r.key_len LOOP');
   statements.push('      SELECT attname INTO v_child_col FROM pg_attribute WHERE attrelid = r.conrelid AND attnum = r.conkey[i];');
   statements.push('      SELECT attname INTO v_parent_col FROM pg_attribute WHERE attrelid = r.confrelid AND attnum = r.confkey[i];');
   statements.push('      IF i > 1 THEN');
-  statements.push('        v_join_clause := v_join_clause || \' AND \';');
-  statements.push('        v_not_null_clause := v_not_null_clause || \' AND \';');
+  statements.push("        v_join_clause := v_join_clause || ' AND ';");
+  statements.push("        v_not_null_clause := v_not_null_clause || ' AND ';");
   statements.push('      END IF;');
-  statements.push('      v_join_clause := v_join_clause || format(\'parent.%I = child.%I\', v_parent_col, v_child_col);');
-  statements.push('      v_not_null_clause := v_not_null_clause || format(\'child.%I IS NOT NULL\', v_child_col);');
+  statements.push("      v_join_clause := v_join_clause || format('parent.%I = child.%I', v_parent_col, v_child_col);");
+  statements.push("      v_not_null_clause := v_not_null_clause || format('child.%I IS NOT NULL', v_child_col);");
   statements.push('    END LOOP;');
   statements.push('');
   statements.push('    v_sql := format(');
-  statements.push('      \'SELECT count(*) FROM public.%I child WHERE (%s) AND NOT EXISTS (SELECT 1 FROM public.%I parent WHERE %s)\',');
+  statements.push("      'SELECT count(*) FROM public.%I child WHERE (%s) AND NOT EXISTS (SELECT 1 FROM public.%I parent WHERE %s)',");
   statements.push('      r.child_table, v_not_null_clause, r.parent_table, v_join_clause');
   statements.push('    );');
   statements.push('    EXECUTE v_sql INTO v_orphan_count;');
@@ -283,20 +358,204 @@ export function generateRestoreSql(snapshot, options = {}) {
   statements.push('    IF v_orphan_count > 0 THEN');
   statements.push('      v_total_violations := v_total_violations + v_orphan_count;');
   statements.push('      v_error_details := v_error_details || format(');
-  statements.push('        E\'\\n- FK [%s] (%s): %s registro(s) huerfano(s) en %s -> %s\',');
+  statements.push("        E'\\n- FK [%s] (%s): %s registro(s) huerfano(s) en %s -> %s',");
   statements.push('        r.constraint_name, v_join_clause, v_orphan_count, r.child_table, r.parent_table');
   statements.push('      );');
   statements.push('    END IF;');
   statements.push('  END LOOP;');
   statements.push('');
   statements.push('  IF v_total_violations > 0 THEN');
-  statements.push('    RAISE EXCEPTION \'[RESTORE_INTEGRITY_FAIL] Se detectaron % violaciones de integridad referencial:%s\', v_total_violations, v_error_details;');
+  statements.push("    RAISE EXCEPTION '[RESTORE_INTEGRITY_FAIL] Se detectaron % violaciones de integridad referencial:%s', v_total_violations, v_error_details;");
   statements.push('  END IF;');
   statements.push('END $$;');
 
   statements.push("\nSET LOCAL session_replication_role = 'origin';");
   statements.push('COMMIT;');
   return statements.join('\n');
+}
+
+/**
+ * Genera el script SQL transaccional de Rollback de Esquema no destructivo para revertir
+ * triggers, constraints y funciones RPC al estado exacto de la línea base productiva
+ * (<= 20261029164500), conservando intactas todas las columnas y tablas aditivas.
+ */
+export function generateSchemaRollbackSql(snapshot = {}, options = {}) {
+  const migrationsDir = options.migrationsDir || path.resolve(__dirname, '..', 'supabase', 'migrations');
+  const baselineCutoff = snapshot?.schema?.baseline_cutoff || PROD_BASELINE_LAST_MIGRATION;
+
+  const lines = [
+    '-- =============================================================================',
+    '-- SCHEMA ROLLBACK SCRIPT (NO DESTRUCTIVO DE DATOS) - SISTEMA PEDIDOS',
+    `-- Baseline Cutoff: ${baselineCutoff}`,
+    `-- Schema Manifest SHA-256: ${snapshot?.schema?.schema_sha256 || 'N/A'}`,
+    '-- =============================================================================',
+    'BEGIN;',
+    '',
+    '-- 1. Desactivar triggers y constraints introducidos en lote 202611*',
+    ...(snapshot?.schema?.rollback_ddl || [
+      'DROP TRIGGER IF EXISTS trg_cam09_require_new_pedido_title ON public.pedidos;',
+      'DROP TRIGGER IF EXISTS trg_domain_events_sync_reabierto ON public.domain_events;',
+      'DROP TRIGGER IF EXISTS trg_pedidos_protect_reabierto ON public.pedidos;',
+      'ALTER TABLE public.envios_formulario DROP CONSTRAINT IF EXISTS chk_envios_interno_correo_requerido;',
+    ]),
+    '',
+  ];
+
+  // 2. Restaurar las últimas definiciones baseline de las funciones núcleo previas a 202611*
+  const baselineFunctionMigrations = [
+    '20260928000058_fix_submission_create_core_limits.sql',
+    '20261028013000_fix_historial_assigned_from_pedido_asignaciones.sql',
+    '20261029140000_internal_pedido_creation.sql',
+  ];
+
+  for (const migFile of baselineFunctionMigrations) {
+    const fullPath = path.join(migrationsDir, migFile);
+    if (fs.existsSync(fullPath)) {
+      lines.push(`-- Baseline restore from: ${migFile}`);
+      lines.push(fs.readFileSync(fullPath, 'utf8').trim());
+      lines.push('');
+    }
+  }
+
+  lines.push('COMMIT;');
+  return lines.join('\n');
+}
+
+/**
+ * Ejecuta una prueba integral de restauración de Esquema + Datos en una base de datos
+ * SQLite local 100% aislada (`node:sqlite` DatabaseSync), sin tocar jamás PROD ni TEST.
+ * Verifica:
+ *  1. Integridad criptográfica del archivo `.enc` y `.meta.json` (datos + esquema).
+ *  2. Creación de las 43 tablas con sus Claves Primarias (simples y compuestas) y Foreign Keys.
+ *  3. Inserción transaccional respetando `RESTORE_ORDER`.
+ *  4. Ausencia total de violaciones de integridad referencial (`PRAGMA foreign_key_check`).
+ *  5. Convergencia idempotente en modo `upsert` (`ON CONFLICT (...) DO UPDATE SET`).
+ */
+export function runIsolatedRestoreRehearsal(backupFilePath, options = {}) {
+  const verification = verifyBackupFile(backupFilePath, { ...options, requireSchema: options.requireSchema !== false });
+  const fileBytes = fs.readFileSync(backupFilePath);
+  const key = resolveEncryptionKey({ ...options, autoGenerate: false });
+  const snapshot = decryptBackupPackage(fileBytes, key);
+
+  const dbPath = options.sqlitePath || ':memory:';
+  const db = new DatabaseSync(dbPath);
+
+  try {
+    db.exec('PRAGMA foreign_keys = ON;');
+
+    // 1. Construir esquema relacional aislado para las 43 tablas con sus PKs y FKs
+    for (const table of RESTORE_ORDER) {
+      const pks = TABLE_PRIMARY_KEYS[table] || ['id'];
+      const rows = snapshot.tables[table] || [];
+      const fks = TABLE_FOREIGN_KEYS.filter(fk => fk.childTable === table);
+
+      const colSet = new Set(pks);
+      for (const fk of fks) colSet.add(fk.childCol);
+      for (const row of rows) {
+        for (const col of Object.keys(row)) colSet.add(col);
+      }
+
+      const colDefs = Array.from(colSet).map(col => `"${col}" TEXT`);
+      const pkDef = `PRIMARY KEY (${pks.map(pk => `"${pk}"`).join(', ')})`;
+      const fkDefs = fks.map(
+        fk => `FOREIGN KEY ("${fk.childCol}") REFERENCES "${fk.parentTable}"("${fk.parentCol}")`
+      );
+
+      const createSql = `CREATE TABLE "${table}" (${[...colDefs, pkDef, ...fkDefs].join(', ')});`;
+      db.exec(createSql);
+    }
+
+    // 2. Ejecutar carga transaccional inicial (estrategia 'error' por defecto)
+    db.exec('BEGIN TRANSACTION;');
+    let insertedRows = 0;
+
+    for (const table of RESTORE_ORDER) {
+      const rows = snapshot.tables[table] || [];
+      if (rows.length === 0) continue;
+
+      for (const row of rows) {
+        const cols = Object.keys(row);
+        const placeholders = cols.map(() => '?').join(', ');
+        const stmt = db.prepare(
+          `INSERT INTO "${table}" (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${placeholders})`
+        );
+        const values = cols.map(c => {
+          const v = row[c];
+          if (v === null || v === undefined) return null;
+          if (typeof v === 'object') return JSON.stringify(v);
+          return String(v);
+        });
+        stmt.run(...values);
+        insertedRows++;
+      }
+    }
+    db.exec('COMMIT;');
+
+    // 3. Verificar integridad referencial universal en la base aislada
+    const fkViolations = db.prepare('PRAGMA foreign_key_check;').all();
+    if (fkViolations.length > 0) {
+      throw new Error(
+        `[ISOLATED_RESTORE_FK_FAIL] Violaciones de FK detectadas en restauración aislada: ${JSON.stringify(fkViolations)}`
+      );
+    }
+
+    // 4. Probar convergencia UPSERT (confirmOverwrite: true) sobre la base ya poblada
+    db.exec('BEGIN TRANSACTION;');
+    for (const table of RESTORE_ORDER) {
+      const rows = snapshot.tables[table] || [];
+      if (rows.length === 0) continue;
+      const pks = TABLE_PRIMARY_KEYS[table] || ['id'];
+
+      for (const row of rows) {
+        const cols = Object.keys(row);
+        const placeholders = cols.map(() => '?').join(', ');
+        const pkTarget = pks.map(pk => `"${pk}"`).join(', ');
+        const updateCols = cols.filter(c => !pks.includes(c));
+        const conflictClause = updateCols.length > 0
+          ? `ON CONFLICT (${pkTarget}) DO UPDATE SET ${updateCols.map(c => `"${c}" = excluded."${c}"`).join(', ')}`
+          : `ON CONFLICT (${pkTarget}) DO NOTHING`;
+
+        const stmt = db.prepare(
+          `INSERT INTO "${table}" (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${placeholders}) ${conflictClause}`
+        );
+        const values = cols.map(c => {
+          const v = row[c];
+          if (v === null || v === undefined) return null;
+          if (typeof v === 'object') return JSON.stringify(v);
+          return String(v);
+        });
+        stmt.run(...values);
+      }
+    }
+    db.exec('COMMIT;');
+
+    // 5. Verificar conteo exacto tabla por tabla tras restauración e idempotencia upsert
+    const restoredCounts = {};
+    for (const table of RESTORE_ORDER) {
+      const row = db.prepare(`SELECT count(*) AS cnt FROM "${table}"`).get();
+      const actualCount = Number(row.cnt);
+      const expectedCount = snapshot.metadata.counts[table] ?? 0;
+      if (actualCount !== expectedCount) {
+        throw new Error(
+          `[ISOLATED_RESTORE_COUNT_MISMATCH] Tabla ${table}: esperado=${expectedCount}, restaurado=${actualCount}`
+        );
+      }
+      restoredCounts[table] = actualCount;
+    }
+
+    return {
+      success: true,
+      isolatedEngine: 'node:sqlite (DatabaseSync)',
+      tablesCreated: RESTORE_ORDER.length,
+      insertedRows,
+      fkViolations: 0,
+      schemaVerified: verification.schemaVerified,
+      schemaSha256: verification.schemaSha256,
+      restoredCounts,
+    };
+  } finally {
+    db.close();
+  }
 }
 
 /**
@@ -311,6 +570,11 @@ export async function runLogicalRestore(backupFilePath, options = {}) {
     return { success: true, verified: true, verification };
   }
 
+  if (options.target === 'isolated_rehearsal') {
+    const rehearsal = runIsolatedRestoreRehearsal(backupFilePath, options);
+    return { success: true, rehearsal, verification };
+  }
+
   const fileBytes = fs.readFileSync(backupFilePath);
   const key = resolveEncryptionKey({ ...options, autoGenerate: false });
   const snapshot = decryptBackupPackage(fileBytes, key);
@@ -320,7 +584,16 @@ export async function runLogicalRestore(backupFilePath, options = {}) {
     const sql = generateRestoreSql(snapshot, options);
     fs.writeFileSync(outPath, sql, 'utf8');
     console.log(`[RESTORE] Script SQL de restauración generado en: ${outPath}`);
-    return { success: true, sqlPath: outPath, verification };
+
+    let schemaRollbackPath = null;
+    if (options.includeSchemaRollback) {
+      schemaRollbackPath = outPath.replace(/\.restore\.sql$/, '.schema-rollback.sql');
+      const rollbackSql = generateSchemaRollbackSql(snapshot, options);
+      fs.writeFileSync(schemaRollbackPath, rollbackSql, 'utf8');
+      console.log(`[RESTORE] Script SQL de rollback de esquema generado en: ${schemaRollbackPath}`);
+    }
+
+    return { success: true, sqlPath: outPath, schemaRollbackPath, verification };
   }
 
   return { success: true, snapshot, verification };
@@ -332,17 +605,22 @@ if (process.argv[1] && process.argv[1].includes('restore-database-backup.mjs')) 
   const filePath = args.find(a => !a.startsWith('--'));
   const verifyOnly = args.includes('--verify-only');
   const asSql = args.includes('--as-sql');
+  const includeSchemaRollback = args.includes('--include-schema-rollback');
+  const isolatedRehearsal = args.includes('--isolated-rehearsal');
   const overwrite = args.includes('--overwrite') || args.includes('--confirm-overwrite');
   const conflictStrategy = args.includes('--upsert') ? 'upsert' : args.includes('--error') ? 'error' : undefined;
 
   if (!filePath) {
-    console.error('Uso: node restore-database-backup.mjs <ruta-al-backup.enc> [--verify-only] [--as-sql] [--upsert --confirm-overwrite]');
+    console.error(
+      'Uso: node restore-database-backup.mjs <ruta-al-backup.enc> [--verify-only] [--isolated-rehearsal] [--as-sql] [--include-schema-rollback] [--upsert --confirm-overwrite]'
+    );
     process.exit(1);
   }
 
   runLogicalRestore(filePath, {
     verifyOnly,
-    target: asSql ? 'sql_file' : undefined,
+    target: isolatedRehearsal ? 'isolated_rehearsal' : asSql ? 'sql_file' : undefined,
+    includeSchemaRollback,
     conflictStrategy,
     confirmOverwrite: overwrite,
   }).catch(err => {
