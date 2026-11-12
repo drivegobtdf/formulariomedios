@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
-import { getCorsHeaders, getSupabaseConfig, getEnv, decryptTokenEnvelope, encryptTokenEnvelope, timingSafeEqualString, resolvePublicAppUrl, resolveQaDispatchRouting } from '../_shared/security.ts';
+import { getCorsHeaders, getSupabaseConfig, getEnv, decryptTokenEnvelope, encryptTokenEnvelope, timingSafeEqualString, resolvePublicAppUrl } from '../_shared/security.ts';
 import { renderEmailForCommunication } from '../_shared/emailTemplates.ts';
 
 interface ClaimedCommItem {
@@ -416,27 +416,11 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
 
-        // UAT-05: Enrutamiento seguro para QA en TEST (estricto y fail-closed)
-        const routing = resolveQaDispatchRouting({
-          environment: getEnv('ENVIRONMENT'),
-          forwardEnabled: getEnv('TEST_QA_FORWARD_ENABLED'),
-          toEmail,
-          tipoComunicacion: item.tipo_comunicacion,
-          originalSubject: '',
-          appUrl,
-          testPreviewUrl: getEnv('TEST_PREVIEW_URL'),
-          canonicalQaEmails,
-        });
-
         const rendered = renderEmailForCommunication(
           item.tipo_comunicacion,
           payloadToRender,
-          routing.effectiveAppUrl
+          appUrl
         );
-
-        const finalSubject = routing.isForwardActive
-          ? `[QA TEST -> ${item.destinatario_email}] ${rendered.subject}`
-          : rendered.subject;
 
         const webhookUrl = `${n8nBaseUrl.replace(/\/$/, '')}/webhook/${n8nWebhookPath.replace(/^\//, '')}`;
         const headers: Record<string, string> = {
@@ -451,8 +435,8 @@ export default async function handler(req: Request): Promise<Response> {
           pedido_id: item.pedido_id || '',
           servicio_id: (item.payload?.servicio_id as string) || '',
           tipo: rendered.n8nTipo,
-          to: routing.effectiveTo,
-          subject: finalSubject,
+          to: item.destinatario_email,
+          subject: rendered.subject,
           html: rendered.html,
           text: rendered.text,
         };
