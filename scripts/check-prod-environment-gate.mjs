@@ -1,5 +1,11 @@
 import { execSync } from 'node:child_process';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const PROD_REF = 'uwzgyirilafgnbpmrkic';
 export const TEST_REF = 'yqfkzgqvezarzhlwiilo';
@@ -409,6 +415,79 @@ export function validateEnvironmentSecrets(rawProdSecrets = [], rawTestSecrets =
     errors,
     unverifiable,
     warnings,
+  };
+}
+
+/**
+ * Extrae automáticamente el catálogo canónico de Edge Functions desde `supabase/config.toml`
+ * y contrasta su paridad 1:1 con los directorios reales en `supabase/functions/*` (excluyendo `_shared`).
+ * Falla de forma determinista (fail-closed) si existe cualquier discrepancia de nombres o falta `index.ts`.
+ */
+export function extractEdgeFunctionsCatalog(options = {}) {
+  const repoRoot = options.repoRoot || path.resolve(__dirname, '..');
+  const configTomlPath = options.configTomlPath || path.join(repoRoot, 'supabase', 'config.toml');
+  const functionsDir = options.functionsDir || path.join(repoRoot, 'supabase', 'functions');
+
+  if (!fs.existsSync(configTomlPath)) {
+    throw new Error(`[CATALOG_ERROR] No existe supabase/config.toml en: ${configTomlPath}`);
+  }
+  if (!fs.existsSync(functionsDir)) {
+    throw new Error(`[CATALOG_ERROR] No existe directorio supabase/functions en: ${functionsDir}`);
+  }
+
+  const configContent = fs.readFileSync(configTomlPath, 'utf8');
+  const blockRegex = /\[functions\.([a-z0-9-]+)\]\s*\r?\nverify_jwt\s*=\s*(true|false)/g;
+  const configEntries = [];
+  const configMap = new Map();
+
+  for (const match of configContent.matchAll(blockRegex)) {
+    const slug = match[1];
+    const verifyJwt = match[2] === 'true';
+    if (configMap.has(slug)) {
+      throw new Error(`[CATALOG_ERROR] Función duplicada en supabase/config.toml: ${slug}`);
+    }
+    const entry = {
+      slug,
+      verifyJwt,
+      deployFlag: verifyJwt ? '' : '--no-verify-jwt',
+      entrypoint: `supabase/functions/${slug}/index.ts`,
+    };
+    configEntries.push(entry);
+    configMap.set(slug, entry);
+  }
+
+  const dirSlugs = fs
+    .readdirSync(functionsDir, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !d.name.startsWith('_') && !d.name.startsWith('.'))
+    .map(d => d.name)
+    .sort();
+
+  const missingInDirectories = configEntries
+    .map(e => e.slug)
+    .filter(slug => !dirSlugs.includes(slug));
+  const missingInConfigToml = dirSlugs.filter(slug => !configMap.has(slug));
+  const missingEntrypoint = dirSlugs.filter(
+    slug => !fs.existsSync(path.join(functionsDir, slug, 'index.ts'))
+  );
+
+  if (
+    missingInDirectories.length > 0 ||
+    missingInConfigToml.length > 0 ||
+    missingEntrypoint.length > 0
+  ) {
+    throw new Error(
+      `[CATALOG_MISMATCH] Discrepancia entre supabase/config.toml y supabase/functions/*: ` +
+      `missingInDirectories=${JSON.stringify(missingInDirectories)}, ` +
+      `missingInConfigToml=${JSON.stringify(missingInConfigToml)}, ` +
+      `missingEntrypoint=${JSON.stringify(missingEntrypoint)}`
+    );
+  }
+
+  return {
+    totalCount: configEntries.length,
+    entries: configEntries,
+    verifyJwtTrue: configEntries.filter(e => e.verifyJwt).map(e => e.slug),
+    verifyJwtFalse: configEntries.filter(e => !e.verifyJwt).map(e => e.slug),
   };
 }
 

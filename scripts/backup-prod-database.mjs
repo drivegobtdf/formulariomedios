@@ -9,7 +9,31 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const DEFAULT_PROD_REF = 'uwzgyirilafgnbpmrkic';
-export const PROD_BASELINE_LAST_MIGRATION = '20261029164500_submission_tracking_recovery_lookup.sql';
+/**
+ * Última migración aplicada en Supabase PROD (`uwzgyirilafgnbpmrkic`), verificada vía
+ * `supabase migration list --project-ref uwzgyirilafgnbpmrkic` (90 migraciones aplicadas
+ * hasta `20261019050000_fase_4c_tableros_privados.sql`; 14 migraciones pendientes `202611*`,
+ * totalizando 104 archivos SQL en `supabase/migrations/`).
+ */
+export const PROD_BASELINE_LAST_MIGRATION = '20261019050000_fase_4c_tableros_privados.sql';
+
+/**
+ * Especificación explícita de alcance, cobertura y limitaciones técnicas del backup lógico JSON/AES-256-GCM.
+ */
+export const BACKUP_COVERAGE_SPEC = {
+  backed_up: [
+    '43 tablas de datos del esquema public (filas completas exportadas vía PostgREST service_role con paginación verificada)',
+    'Manifiesto criptográfico SHA-256 de las 104 migraciones SQL del repositorio (90 baseline PROD <= 20261019050000 + 14 candidatas 202611*)',
+  ],
+  not_backed_up_by_script: [
+    'Catálogo DDL vivo de PostgreSQL (pg_proc, pg_trigger, pg_policy, pg_constraint, pg_indexes, secuencias internas) — cubierto por las migraciones versionadas en supabase/migrations/ y snapshot de plataforma Supabase',
+    'Esquemas internos de Supabase (auth.users, auth.identities, storage.*, supabase_migrations.schema_migrations, vault.*)',
+    'Archivos binarios externos alojados en Google Drive (cubiertos por la retención/papelera de Google Drive y sus metadatos en public.archivos / public.pedido_drive_folders)',
+    'Valores en texto plano de Supabase Secrets y variables de entorno de Cloudflare Pages / n8n',
+  ],
+  rehearsal_scope_disclaimer:
+    'El ensayo local en node:sqlite (runIsolatedRestoreRehearsal) valida únicamente el descifrado AES-256-GCM, el conteo de las 43 tablas, las claves primarias simples/compuestas y el orden topológico de claves foráneas en memoria; NO equivale ni reemplaza una prueba sobre motor PostgreSQL real (tipos JSONB/UUID/TIMESTAMPTZ, funciones PL/pgSQL, triggers, RLS ni concurrencia MVCC).',
+};
 
 /**
  * Tablas opcionales en backup pre-migración porque son creadas por las migraciones
@@ -104,11 +128,19 @@ export function buildSchemaSnapshot(options = {}) {
   }
 
   const rollbackDdlStatements = [
-    '-- Rollback no destructivo de triggers y constraints introducidos en lote 202611*',
+    '-- Rollback no destructivo de triggers, constraints y funciones nuevas introducidos en lote 202611*',
     'DROP TRIGGER IF EXISTS trg_cam09_require_new_pedido_title ON public.pedidos;',
     'DROP TRIGGER IF EXISTS trg_domain_events_sync_reabierto ON public.domain_events;',
     'DROP TRIGGER IF EXISTS trg_pedidos_protect_reabierto ON public.pedidos;',
     'ALTER TABLE public.envios_formulario DROP CONSTRAINT IF EXISTS chk_envios_interno_correo_requerido;',
+    'DROP FUNCTION IF EXISTS public.trg_enforce_new_pedido_title();',
+    'DROP FUNCTION IF EXISTS public.trg_sync_pedido_is_reabierto();',
+    'DROP FUNCTION IF EXISTS public.trg_protect_pedido_is_reabierto();',
+    'DROP FUNCTION IF EXISTS public.nota_pedido_edit(uuid, text);',
+    'DROP FUNCTION IF EXISTS public.nota_pedido_delete(uuid);',
+    'DROP FUNCTION IF EXISTS public.nota_pedido_get_historial(uuid);',
+    'DROP FUNCTION IF EXISTS public.mock_drive_Test_Reset();',
+    'DROP FUNCTION IF EXISTS private.validate_pedido_titulo_strict(text, boolean);',
   ];
 
   const canonicalPayload = JSON.stringify({
@@ -195,8 +227,11 @@ export function getServiceKey(projectRef = DEFAULT_PROD_REF) {
   }
   try {
     const out = execSync('npx.cmd supabase projects api-keys --project-ref ' + projectRef + ' --output json', { encoding: 'utf8' });
-    const parsed = JSON.parse(out);
-    const item = (parsed.keys || []).find(k => k.id === 'service_role' || k.name === 'service_role');
+    const startIdx = out.indexOf('[');
+    const jsonPayload = startIdx !== -1 ? out.substring(startIdx) : out;
+    const parsed = JSON.parse(jsonPayload);
+    const list = Array.isArray(parsed) ? parsed : (parsed.keys || []);
+    const item = list.find(k => k.id === 'service_role' || k.name === 'service_role');
     if (item && item.api_key) return item.api_key.trim();
   } catch (_err) {
     void _err;
@@ -441,6 +476,7 @@ export async function runLogicalBackup(options = {}) {
       counts: {},
       missing_tables: [],
       schema_sha256: schemaSnapshot.schema_sha256,
+      coverage_limitations: BACKUP_COVERAGE_SPEC,
     },
     schema: schemaSnapshot,
     tables: {},

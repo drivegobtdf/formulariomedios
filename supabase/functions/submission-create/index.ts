@@ -9,113 +9,6 @@ interface PedidoSummary {
 }
 
 /**
- * Sintetiza un título limpio (3 a 50 caracteres, sin HTML) para solicitudes ciudadanas
- * en vuelo originadas desde una pestaña abierta con el bundle previo a CAM-09 (`c444c9c`),
- * donde el objeto `informacion_especifica` carece por completo de la clave `titulo`.
- */
-export function synthesizeLegacyInFlightTitle(
-  pedido: Record<string, any>,
-  contacto?: Record<string, any> | null
-): string {
-  const info = (pedido?.informacion_especifica && typeof pedido.informacion_especifica === 'object')
-    ? pedido.informacion_especifica
-    : {};
-
-  const candidates = [
-    info.nombre_evento,
-    info.nombre_actividad,
-    info.tema,
-    info.asunto,
-    info.objetivo,
-    info.motivo,
-    info.informacion_base,
-    pedido?.tipo_slug && contacto?.area_solicitante
-      ? `${String(pedido.tipo_slug).replace(/_/g, ' ')} - ${String(contacto.area_solicitante)}`
-      : null,
-    pedido?.tipo_slug ? `Solicitud ${String(pedido.tipo_slug).replace(/_/g, ' ')}` : null,
-    pedido?.categoria_codigo ? `Pedido ${String(pedido.categoria_codigo)}` : null,
-  ];
-
-  for (const raw of candidates) {
-    if (typeof raw !== 'string') continue;
-    const stripped = raw
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/[<>]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (stripped.length >= 3) {
-      return stripped.length > 50 ? stripped.slice(0, 50).trim() : stripped;
-    }
-  }
-
-  return 'Solicitud de comunicacion institucional';
-}
-
-/**
- * Normaliza exclusivamente payloads legacy en vuelo que carecen de la propiedad `titulo`
- * (`!('titulo' in informacion_especifica)`), preservando intacta la validación estricta
- * de CAM-09 / INC-04 (`TITLE_REQUIRED` / `TITLE_INVALID`) para cualquier solicitud emitida
- * por el nuevo frontend o clientes que incluyan el campo `titulo`.
- */
-export function normalizeLegacyInFlightSubmissionTitles(
-  body: any,
-  options: { disableLegacyTitleFallback?: boolean } = {}
-): { payload: any; legacySynthesizedCount: number } {
-  if (!body || typeof body !== 'object' || !Array.isArray(body.pedidos)) {
-    return { payload: body, legacySynthesizedCount: 0 };
-  }
-
-  const envDisabled =
-    typeof Deno !== 'undefined' &&
-    typeof Deno.env?.get === 'function' &&
-    Deno.env.get('DISABLE_LEGACY_TITLE_FALLBACK') === 'true';
-
-  if (options.disableLegacyTitleFallback === true || envDisabled) {
-    return { payload: body, legacySynthesizedCount: 0 };
-  }
-
-  let legacySynthesizedCount = 0;
-  const normalizedPedidos = body.pedidos.map((ped: any) => {
-    if (!ped || typeof ped !== 'object') return ped;
-
-    const hasTopLevelTitleKey = Object.prototype.hasOwnProperty.call(ped, 'titulo');
-    const info = (ped.informacion_especifica && typeof ped.informacion_especifica === 'object')
-      ? ped.informacion_especifica
-      : {};
-    const hasInfoTitleKey = Object.prototype.hasOwnProperty.call(info, 'titulo');
-
-    // Si el cliente envió la clave `titulo` (incluso vacía, corta, larga o con HTML),
-    // pertenece al contrato CAM-09 y NO se modifica para que el trigger valide estrictamente.
-    if (hasTopLevelTitleKey || hasInfoTitleKey) {
-      return ped;
-    }
-
-    legacySynthesizedCount++;
-    const synthesized = synthesizeLegacyInFlightTitle(ped, body.contacto);
-    return {
-      ...ped,
-      informacion_especifica: {
-        ...info,
-        titulo: synthesized,
-        _legacy_title_synthesized: true,
-      },
-    };
-  });
-
-  if (legacySynthesizedCount === 0) {
-    return { payload: body, legacySynthesizedCount: 0 };
-  }
-
-  return {
-    payload: {
-      ...body,
-      pedidos: normalizedPedidos,
-    },
-    legacySynthesizedCount,
-  };
-}
-
-/**
  * Organiza los archivos del solicitante desde _incoming hacia la carpeta SOLICITUD {pedido_visible}
  * Garantiza durabilidad y resiliencia: si Drive falla, el PED ya confirmado se preserva
  * y el estado queda registrado como 'failed' para reintento.
@@ -237,10 +130,10 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const rawBody = await req.json();
+    const body = await req.json();
 
     // Validación Server-Side Centralizada de Fechas Operativas (Revisión 3.0)
-    const dateValidation = validateSubmissionPayloadDates(rawBody);
+    const dateValidation = validateSubmissionPayloadDates(body);
     if (!dateValidation.isValid) {
       return new Response(
         JSON.stringify({
@@ -251,11 +144,6 @@ export default async function handler(req: Request): Promise<Response> {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Compatibilidad transicional sin ventana: si llega un payload en vuelo desde una pestaña
-    // con el bundle anterior (`c444c9c`) sin propiedad `titulo`, sintetiza un título válido (3-50 chars, sin HTML).
-    // Si el payload incluye la propiedad `titulo`, preserva la validación estricta de CAM-09 / INC-04.
-    const { payload: body } = normalizeLegacyInFlightSubmissionTitles(rawBody);
 
     const { supabaseUrl, serviceRoleKey } = getSupabaseConfig();
 
@@ -277,6 +165,7 @@ export default async function handler(req: Request): Promise<Response> {
         code === '22023' ||
         code === '23514' ||
         code === '23505' ||
+        code === '42200' ||
         error.message.includes('VALIDATION_ERROR') ||
         error.message.includes('TITLE_REQUIRED') ||
         error.message.includes('TITLE_INVALID') ||

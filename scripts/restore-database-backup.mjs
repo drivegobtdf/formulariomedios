@@ -375,9 +375,35 @@ export function generateRestoreSql(snapshot, options = {}) {
 }
 
 /**
+ * Archivos de migración de la línea base productiva (<= 20261019050000_fase_4c_tableros_privados.sql)
+ * que contienen la última definición aplicada en PROD para las 15 funciones preexistentes
+ * modificadas por el lote de 14 migraciones candidatas `202611*`:
+ *  1. 20260912000023 -> public.pedido_get_historial
+ *  2. 20260913000030 -> public.solicitante_request_access
+ *  3. 20260916000036 -> public.info_request_create, public.comunicacion_enqueue_info_requested
+ *  4. 20260928000058 -> public.submission_create_core
+ *  5. 20261010000075 -> public.info_response_submit_core, public.solicitante_submit_info_response, public.comunicacion_enqueue_info_responded
+ *  6. 20261010190009 -> public.solicitante_get_pedidos
+ *  7. 20261011001906 -> public.pedido_create_internal
+ *  8. 20261011014123 -> public.info_request_create_atomic
+ *  9. 20261019030000 -> public.pedido_finalize, public.solicitante_get_pedido_detail, public.comunicacion_enqueue_lifecycle, public.trg_domain_event_auto_enqueue
+ */
+export const BASELINE_FUNCTION_MIGRATIONS = [
+  '20260912000023_f7_f8_recovery_exchange_and_f9_guard.sql',
+  '20260913000030_f10_hardened_concurrency_state_machine_and_durable_magic_link.sql',
+  '20260916000036_f10_atomic_info_request_with_envelope.sql',
+  '20260928000058_fix_submission_create_core_limits.sql',
+  '20261010000075_fase_a_operativas_y_estabilizacion.sql',
+  '20261010190009_fase_b3_internal_requests.sql',
+  '20261011001906_fase_b3_internal_numbering_visual_close.sql',
+  '20261011014123_hotfix_comunicaciones_outbox_state_change.sql',
+  '20261019030000_fase_4a_reopen_and_versions.sql',
+];
+
+/**
  * Genera el script SQL transaccional de Rollback de Esquema no destructivo para revertir
  * triggers, constraints y funciones RPC al estado exacto de la línea base productiva
- * (<= 20261029164500), conservando intactas todas las columnas y tablas aditivas.
+ * (<= 20261019050000_fase_4c_tableros_privados.sql), conservando intactas todas las columnas y tablas aditivas.
  */
 export function generateSchemaRollbackSql(snapshot = {}, options = {}) {
   const migrationsDir = options.migrationsDir || path.resolve(__dirname, '..', 'supabase', 'migrations');
@@ -391,30 +417,33 @@ export function generateSchemaRollbackSql(snapshot = {}, options = {}) {
     '-- =============================================================================',
     'BEGIN;',
     '',
-    '-- 1. Desactivar triggers y constraints introducidos en lote 202611*',
+    '-- 1. Desactivar triggers, constraints y funciones nuevas introducidos en lote 202611*',
     ...(snapshot?.schema?.rollback_ddl || [
       'DROP TRIGGER IF EXISTS trg_cam09_require_new_pedido_title ON public.pedidos;',
       'DROP TRIGGER IF EXISTS trg_domain_events_sync_reabierto ON public.domain_events;',
       'DROP TRIGGER IF EXISTS trg_pedidos_protect_reabierto ON public.pedidos;',
       'ALTER TABLE public.envios_formulario DROP CONSTRAINT IF EXISTS chk_envios_interno_correo_requerido;',
+      'DROP FUNCTION IF EXISTS public.trg_enforce_new_pedido_title();',
+      'DROP FUNCTION IF EXISTS public.trg_sync_pedido_is_reabierto();',
+      'DROP FUNCTION IF EXISTS public.trg_protect_pedido_is_reabierto();',
+      'DROP FUNCTION IF EXISTS public.nota_pedido_edit(uuid, text);',
+      'DROP FUNCTION IF EXISTS public.nota_pedido_delete(uuid);',
+      'DROP FUNCTION IF EXISTS public.nota_pedido_get_historial(uuid);',
+      'DROP FUNCTION IF EXISTS public.mock_drive_Test_Reset();',
+      'DROP FUNCTION IF EXISTS private.validate_pedido_titulo_strict(text, boolean);',
     ]),
     '',
   ];
 
-  // 2. Restaurar las últimas definiciones baseline de las funciones núcleo previas a 202611*
-  const baselineFunctionMigrations = [
-    '20260928000058_fix_submission_create_core_limits.sql',
-    '20261028013000_fix_historial_assigned_from_pedido_asignaciones.sql',
-    '20261029140000_internal_pedido_creation.sql',
-  ];
-
-  for (const migFile of baselineFunctionMigrations) {
+  // 2. Restaurar las últimas definiciones baseline de las 15 funciones preexistentes previas a 202611*
+  for (const migFile of BASELINE_FUNCTION_MIGRATIONS) {
     const fullPath = path.join(migrationsDir, migFile);
-    if (fs.existsSync(fullPath)) {
-      lines.push(`-- Baseline restore from: ${migFile}`);
-      lines.push(fs.readFileSync(fullPath, 'utf8').trim());
-      lines.push('');
+    if (!fs.existsSync(fullPath)) {
+      throw new Error(`[SCHEMA_ROLLBACK_ERROR] Archivo de migración baseline ausente en disco: ${fullPath}`);
     }
+    lines.push(`-- Baseline restore from: ${migFile}`);
+    lines.push(fs.readFileSync(fullPath, 'utf8').trim());
+    lines.push('');
   }
 
   lines.push('COMMIT;');
@@ -545,7 +574,9 @@ export function runIsolatedRestoreRehearsal(backupFilePath, options = {}) {
 
     return {
       success: true,
-      isolatedEngine: 'node:sqlite (DatabaseSync)',
+      isolatedEngine: 'node:sqlite (DatabaseSync - structural/topological rehearsal only)',
+      engineLimitation:
+        'Ensayo estructural/topológico en SQLite en memoria; NO reemplaza validación de motor PostgreSQL (PL/pgSQL, triggers, RLS, tipos nativos).',
       tablesCreated: RESTORE_ORDER.length,
       insertedRows,
       fkViolations: 0,

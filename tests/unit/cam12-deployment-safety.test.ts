@@ -7,6 +7,8 @@ import os from 'node:os';
 import {
   TABLES,
   OPTIONAL_PRE_MIGRATION_TABLES,
+  PROD_BASELINE_LAST_MIGRATION,
+  BACKUP_COVERAGE_SPEC,
   buildSchemaSnapshot,
   fetchTableRowsPaged,
   encryptBackupData,
@@ -20,6 +22,7 @@ import {
   TEST_REF,
   sha256Hex,
   validateEnvironmentSecrets,
+  extractEdgeFunctionsCatalog,
 } from '../../scripts/check-prod-environment-gate.mjs';
 
 import {
@@ -31,15 +34,11 @@ import {
 import {
   RESTORE_ORDER,
   TABLE_PRIMARY_KEYS,
+  BASELINE_FUNCTION_MIGRATIONS,
   generateRestoreSql,
   generateSchemaRollbackSql,
   runIsolatedRestoreRehearsal,
 } from '../../scripts/restore-database-backup.mjs';
-
-import {
-  synthesizeLegacyInFlightTitle,
-  normalizeLegacyInFlightSubmissionTitles,
-} from '../../supabase/functions/submission-create/index.ts';
 
 import {
   isMissingColumnError,
@@ -276,9 +275,13 @@ describe('CAM-12 & Preflight PROD Blockers: Seguridad de Despliegue, Respaldo y 
         const metaPath = path.join(tempDir, 'test-backup.meta.json');
 
         const schemaSnap = buildSchemaSnapshot();
+        expect(PROD_BASELINE_LAST_MIGRATION).toBe('20261019050000_fase_4c_tableros_privados.sql');
+        expect(schemaSnap.baseline_cutoff).toBe('20261019050000_fase_4c_tableros_privados.sql');
         expect(schemaSnap.total_migrations).toBe(104);
         expect(schemaSnap.baseline_migrations_count).toBe(90);
         expect(schemaSnap.candidate_migrations_count).toBe(14);
+        expect(BACKUP_COVERAGE_SPEC.not_backed_up_by_script.length).toBeGreaterThanOrEqual(4);
+        expect(BACKUP_COVERAGE_SPEC.rehearsal_scope_disclaimer).toContain('NO equivale ni reemplaza una prueba sobre motor PostgreSQL real');
 
         const fullSnap = {
           ...sampleSnapshot,
@@ -406,10 +409,17 @@ describe('CAM-12 & Preflight PROD Blockers: Seguridad de Despliegue, Respaldo y 
         expect(rehearsal.restoredCounts.tablero_tarjetas).toBe(1);
         expect(rehearsal.restoredCounts.admin_purge_items).toBe(1);
 
-        // Verificar generación del script de rollback de esquema no destructivo
+        // Verificar generación del script de rollback de esquema no destructivo con los 9 archivos baseline reales
+        expect(BASELINE_FUNCTION_MIGRATIONS).toHaveLength(9);
         const rollbackSql = generateSchemaRollbackSql(backupRes.snapshot);
         expect(rollbackSql).toContain('DROP TRIGGER IF EXISTS trg_cam09_require_new_pedido_title ON public.pedidos;');
+        expect(rollbackSql).toContain('DROP FUNCTION IF EXISTS private.validate_pedido_titulo_strict(text, boolean);');
         expect(rollbackSql).toContain('CREATE OR REPLACE FUNCTION public.submission_create_core(p_payload jsonb)');
+        expect(rollbackSql).toContain('CREATE OR REPLACE FUNCTION public.pedido_create_internal(');
+        expect(rollbackSql).toContain('CREATE OR REPLACE FUNCTION public.pedido_get_historial(');
+        for (const migFile of BASELINE_FUNCTION_MIGRATIONS) {
+          expect(rollbackSql).toContain(`-- Baseline restore from: ${migFile}`);
+        }
       } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }
@@ -768,7 +778,7 @@ describe('CAM-12 & Preflight PROD Blockers: Seguridad de Despliegue, Respaldo y 
     });
   });
 
-  describe('6. Compatibilidad Cero-Ventana CAM-09 / Frontend y Catálogo de 28 Edge Functions', () => {
+  describe('6. Compatibilidad CAM-09 / Frontend-First y Catálogo Automático de 28 Edge Functions', () => {
     it('detecta errores de columnas aún no migradas (isMissingColumnError) para permitir despliegue Frontend-First', () => {
       expect(
         isMissingColumnError({ code: '42703', message: 'column pedidos.is_reabierto does not exist' }, 'is_reabierto')
@@ -781,61 +791,56 @@ describe('CAM-12 & Preflight PROD Blockers: Seguridad de Despliegue, Respaldo y 
       ).toBe(false);
     });
 
-    it('sintetiza título limpio de 3 a 50 chars sin HTML solo para payloads en vuelo previos a CAM-09 que carecen de la clave "titulo"', () => {
-      const legacyPayload = {
-        contacto: { nombre_apellido: 'María Gómez', area_solicitante: 'Ministerio de Salud' },
-        pedidos: [
-          {
-            categoria_codigo: 'DG',
-            tipo_slug: 'flyer_rrss',
-            informacion_especifica: {
-              nombre_actividad: '<b>Jornada Provincial de Vacunación 2026 en Ushuaia y Río Grande</b>',
-            },
-          },
-        ],
-      };
-
-      const { payload, legacySynthesizedCount } = normalizeLegacyInFlightSubmissionTitles(legacyPayload);
-      expect(legacySynthesizedCount).toBe(1);
-      const synthTitle = payload.pedidos[0].informacion_especifica.titulo;
-      expect(synthTitle.length).toBeGreaterThanOrEqual(3);
-      expect(synthTitle.length).toBeLessThanOrEqual(50);
-      expect(synthTitle).not.toMatch(/<[^>]*>/);
-      expect(payload.pedidos[0].informacion_especifica._legacy_title_synthesized).toBe(true);
+    it('verifica que submission-create mapea ERRCODE 42200 (TITLE_REQUIRED / TITLE_INVALID) a HTTP 400 sin inventar títulos ni mutar p_payload antes del fingerprint', () => {
+      const submissionCreateSrc = fs.readFileSync(
+        path.join(process.cwd(), 'supabase', 'functions', 'submission-create', 'index.ts'),
+        'utf8'
+      );
+      expect(submissionCreateSrc).toContain("code === '42200'");
+      expect(submissionCreateSrc).toContain("error.message.includes('TITLE_REQUIRED')");
+      expect(submissionCreateSrc).toContain("error.message.includes('TITLE_INVALID')");
+      expect(submissionCreateSrc).not.toContain('synthesizeLegacyInFlightTitle');
+      expect(submissionCreateSrc).not.toContain('normalizeLegacyInFlightSubmissionTitles');
     });
 
-    it('preserva intacta la validación estricta de CAM-09 / INC-04 cuando el payload incluye la propiedad "titulo" (incluso vacía, corta o con HTML)', () => {
-      const cam09InvalidPayloads = {
-        contacto: { nombre_apellido: 'María Gómez', area_solicitante: 'Salud' },
-        pedidos: [
-          { categoria_codigo: 'PRENSA', tipo_slug: 'gacetilla', informacion_especifica: { titulo: '' } },
-          { categoria_codigo: 'DG', tipo_slug: 'flyer_rrss', informacion_especifica: { titulo: 'AB' } },
-          { categoria_codigo: 'DG', tipo_slug: 'otros_diseno', informacion_especifica: { titulo: '<b>Con HTML</b>' } },
-        ],
-      };
+    it('extrae automáticamente el catálogo exacto de 28 Edge Functions y valida paridad 1:1 entre supabase/config.toml y supabase/functions/*', () => {
+      const catalog = extractEdgeFunctionsCatalog();
+      expect(catalog.totalCount).toBe(28);
+      expect(catalog.entries).toHaveLength(28);
+      expect(catalog.verifyJwtTrue).toEqual(['drive-download']);
+      expect(catalog.verifyJwtFalse).toHaveLength(27);
 
-      const { payload, legacySynthesizedCount } = normalizeLegacyInFlightSubmissionTitles(cam09InvalidPayloads);
-      expect(legacySynthesizedCount).toBe(0);
-      expect(payload.pedidos[0].informacion_especifica.titulo).toBe('');
-      expect(payload.pedidos[1].informacion_especifica.titulo).toBe('AB');
-      expect(payload.pedidos[2].informacion_especifica.titulo).toBe('<b>Con HTML</b>');
-      expect(synthesizeLegacyInFlightTitle({}, null)).toBe('Solicitud de comunicacion institucional');
-    });
-
-    it('verifica el catálogo exacto de 28 Edge Functions y sus políticas verify_jwt en supabase/config.toml', () => {
-      const configToml = fs.readFileSync(path.join(process.cwd(), 'supabase', 'config.toml'), 'utf8');
-      const matches = [...configToml.matchAll(/\[functions\.([a-z0-9-]+)\]\s*verify_jwt\s*=\s*(true|false)/g)];
-      expect(matches).toHaveLength(28);
-
-      const policyMap = Object.fromEntries(matches.map(m => [m[1], m[2] === 'true']));
-      expect(policyMap['drive-download']).toBe(true);
-
-      const falseFunctions = Object.entries(policyMap).filter(([, v]) => v === false).map(([k]) => k);
-      expect(falseFunctions).toHaveLength(27);
-      expect(policyMap['solicitante-revision-envio']).toBe(false);
-      expect(policyMap['internal-upload-prepare']).toBe(false);
-      expect(policyMap['internal-upload-complete']).toBe(false);
-      expect(policyMap['submission-create']).toBe(false);
+      const slugs = catalog.entries.map((e: { slug: string }) => e.slug);
+      expect(slugs).toEqual([
+        'submission-session-prepare',
+        'drive-upload-prepare',
+        'drive-upload-complete',
+        'submission-create',
+        'drive-download',
+        'tracking-get',
+        'tracking-recover',
+        'info-token-validate',
+        'info-response-submit',
+        'tracking-exchange',
+        'solicitante-access-request',
+        'solicitante-session-exchange',
+        'solicitante-pedidos-list',
+        'solicitante-pedido-detail',
+        'solicitante-info-respond',
+        'solicitante-session-revoke',
+        'solicitante-delivery-download',
+        'solicitante-revision-request',
+        'solicitante-revision-envio',
+        'comunicaciones-dispatch',
+        'info-request-create',
+        'admin-user-delete',
+        'admin-pedidos-purge',
+        'delivery-upload-prepare',
+        'delivery-upload-complete',
+        'internal-upload-prepare',
+        'internal-upload-complete',
+        'drive-organization-reconcile',
+      ]);
     });
   });
 });
