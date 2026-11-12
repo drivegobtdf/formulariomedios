@@ -1334,7 +1334,7 @@
 .pedidos-app .pedidos-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .pedidos-app .pedidos-summary-item {
@@ -1342,6 +1342,7 @@
   flex-direction: column;
   min-width: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pedidos-app .pedidos-summary-item .label {
@@ -1349,12 +1350,25 @@
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.025em;
+  margin-bottom: 0.15rem;
 }
 
 .pedidos-app .pedidos-summary-item strong {
   font-size: 0.95rem;
   color: #1e293b;
   margin-top: 0.15rem;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+  .pedidos-app .pedidos-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
 }
 
 .pedidos-app .pedidos-summary-pieces-list {

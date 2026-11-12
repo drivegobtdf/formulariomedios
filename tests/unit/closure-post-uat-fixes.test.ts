@@ -23,7 +23,7 @@ describe('Cierre Integral Post-UAT: Verificaciones de Regresión y Nuevas Salvag
       expect(step4).toContain('p.titulo_pedido');
     });
 
-    it('app.css define flex column y contención word-break/overflow-wrap en títulos y grilla de resumen', () => {
+    it('app.css define flex column y contención word-break/overflow-wrap en títulos, correo y área de resumen', () => {
       const css = fs.readFileSync(
         path.join(root, 'pedidos-medios/frontend/src/styles/app.css'),
         'utf8'
@@ -34,6 +34,9 @@ describe('Cierre Integral Post-UAT: Verificaciones de Regresión y Nuevas Salvag
       expect(css).toContain('overflow-wrap: anywhere;');
       expect(css).toContain('.pedidos-app .pedidos-summary-item');
       expect(css).toContain('min-width: 0;');
+      expect(css).toContain('.pedidos-app .pedidos-summary-item strong');
+      expect(css).toContain('word-break: break-word;');
+      expect(css).toContain('@media (max-width: 640px)');
     });
   });
 
