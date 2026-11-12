@@ -38,6 +38,7 @@ import {
   generateRestoreSql,
   generateSchemaRollbackSql,
   runIsolatedRestoreRehearsal,
+  runLogicalRestore,
 } from '../../scripts/restore-database-backup.mjs';
 
 import {
@@ -413,13 +414,37 @@ describe('CAM-12 & Preflight PROD Blockers: Seguridad de Despliegue, Respaldo y 
         expect(BASELINE_FUNCTION_MIGRATIONS).toHaveLength(9);
         const rollbackSql = generateSchemaRollbackSql(backupRes.snapshot);
         expect(rollbackSql).toContain('DROP TRIGGER IF EXISTS trg_cam09_require_new_pedido_title ON public.pedidos;');
-        expect(rollbackSql).toContain('DROP FUNCTION IF EXISTS private.validate_pedido_titulo_strict(text, boolean);');
+        expect(rollbackSql).toContain('DROP FUNCTION IF EXISTS public.cam09_require_new_pedido_title();');
+        expect(rollbackSql).toContain('DROP FUNCTION IF EXISTS public.nota_pedido_update(uuid, text);');
+        expect(rollbackSql).toContain('DROP FUNCTION IF EXISTS public.cleanup_orphaned_upload_reservations(integer, integer);');
         expect(rollbackSql).toContain('CREATE OR REPLACE FUNCTION public.submission_create_core(p_payload jsonb)');
         expect(rollbackSql).toContain('CREATE OR REPLACE FUNCTION public.pedido_create_internal(');
         expect(rollbackSql).toContain('CREATE OR REPLACE FUNCTION public.pedido_get_historial(');
         for (const migFile of BASELINE_FUNCTION_MIGRATIONS) {
           expect(rollbackSql).toContain(`-- Baseline restore from: ${migFile}`);
         }
+
+        // Verificar protección contra exposición de PII en texto plano al restaurar
+        await expect(
+          runLogicalRestore(backupRes.backupFilePath, {
+            encryptionKey: testKey.toString('hex'),
+            target: 'sql_file',
+          })
+        ).rejects.toThrow(/\[PII_EXPOSURE_BLOCK\]/);
+        expect(fs.existsSync(backupRes.backupFilePath.replace(/\.enc$/, '.restore.sql'))).toBe(false);
+
+        // Verificar que target: 'schema_rollback_only' escribe únicamente DDL sin exponer datos personales
+        const schemaOnlyRes = await runLogicalRestore(backupRes.backupFilePath, {
+          encryptionKey: testKey.toString('hex'),
+          target: 'schema_rollback_only',
+        });
+        expect(schemaOnlyRes.success).toBe(true);
+        expect(schemaOnlyRes.sqlPath).toBeNull();
+        expect(schemaOnlyRes.schemaRollbackPath).toBeTruthy();
+        const ddlOnDisk = fs.readFileSync(schemaOnlyRes.schemaRollbackPath!, 'utf8');
+        expect(ddlOnDisk).not.toContain('ciudadano@tdf.gob.ar');
+        expect(ddlOnDisk).not.toContain('Ciudadano Ejemplo');
+        expect(ddlOnDisk).toContain('DROP TRIGGER IF EXISTS trg_cam09_require_new_pedido_title ON public.pedidos;');
       } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }
@@ -840,6 +865,90 @@ describe('CAM-12 & Preflight PROD Blockers: Seguridad de Despliegue, Respaldo y 
         'internal-upload-prepare',
         'internal-upload-complete',
         'drive-organization-reconcile',
+      ]);
+    });
+
+    it('verifica nombres exactos, versiones y hashes SHA-256 (LF canónico) de las 14 migraciones pendientes entre la candidata y TEST 5d1be9b', () => {
+      const schemaSnap = buildSchemaSnapshot();
+      const pending = schemaSnap.migrations.filter(
+        (m: { phase: string }) => m.phase === 'candidate_pending'
+      );
+      expect(pending).toHaveLength(14);
+      expect(pending.map((m: { file: string; version: string; sha256: string }) => ({
+        file: m.file,
+        version: m.version,
+        sha256: m.sha256,
+      }))).toEqual([
+        {
+          file: '20261103193000_cam01_info_request_72h_deadline.sql',
+          version: '20261103193000',
+          sha256: '0117f86fa4cc5219775e95b1ecb5889fab3cea33afcafb9d994a22277adbbbf5',
+        },
+        {
+          file: '20261104164500_cam07a_internal_solicitante_correo_required.sql',
+          version: '20261104164500',
+          sha256: 'f449db7f821fa6aab4f616d8b10672b9fde90c0729782817633f62ddcc59087d',
+        },
+        {
+          file: '20261104211500_cam07b_internal_solicitante_portal.sql',
+          version: '20261104211500',
+          sha256: '2527a176d1c9556387cd662a014be8a7e4ca5dabf7ddd2a7752ef860759972f0',
+        },
+        {
+          file: '20261104233000_cam07c_internal_info_72h.sql',
+          version: '20261104233000',
+          sha256: '279a1dc1c8384736096f3ea30e3cd01e4be99d31aa99b09b750bf3b8d1493e95',
+        },
+        {
+          file: '20261105001000_cam07d_internal_notifications.sql',
+          version: '20261105001000',
+          sha256: 'de60c626ad5c7d15a84fbb0a459b705606b972c61312294d3d5916339f5076e6',
+        },
+        {
+          file: '20261105002000_cam08_internal_notes_history.sql',
+          version: '20261105002000',
+          sha256: '755daaf34626026c5c6a4df07269e36e4262542bc258bdea5bd4573230f2c837',
+        },
+        {
+          file: '20261105100000_cam09_required_pedido_title.sql',
+          version: '20261105100000',
+          sha256: 'ddeea67d1c5139e25a18057e71281b319ea1b1d47f01806183187b9ed10e1496',
+        },
+        {
+          file: '20261106004000_cam01_cam07c_mandatory_responsable_for_info_request.sql',
+          version: '20261106004000',
+          sha256: 'ed219759838981b537ce8f548bcdde0124be4dff19a94c1fcd89bd274f61de6a',
+        },
+        {
+          file: '20261106030000_cam02_pedidos_is_reabierto.sql',
+          version: '20261106030000',
+          sha256: 'b3c23f2f7601fc91a99ec24d79fd9743a4808902830b7694f2fc3f5c256bb559',
+        },
+        {
+          file: '20261110000000_inc07_cleanup_orphaned_reservations.sql',
+          version: '20261110000000',
+          sha256: 'b24d84d62ee4f6621d3402b0981c4d6f22f34b7d3c057d225db3628c8f9c20f6',
+        },
+        {
+          file: '20261110000001_inc05_mock_drive_storage_table.sql',
+          version: '20261110000001',
+          sha256: '5ed746bf94239432848e45d3682bee392f3994748d10e6cc2a01e190f4df8ab9',
+        },
+        {
+          file: '20261110000002_inc02_info_responded_canonical_event.sql',
+          version: '20261110000002',
+          sha256: '924ad8096a116134c46b5f67853b5a9d744a32e75dc54297a81e01aaa96db60e',
+        },
+        {
+          file: '20261110000003_inc04_inc08_title_limits_and_mp4_support.sql',
+          version: '20261110000003',
+          sha256: '5073e7a8a016b19a7f74e18c14c56212a380c50e2a85741e8d62c68be921e7b1',
+        },
+        {
+          file: '20261112000004_fix_pedido_get_historial_assignment_duplicates.sql',
+          version: '20261112000004',
+          sha256: '01e54f3ea75a4e79a92bb07b8c4c890e0df4624931c076dfb3cb8d500be05ae2',
+        },
       ]);
     });
   });

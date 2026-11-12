@@ -423,14 +423,14 @@ export function generateSchemaRollbackSql(snapshot = {}, options = {}) {
       'DROP TRIGGER IF EXISTS trg_domain_events_sync_reabierto ON public.domain_events;',
       'DROP TRIGGER IF EXISTS trg_pedidos_protect_reabierto ON public.pedidos;',
       'ALTER TABLE public.envios_formulario DROP CONSTRAINT IF EXISTS chk_envios_interno_correo_requerido;',
-      'DROP FUNCTION IF EXISTS public.trg_enforce_new_pedido_title();',
-      'DROP FUNCTION IF EXISTS public.trg_sync_pedido_is_reabierto();',
-      'DROP FUNCTION IF EXISTS public.trg_protect_pedido_is_reabierto();',
-      'DROP FUNCTION IF EXISTS public.nota_pedido_edit(uuid, text);',
+      'DROP FUNCTION IF EXISTS public.cam09_require_new_pedido_title();',
+      'DROP FUNCTION IF EXISTS public.trg_domain_events_sync_is_reabierto();',
+      'DROP FUNCTION IF EXISTS public.trg_pedidos_protect_is_reabierto();',
+      'DROP FUNCTION IF EXISTS public.nota_pedido_update(uuid, text);',
       'DROP FUNCTION IF EXISTS public.nota_pedido_delete(uuid);',
-      'DROP FUNCTION IF EXISTS public.nota_pedido_get_historial(uuid);',
-      'DROP FUNCTION IF EXISTS public.mock_drive_Test_Reset();',
-      'DROP FUNCTION IF EXISTS private.validate_pedido_titulo_strict(text, boolean);',
+      'DROP FUNCTION IF EXISTS public.solicitante_get_internal_pedido_detail(uuid);',
+      'DROP FUNCTION IF EXISTS public.comunicacion_enqueue_internal_created(uuid, jsonb);',
+      'DROP FUNCTION IF EXISTS public.cleanup_orphaned_upload_reservations(integer, integer);',
     ]),
     '',
   ];
@@ -610,17 +610,33 @@ export async function runLogicalRestore(backupFilePath, options = {}) {
   const key = resolveEncryptionKey({ ...options, autoGenerate: false });
   const snapshot = decryptBackupPackage(fileBytes, key);
 
+  if (options.target === 'schema_rollback_only') {
+    const schemaRollbackPath = options.outputPath || backupFilePath.replace(/\.enc$/, '.schema-rollback.sql');
+    const rollbackSql = generateSchemaRollbackSql(snapshot, options);
+    fs.writeFileSync(schemaRollbackPath, rollbackSql, { mode: 0o600, encoding: 'utf8' });
+    console.log(`[RESTORE] Script SQL de rollback de esquema (solo DDL, 0% PII) generado en: ${schemaRollbackPath}`);
+    return { success: true, sqlPath: null, schemaRollbackPath, verification };
+  }
+
   if (options.target === 'sql_file') {
+    if (options.allowPlaintextPiiExport !== true) {
+      throw new Error(
+        '[PII_EXPOSURE_BLOCK] Prohibido escribir SQL de restauración de datos en texto plano en disco sin autorización explícita ' +
+        '(allowPlaintextPiiExport: true o --allow-plaintext-pii-export), para evitar exposición de datos personales productivos. ' +
+        'Para preparar el rollback de esquema sin exponer datos, utilice target: "schema_rollback_only" (--schema-rollback-only).'
+      );
+    }
+
     const outPath = options.outputPath || backupFilePath.replace(/\.enc$/, '.restore.sql');
     const sql = generateRestoreSql(snapshot, options);
-    fs.writeFileSync(outPath, sql, 'utf8');
-    console.log(`[RESTORE] Script SQL de restauración generado en: ${outPath}`);
+    fs.writeFileSync(outPath, sql, { mode: 0o600, encoding: 'utf8' });
+    console.log(`[RESTORE] Script SQL de restauración generado (modo restringido 0600) en: ${outPath}`);
 
     let schemaRollbackPath = null;
     if (options.includeSchemaRollback) {
       schemaRollbackPath = outPath.replace(/\.restore\.sql$/, '.schema-rollback.sql');
       const rollbackSql = generateSchemaRollbackSql(snapshot, options);
-      fs.writeFileSync(schemaRollbackPath, rollbackSql, 'utf8');
+      fs.writeFileSync(schemaRollbackPath, rollbackSql, { mode: 0o600, encoding: 'utf8' });
       console.log(`[RESTORE] Script SQL de rollback de esquema generado en: ${schemaRollbackPath}`);
     }
 
@@ -636,22 +652,31 @@ if (process.argv[1] && process.argv[1].includes('restore-database-backup.mjs')) 
   const filePath = args.find(a => !a.startsWith('--'));
   const verifyOnly = args.includes('--verify-only');
   const asSql = args.includes('--as-sql');
+  const schemaRollbackOnly = args.includes('--schema-rollback-only');
   const includeSchemaRollback = args.includes('--include-schema-rollback');
+  const allowPlaintextPiiExport = args.includes('--allow-plaintext-pii-export');
   const isolatedRehearsal = args.includes('--isolated-rehearsal');
   const overwrite = args.includes('--overwrite') || args.includes('--confirm-overwrite');
   const conflictStrategy = args.includes('--upsert') ? 'upsert' : args.includes('--error') ? 'error' : undefined;
 
   if (!filePath) {
     console.error(
-      'Uso: node restore-database-backup.mjs <ruta-al-backup.enc> [--verify-only] [--isolated-rehearsal] [--as-sql] [--include-schema-rollback] [--upsert --confirm-overwrite]'
+      'Uso: node restore-database-backup.mjs <ruta-al-backup.enc> [--verify-only] [--isolated-rehearsal] [--schema-rollback-only] [--as-sql --allow-plaintext-pii-export] [--include-schema-rollback] [--upsert --confirm-overwrite]'
     );
     process.exit(1);
   }
 
   runLogicalRestore(filePath, {
     verifyOnly,
-    target: isolatedRehearsal ? 'isolated_rehearsal' : asSql ? 'sql_file' : undefined,
+    target: isolatedRehearsal
+      ? 'isolated_rehearsal'
+      : schemaRollbackOnly
+        ? 'schema_rollback_only'
+        : asSql
+          ? 'sql_file'
+          : undefined,
     includeSchemaRollback,
+    allowPlaintextPiiExport,
     conflictStrategy,
     confirmOverwrite: overwrite,
   }).catch(err => {

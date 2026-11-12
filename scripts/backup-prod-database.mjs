@@ -113,15 +113,16 @@ export function buildSchemaSnapshot(options = {}) {
 
     for (const file of files) {
       const fullPath = path.join(migrationsDir, file);
-      const content = fs.readFileSync(fullPath, 'utf8');
-      const sha256 = crypto.createHash('sha256').update(content, 'utf8').digest('hex');
+      const rawContent = fs.readFileSync(fullPath, 'utf8');
+      const canonicalContent = rawContent.replace(/\r\n/g, '\n');
+      const sha256 = crypto.createHash('sha256').update(canonicalContent, 'utf8').digest('hex');
       const version = file.split('_')[0];
       const phase = file <= baselineCutoff ? 'baseline_prod' : 'candidate_pending';
       migrations.push({
         file,
         version,
         phase,
-        size_bytes: Buffer.byteLength(content, 'utf8'),
+        size_bytes: Buffer.byteLength(canonicalContent, 'utf8'),
         sha256,
       });
     }
@@ -133,14 +134,14 @@ export function buildSchemaSnapshot(options = {}) {
     'DROP TRIGGER IF EXISTS trg_domain_events_sync_reabierto ON public.domain_events;',
     'DROP TRIGGER IF EXISTS trg_pedidos_protect_reabierto ON public.pedidos;',
     'ALTER TABLE public.envios_formulario DROP CONSTRAINT IF EXISTS chk_envios_interno_correo_requerido;',
-    'DROP FUNCTION IF EXISTS public.trg_enforce_new_pedido_title();',
-    'DROP FUNCTION IF EXISTS public.trg_sync_pedido_is_reabierto();',
-    'DROP FUNCTION IF EXISTS public.trg_protect_pedido_is_reabierto();',
-    'DROP FUNCTION IF EXISTS public.nota_pedido_edit(uuid, text);',
+    'DROP FUNCTION IF EXISTS public.cam09_require_new_pedido_title();',
+    'DROP FUNCTION IF EXISTS public.trg_domain_events_sync_is_reabierto();',
+    'DROP FUNCTION IF EXISTS public.trg_pedidos_protect_is_reabierto();',
+    'DROP FUNCTION IF EXISTS public.nota_pedido_update(uuid, text);',
     'DROP FUNCTION IF EXISTS public.nota_pedido_delete(uuid);',
-    'DROP FUNCTION IF EXISTS public.nota_pedido_get_historial(uuid);',
-    'DROP FUNCTION IF EXISTS public.mock_drive_Test_Reset();',
-    'DROP FUNCTION IF EXISTS private.validate_pedido_titulo_strict(text, boolean);',
+    'DROP FUNCTION IF EXISTS public.solicitante_get_internal_pedido_detail(uuid);',
+    'DROP FUNCTION IF EXISTS public.comunicacion_enqueue_internal_created(uuid, jsonb);',
+    'DROP FUNCTION IF EXISTS public.cleanup_orphaned_upload_reservations(integer, integer);',
   ];
 
   const canonicalPayload = JSON.stringify({
